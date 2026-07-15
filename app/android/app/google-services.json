@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "858585609550-v20oq8j4k5a5t9cetj2h5dhu3j9ps93a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sabeelinstitute.timetracker",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "858585609550-4pkumltbrleru9om5q91jhrv1pcnblk9.apps.googleusercontent.com",
           "client_type": 3
         }

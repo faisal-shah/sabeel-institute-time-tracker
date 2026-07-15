@@ -29,12 +29,14 @@ Firebase emulators until deploy time (Phase 6).
       then controlled by the app's own admin-approval gate, not an email list.
     - **Stay in Testing**: under **Test users → + Add users**, add each
       volunteer's email (up to 100). Only those can sign in; no warning screen.
-- [ ] **Android SHA-1 (only when you want native Google sign-in in the APK)**:
-  Firebase Console → Project settings → your Android app → Add fingerprint →
-  debug SHA-1 from
-  `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA1`
-  then re-download `google-services.json`. (The website works without this; the
-  native android google-signin module is still stubbed off until launch anyway.)
+- [x] **Android debug SHA-1 registered** + `google-services.json` re-downloaded
+  (now has the `client_type: 1` Android OAuth client). Native Google Sign-In is
+  wired and the app builds; complete a real sign-in on a device/emulator with a
+  Google account to confirm end to end.
+- [ ] **Release SHA-1** — before shipping a signed release APK, generate a real
+  keystore, register ITS SHA-1 on the Firebase Android app the same way, and
+  re-download `google-services.json`. (The committed debug keystore is only for
+  sideloading your own builds.)
 
 ## Google Drive sync (Phase 5b/6)
 
