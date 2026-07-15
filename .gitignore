@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Builds
+packages/shared/lib/
+functions/lib/
+app/dist-web/
+app/.expo/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+
+# Env / local secrets (client DSNs etc. — names only in docs/SECRETS.md)
+.env
+.env.local
+*.local.env
+
+# Logs & misc
+*.log
+.DS_Store
