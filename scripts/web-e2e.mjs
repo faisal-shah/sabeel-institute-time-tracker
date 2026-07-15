@@ -11,7 +11,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import http from 'node:http';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -109,7 +109,10 @@ async function main() {
   const consoleErrors = [];
   const pages = new Map();
   async function newPage(label) {
-    const ctx = await browser.newContext({ viewport: { width: 420, height: 860 } });
+    const ctx = await browser.newContext({
+      viewport: { width: 420, height: 860 },
+      acceptDownloads: true,
+    });
     const page = await ctx.newPage();
     pages.set(label, page);
     page.on('console', (m) => {
@@ -253,6 +256,37 @@ async function main() {
   await vol.getByText('week', { exact: true }).click();
   await vol.getByText('2h 00m', { exact: true }).first().waitFor();
   await vol.screenshot({ path: join(shots, '10-timesheet-week.png') });
+
+  console.log('▸ Phase 5: admin/manager reports, CSV export, lifetime statement…');
+  const mgr = await admin.context().newPage();
+  pages.set('mgr', mgr);
+  await mgr.goto('http://127.0.0.1:8123/');
+  await mgr.getByText('Salaam,', { exact: false }).waitFor();
+  await mgr.getByText('Reports', { exact: true }).click();
+  // 'all' period, everyone: the volunteer's 2h and any admin hours (none) → 2h 00m.
+  await mgr.getByText('all', { exact: true }).click();
+  await mgr.getByText('2h 00m', { exact: true }).first().waitFor({ timeout: 15000 });
+  await mgr.screenshot({ path: join(shots, '11-reports.png') });
+
+  // CSV download: capture the browser download and assert its contents.
+  const [dl] = await Promise.all([
+    mgr.waitForEvent('download'),
+    mgr.getByText('Export CSV', { exact: true }).click(),
+  ]);
+  const dlPath = join(shots, 'export.csv');
+  await dl.saveAs(dlPath);
+  const csv = readFileSync(dlPath, 'utf8');
+  if (!/Person,Email hint,Activity,Date,Start,End/.test(csv))
+    throw new Error('CSV missing header: ' + csv.slice(0, 80));
+  if (!/Volunteer/.test(csv)) throw new Error('CSV missing the volunteer row');
+
+  // Lifetime statement for the volunteer. "Volunteer" appears both as a Person
+  // filter chip (earlier) and as the tappable By-person row (later) — .last()
+  // is the row that navigates to the statement.
+  await mgr.getByText('Volunteer', { exact: true }).last().click();
+  await mgr.getByText('LIFETIME HOURS').last().waitFor();
+  await mgr.getByText('2h 00m', { exact: true }).last().waitFor();
+  await mgr.screenshot({ path: join(shots, '12-person-detail.png') });
 
   await browser.close();
   server.close();

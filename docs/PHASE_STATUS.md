@@ -10,7 +10,7 @@ phase boundary.
 | 2 | Activities CRUD | **complete** (2026-07-15: rules tests + web e2e) |
 | 3 | Time entry (clock + manual) | **complete** (2026-07-15: 11 new rules tests + e2e clock/manual flow) |
 | 4 | Timesheets (day/week) | **complete** (2026-07-15: epochFor tz tests + e2e edit/delete flow) |
-| 5 | Reporting + CSV + statements | pending |
+| 5 | Reporting + CSV + statements | **complete** (2026-07-15: reporting integration tests + e2e CSV download + statement) |
 | 5b | Drive sync (Sheet + CSV snapshots) | pending |
 | 6 | Polish + deploy readiness | pending |
 

@@ -104,7 +104,14 @@ export function HomeScreen({
 
       <View style={styles.footer}>
         {claims.role === 'manager' ? (
-          <Button label="Projects & events" onPress={() => nav.navigate('Activities')} />
+          <>
+            <Button label="Reports" onPress={() => nav.navigate('Reports')} />
+            <Button
+              label="Projects & events"
+              kind="secondary"
+              onPress={() => nav.navigate('Activities')}
+            />
+          </>
         ) : null}
         {claims.admin ? (
           <Button label="Manage users" onPress={() => nav.navigate('Users')} />

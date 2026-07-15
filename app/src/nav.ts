@@ -5,4 +5,6 @@ export type RootStackParamList = {
   ManualEntry: undefined;
   Timesheet: undefined;
   EntryEdit: { entryId: string };
+  Reports: undefined;
+  PersonDetail: { uid: string; displayName: string };
 };

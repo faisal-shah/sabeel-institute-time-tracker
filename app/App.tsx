@@ -11,6 +11,8 @@ import { ActivitiesScreen } from './src/screens/ActivitiesScreen';
 import { ManualEntryScreen } from './src/screens/ManualEntryScreen';
 import { TimesheetScreen } from './src/screens/TimesheetScreen';
 import { EntryEditScreen } from './src/screens/EntryEditScreen';
+import { ReportsScreen } from './src/screens/ReportsScreen';
+import { PersonDetailScreen } from './src/screens/PersonDetailScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 
@@ -83,6 +85,35 @@ export default function App() {
               />
             )}
           </Stack.Screen>
+          {claims.role === 'manager' ? (
+            <Stack.Screen
+              name="Reports"
+              options={{
+                headerShown: true,
+                title: 'Reports',
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            >
+              {() => <ReportsScreen />}
+            </Stack.Screen>
+          ) : null}
+          {claims.role === 'manager' ? (
+            <Stack.Screen
+              name="PersonDetail"
+              options={{
+                headerShown: true,
+                title: 'Lifetime hours',
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            >
+              {({ route }) => {
+                const p = route.params as { uid: string; displayName: string };
+                return <PersonDetailScreen uid={p.uid} displayName={p.displayName} />;
+              }}
+            </Stack.Screen>
+          ) : null}
           {claims.role === 'manager' ? (
             <Stack.Screen
               name="Activities"
