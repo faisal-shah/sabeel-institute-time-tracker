@@ -20,12 +20,18 @@ const shots = process.env.E2E_SHOTS_DIR ?? join(root, 'e2e-shots');
 mkdirSync(shots, { recursive: true });
 
 const children = [];
+let staticServer = null;
 function bg(cmd, args, opts = {}) {
   const child = spawn(cmd, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], ...opts });
   children.push(child);
   return child;
 }
 function cleanup(code) {
+  try {
+    staticServer?.close();
+  } catch {
+    /* already closed */
+  }
   for (const c of children) {
     try {
       process.kill(-c.pid, 'SIGTERM');
@@ -81,7 +87,14 @@ async function main() {
     ['emulators:start', '--project', 'demo-sabeel', '--only', 'auth,firestore,functions'],
     { env, detached: true },
   );
-  emu.stderr.on('data', (d) => process.stderr.write(d));
+  // Surface emulator trouble (e.g. a function param prompt that would hang a
+  // headless run) instead of silently timing out later.
+  const emuWatch = (d) => {
+    const s = d.toString();
+    if (/error|Error|Enter a string value|throw|internal/i.test(s)) process.stderr.write(s);
+  };
+  emu.stderr.on('data', emuWatch);
+  emu.stdout.on('data', emuWatch);
   await waitFor('http://127.0.0.1:9099', 'auth emulator');
   await waitFor('http://127.0.0.1:8080', 'firestore emulator');
   await waitFor('http://127.0.0.1:5001', 'functions emulator', 120000);
@@ -89,14 +102,16 @@ async function main() {
   // 3. Static server for the exported bundle (SPA fallback to index.html).
   const dist = join(root, 'app', 'dist-web');
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-  const server = http.createServer((req, res) => {
+  staticServer = http.createServer((req, res) => {
     const path = req.url.split('?')[0];
     let file = join(dist, path);
     if (path === '/' || !existsSync(file)) file = join(dist, 'index.html');
     res.setHeader('content-type', types[extname(file)] ?? 'application/octet-stream');
     createReadStream(file).pipe(res);
   });
-  await new Promise((r) => server.listen(8123, r));
+  // Ephemeral port: avoids colliding with a prior run's lingering server.
+  await new Promise((r) => staticServer.listen(0, '127.0.0.1', r));
+  const baseUrl = `http://127.0.0.1:${staticServer.address().port}`;
 
   // 4. Drive it.
   console.log('▸ launching Chrome…');
@@ -117,10 +132,10 @@ async function main() {
     pages.set(label, page);
     page.on('console', (m) => {
       if (m.type() === 'error') consoleErrors.push(`[${label}] ${m.text()}`);
-      if (m.type() === 'warning' && /listener/.test(m.text()))
-        console.log(`  (listener warning) [${label}] ${m.text()}`);
+      if (m.type() === 'warning' && /listener|session poll/.test(m.text()))
+        console.log(`  (warn) [${label}] ${m.text()}`);
     });
-    await page.goto('http://127.0.0.1:8123/');
+    await page.goto(baseUrl + '/');
     return page;
   }
   // On any failure, dump what every page was showing.
@@ -128,8 +143,8 @@ async function main() {
   globalThis.dumpPages = async () => {
     for (const [label, p] of pages) {
       await p
-        .screenshot({ path: join(shots, `fail-${label}.png`) })
-        .catch(() => {});
+        .screenshot({ path: join(shots, `fail-${label}.png`), animations: 'disabled' })
+        .catch(() => {}).catch(() => {});
     }
   };
   async function devSignIn(page, email) {
@@ -141,7 +156,7 @@ async function main() {
   const admin = await newPage('admin');
   await devSignIn(admin, 'admin@example.com');
   await admin.getByText('waiting for an administrator', { exact: false }).waitFor();
-  await admin.screenshot({ path: join(shots, '1-admin-pending.png') });
+  await admin.screenshot({ path: join(shots, '1-admin-pending.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ grant-admin bootstrap → page must un-gate LIVE (claims refresh)…');
   execFileSync('node', ['scripts/grant-admin.mjs', 'admin@example.com'], {
@@ -154,7 +169,7 @@ async function main() {
     },
   });
   await admin.getByText('Salaam,', { exact: false }).waitFor({ timeout: 30000 });
-  await admin.screenshot({ path: join(shots, '2-admin-home.png') });
+  await admin.screenshot({ path: join(shots, '2-admin-home.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ a volunteer signs in on their own device → pending gate…');
   const vol = await newPage('volunteer');
@@ -164,13 +179,15 @@ async function main() {
   console.log('▸ admin opens Manage users and sees the volunteer name+email…');
   await admin.getByText('Manage users').click();
   await admin.getByText('volunteer@example.com').waitFor();
-  await admin.screenshot({ path: join(shots, '3-users-pending.png') });
+  await admin.screenshot({ path: join(shots, '3-users-pending.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ admin taps Approve → volunteer page must flip to Home live…');
   await admin.getByText('Approve', { exact: true }).click();
+  // The session poll force-refreshes the token every few seconds, so the
+  // volunteer un-gates on its own within ~one poll interval of approval.
   await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 30000 });
-  await vol.screenshot({ path: join(shots, '4-volunteer-home.png') });
-  await admin.screenshot({ path: join(shots, '5-users-after.png') });
+  await vol.screenshot({ path: join(shots, '4-volunteer-home.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  await admin.screenshot({ path: join(shots, '5-users-after.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   // Volunteer must NOT see the admin button.
   const manageCount = await vol.getByText('Manage users').count();
@@ -180,7 +197,7 @@ async function main() {
   // Fresh page, same context: auth persists (IndexedDB), lands on Home.
   const admin2 = await admin.context().newPage();
   pages.set('admin2', admin2);
-  await admin2.goto('http://127.0.0.1:8123/');
+  await admin2.goto(baseUrl + '/');
   await admin2.getByText('Salaam,', { exact: false }).waitFor();
   await admin2.getByText('Projects & events').click();
 
@@ -206,7 +223,7 @@ async function main() {
   await addActivity('Food Drive', 'event');
   await admin2.getByText('Archive', { exact: true }).first().click();
   await admin2.getByText('Restore', { exact: true }).waitFor();
-  await admin2.screenshot({ path: join(shots, '6-activities.png') });
+  await admin2.screenshot({ path: join(shots, '6-activities.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   // Members don't get the manager entry point.
   const actCount = await vol.getByText('Projects & events').count();
@@ -217,7 +234,7 @@ async function main() {
   await vol.getByText('Tutoring', { exact: true }).first().click();
   await vol.getByText('Clock in', { exact: true }).click();
   await vol.getByText('CLOCKED IN').waitFor();
-  await vol.screenshot({ path: join(shots, '7-clocked-in.png') });
+  await vol.screenshot({ path: join(shots, '7-clocked-in.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   await vol.getByText('Clock out', { exact: true }).click();
   await vol.getByText('What are you working on?').waitFor();
@@ -234,12 +251,12 @@ async function main() {
   await vol.locator('textarea').fill('Math tutoring with the kids');
   await vol.getByText('Save hours', { exact: true }).click();
   await vol.getByText('Today: 1h 31m').waitFor({ timeout: 15000 });
-  await vol.screenshot({ path: join(shots, '8-after-manual.png') });
+  await vol.screenshot({ path: join(shots, '8-after-manual.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ Phase 4: timesheet day view, edit an entry, delete an entry…');
   await vol.getByText('My timesheet').click();
   await vol.getByText('1h 31m', { exact: true }).first().waitFor();
-  await vol.screenshot({ path: join(shots, '9-timesheet.png') });
+  await vol.screenshot({ path: join(shots, '9-timesheet.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   // Edit the manual entry (found by its note) to end at 11:00 → total 2h 01m.
   await vol.getByText('Math tutoring with the kids').click();
@@ -255,18 +272,19 @@ async function main() {
   // Week view still shows the same total.
   await vol.getByText('week', { exact: true }).click();
   await vol.getByText('2h 00m', { exact: true }).first().waitFor();
-  await vol.screenshot({ path: join(shots, '10-timesheet-week.png') });
+  await vol.screenshot({ path: join(shots, '10-timesheet-week.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ Phase 5: admin/manager reports, CSV export, lifetime statement…');
-  const mgr = await admin.context().newPage();
-  pages.set('mgr', mgr);
-  await mgr.goto('http://127.0.0.1:8123/');
-  await mgr.getByText('Salaam,', { exact: false }).waitFor();
+  // Reuse the already-authenticated admin page (it's a manager+admin). Reload to
+  // Home to leave the Users screen; avoids a fresh-context auth-rehydration race.
+  const mgr = admin;
+  await mgr.goto(baseUrl + '/');
+  await mgr.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
   await mgr.getByText('Reports', { exact: true }).click();
   // 'all' period, everyone: the volunteer's 2h and any admin hours (none) → 2h 00m.
   await mgr.getByText('all', { exact: true }).click();
   await mgr.getByText('2h 00m', { exact: true }).first().waitFor({ timeout: 15000 });
-  await mgr.screenshot({ path: join(shots, '11-reports.png') });
+  await mgr.screenshot({ path: join(shots, '11-reports.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   // CSV download: capture the browser download and assert its contents.
   const [dl] = await Promise.all([
@@ -280,16 +298,21 @@ async function main() {
     throw new Error('CSV missing header: ' + csv.slice(0, 80));
   if (!/Volunteer/.test(csv)) throw new Error('CSV missing the volunteer row');
 
+  console.log('▸ Phase 5b: Drive sync button degrades gracefully when unconfigured…');
+  // Still on Reports here — test the sync button before navigating away.
+  await mgr.getByText('Sync to Google Drive now').click();
+  await mgr.getByText('isn’t connected yet', { exact: false }).waitFor({ timeout: 15000 });
+
   // Lifetime statement for the volunteer. "Volunteer" appears both as a Person
   // filter chip (earlier) and as the tappable By-person row (later) — .last()
   // is the row that navigates to the statement.
   await mgr.getByText('Volunteer', { exact: true }).last().click();
   await mgr.getByText('LIFETIME HOURS').last().waitFor();
   await mgr.getByText('2h 00m', { exact: true }).last().waitFor();
-  await mgr.screenshot({ path: join(shots, '12-person-detail.png') });
+  await mgr.screenshot({ path: join(shots, '12-person-detail.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   await browser.close();
-  server.close();
+  staticServer.close();
 
   const realErrors = consoleErrors.filter((e) => !/WebChannelConnection|transport errored/.test(e));
   if (realErrors.length) {

@@ -33,7 +33,15 @@ Firebase emulators until deploy time (Phase 6).
 - [ ] Create a **service account** (no roles needed) and note its email.
 - [ ] In Workspace Drive, create the folder that will hold the hours Sheet + CSV
   snapshots; **share it (Editor) with the service-account email**.
-- [ ] Give Claude the folder ID (from its URL) to put in function config.
+- [ ] Create the Google Sheet inside that folder (any name); note its spreadsheet
+  ID from the URL.
+- [ ] Set the two function config params before deploy (empty = sync is a safe
+  no-op, so nothing breaks until you do this):
+  `firebase functions:config` is legacy — use params: put
+  `DRIVE_SPREADSHEET_ID=<id>` and `DRIVE_FOLDER_ID=<id>` in `functions/.env`
+  (gitignored) or set them as deploy-time params. The deployed function's
+  service account must be the one you shared the folder with (grant it via the
+  function's runtime service account in GCP, or deploy with that SA).
 
 ## Sentry (Phase 6)
 

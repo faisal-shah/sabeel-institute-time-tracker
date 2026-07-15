@@ -6,7 +6,7 @@ import { addDays, dayKeyFor, deviceTimeZone, formatDuration, monthRange } from '
 import type { RootStackParamList } from '../nav';
 import { useActivities } from '../activities';
 import { useUsers } from '../users';
-import { fetchTotals, fetchCsv, type Totals } from '../reporting';
+import { fetchTotals, fetchCsv, syncDriveNow, type Totals } from '../reporting';
 import { saveCsv } from '../saveCsv';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
@@ -133,6 +133,19 @@ export function ReportsScreen() {
       ) : null}
 
       <Button label="Export CSV" onPress={download} />
+      <Button
+        label="Sync to Google Drive now"
+        kind="secondary"
+        onPress={async () => {
+          setError(null);
+          setStatus(null);
+          try {
+            setStatus(await syncDriveNow());
+          } catch (e) {
+            setError((e as Error).message);
+          }
+        }}
+      />
       {status ? <Text style={styles.status}>{status}</Text> : null}
       <ErrorText error={error} />
     </Screen>

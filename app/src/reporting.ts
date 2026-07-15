@@ -29,3 +29,17 @@ export async function fetchCsv(filter: ReportFilter): Promise<{ csv: string; fil
   const res = await exportCsvFn(filter);
   return res.data;
 }
+
+const syncDriveNowFn = httpsCallable<
+  Record<string, never>,
+  { skipped?: boolean; entryRows?: number; csvWritten?: string | null }
+>(functions, 'syncDriveNow');
+
+/** Kick the Drive sync now; user-friendly status string for the UI. */
+export async function syncDriveNow(): Promise<string> {
+  const { data } = await syncDriveNowFn({});
+  if (data.skipped) {
+    return 'Google Drive isn’t connected yet — an admin sets that up once (see setup notes).';
+  }
+  return `Synced ${data.entryRows ?? 0} entries to the shared Google Sheet.`;
+}

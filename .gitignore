@@ -18,6 +18,10 @@ pubsub-debug.log
 .env
 .env.local
 *.local.env
+functions/.env
+# e2e artifacts
+e2e-shots/
+app/dist-web/
 
 # Logs & misc
 *.log

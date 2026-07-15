@@ -13,24 +13,55 @@ export function signOut(): Promise<void> {
   return fbSignOut(auth);
 }
 
+// Fresh accounts carry no claims; that matches a pending profile, so the missing
+// values default rather than looking "stale".
+function isStale(claims: TokenClaims, profile: UserDoc): boolean {
+  return (
+    (claims.status ?? 'pending') !== profile.status ||
+    (claims.role ?? 'member') !== profile.role ||
+    (claims.admin ?? false) !== profile.admin
+  );
+}
+
+/** True once the user is a fully active member — the only state that leaves the gate. */
+function isReady(claims: TokenClaims, profile: UserDoc | null): boolean {
+  return !!profile && claims.status === 'active';
+}
+
 /**
  * Auth state + user profile + token claims, kept coherent:
  * - first sign-in creates the (forced-pending) profile doc;
- * - the profile doc is watched live;
- * - when the doc's role/status/admin disagree with the token (an admin just
- *   approved or promoted this user), the token is force-refreshed so security
- *   rules see the change without a sign-out/in.
+ * - the profile doc is watched live, AND while the user is gated (pending) we
+ *   also POLL — force-refresh the token and re-read the doc every few seconds.
+ *
+ * The poll is essential: when an admin approves a user, the admin SDK sets that
+ * user's custom claims, which disrupts the user's in-flight Firestore listener,
+ * so the doc-update snapshot may never arrive. Polling detects approval
+ * regardless, and is also how the token picks up the new claims without a
+ * sign-out/in.
  */
 export function useSession(): Session {
   const [session, setSession] = useState<Session>({ phase: 'loading' });
-  const refreshing = useRef(false);
+  // Latest known claims/profile, so the poller and the listener agree.
+  const latest = useRef<{ profile: UserDoc | null }>({ profile: null });
 
   useEffect(() => {
     let unsubDoc: (() => void) | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    const stopPoll = () => {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    };
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       unsubDoc?.();
       unsubDoc = null;
+      stopPoll();
+      latest.current = { profile: null };
 
       if (!user) {
         setSession({ phase: 'signedOut' });
@@ -56,48 +87,61 @@ export function useSession(): Session {
         }
       };
 
-      const syncClaims = async (profile: UserDoc | null) => {
-        let token = await user.getIdTokenResult();
-        let claims = token.claims as TokenClaims;
-        // Fresh accounts have no claims at all — that matches a pending profile,
-        // so default the missing values rather than refresh-looping.
-        const stale =
-          profile &&
-          ((claims.status ?? 'pending') !== profile.status ||
-            (claims.role ?? 'member') !== profile.role ||
-            (claims.admin ?? false) !== profile.admin);
-        if (stale && !refreshing.current) {
-          refreshing.current = true;
-          try {
-            await user.getIdToken(true);
-            token = await user.getIdTokenResult();
-            claims = token.claims as TokenClaims;
-          } finally {
-            refreshing.current = false;
-          }
-        }
+      // Publish the session from a (profile, claims) pair, and (re)arm the poll
+      // if the user is still gated so approval is detected even if the listener
+      // misses the update.
+      const publish = (profile: UserDoc | null, claims: TokenClaims) => {
+        if (cancelled) return;
+        latest.current = { profile };
         setSession({ phase: 'signedIn', user, profile, claims });
+        if (isReady(claims, profile)) {
+          stopPoll();
+        } else if (!pollTimer) {
+          pollTimer = setInterval(poll, 3000);
+        }
+      };
+
+      // Force-refresh the token, re-read the doc, and republish. Used by the
+      // poll and after a listener snapshot when the token still lags the doc.
+      const poll = async () => {
+        try {
+          await user.getIdToken(true);
+          const claims = (await user.getIdTokenResult()).claims as TokenClaims;
+          const snap = await getDoc(ref);
+          const profile = snap.exists() ? (snap.data() as UserDoc) : null;
+          publish(profile, claims);
+        } catch (e) {
+          console.warn('session poll', (e as { code?: string }).code ?? (e as Error).message);
+        }
+      };
+
+      const onSnap = async (profile: UserDoc | null) => {
+        const claims = (await user.getIdTokenResult()).claims as TokenClaims;
+        publish(profile, claims);
+        // Doc says active but token still lags (claim propagation): refresh now
+        // rather than waiting for the next poll tick.
+        if (profile && isStale(claims, profile)) void poll();
       };
 
       ensureProfile()
         .then(() => {
           unsubDoc = onSnapshot(
             ref,
-            (snap) => {
-              void syncClaims(snap.exists() ? (snap.data() as UserDoc) : null);
-            },
+            (snap) => void onSnap(snap.exists() ? (snap.data() as UserDoc) : null),
             (e) => console.warn('profile listener', e.code ?? e.message),
           );
         })
         .catch((e) => {
           console.error('profile bootstrap failed', e);
-          void syncClaims(null);
+          void poll();
         });
     });
 
     return () => {
+      cancelled = true;
       unsubAuth();
       unsubDoc?.();
+      stopPoll();
     };
   }, []);
 
