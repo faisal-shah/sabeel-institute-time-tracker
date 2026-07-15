@@ -8,7 +8,7 @@ phase boundary.
 | 0 | Repo + monorepo scaffold + CI green | **complete** (2026-07-15: CI green, 22 tests, hello screen verified on tb_emu AVD + web export) |
 | 1 | Google auth + admin approval of users | **complete** (2026-07-15: web e2e + Android emulator verified; live claims-refresh un-gating works) |
 | 2 | Activities CRUD | **complete** (2026-07-15: rules tests + web e2e) |
-| 3 | Time entry (clock + manual) | pending |
+| 3 | Time entry (clock + manual) | **complete** (2026-07-15: 11 new rules tests + e2e clock/manual flow) |
 | 4 | Timesheets (day/week) | pending |
 | 5 | Reporting + CSV + statements | pending |
 | 5b | Drive sync (Sheet + CSV snapshots) | pending |

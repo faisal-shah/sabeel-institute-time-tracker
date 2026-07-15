@@ -81,9 +81,13 @@ export function useSession(): Session {
 
       ensureProfile()
         .then(() => {
-          unsubDoc = onSnapshot(ref, (snap) => {
-            void syncClaims(snap.exists() ? (snap.data() as UserDoc) : null);
-          });
+          unsubDoc = onSnapshot(
+            ref,
+            (snap) => {
+              void syncClaims(snap.exists() ? (snap.data() as UserDoc) : null);
+            },
+            (e) => console.warn('profile listener', e.code ?? e.message),
+          );
         })
         .catch((e) => {
           console.error('profile bootstrap failed', e);

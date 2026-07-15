@@ -55,5 +55,66 @@ service cloud.firestore {
         && request.resource.data.status in ['active', 'archived'];
       allow delete: if false;
     }
+
+    // Hours. Honor system: entries count immediately; owners manage their own,
+    // managers may correct closed entries. All times are epoch-ms numbers;
+    // timeZone/dayKey pin the entry to the local day the work happened.
+    match /timeEntries/{entryId} {
+      function entryValid(d) {
+        return d.activityId is string && d.activityId.size() > 0
+          && d.activityName is string
+          && d.start is int && d.start > 0
+          && d.timeZone is string && d.timeZone.size() > 0
+          && d.dayKey is string && d.dayKey.size() == 10
+          && d.source in ['clock', 'manual']
+          && (d.end == null
+              ? !('durationMinutes' in d)
+              : (d.end is int && d.end > d.start
+                 && d.durationMinutes is int
+                 && d.durationMinutes > 0
+                 && d.durationMinutes <= 24 * 60));
+      }
+      function me() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+      function meAfter() {
+        return getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+
+      // resource == null: reading a doc that doesn't exist (yet) is allowed —
+      // the clock-in listener attaches optimistically before the server ack,
+      // and IDs are unguessable so existence probing is moot.
+      allow read: if isActive()
+        && (resource == null || resource.data.uid == request.auth.uid || isManager());
+
+      // Owner-only create. A running entry (clock-in) must, in the same batch,
+      // point users/{uid}.activeEntryId at itself — and only when no other
+      // session is already running (one active session per user).
+      allow create: if isActive()
+        && request.resource.data.uid == request.auth.uid
+        && entryValid(request.resource.data)
+        && (request.resource.data.end != null
+            || (me().activeEntryId == null && meAfter().activeEntryId == entryId));
+
+      // Owner edits their own entries; closing a running one must clear the
+      // pointer in the same batch. Managers may correct entries that are
+      // already closed (they cannot touch someone else's activeEntryId).
+      allow update: if isActive()
+        && request.resource.data.uid == resource.data.uid
+        && entryValid(request.resource.data)
+        && (
+          (resource.data.uid == request.auth.uid
+           && (resource.data.end != null || request.resource.data.end == null
+               || meAfter().activeEntryId == null))
+          || (isManager() && resource.data.end != null && request.resource.data.end != null)
+        );
+
+      // Owner or manager may delete closed entries; a running entry only its
+      // owner may delete, clearing the pointer in the same batch.
+      allow delete: if isActive()
+        && (resource.data.end != null
+            ? (resource.data.uid == request.auth.uid || isManager())
+            : (resource.data.uid == request.auth.uid && meAfter().activeEntryId == null));
+    }
   }
 }

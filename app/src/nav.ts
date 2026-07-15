@@ -2,4 +2,5 @@ export type RootStackParamList = {
   Home: undefined;
   Users: undefined;
   Activities: undefined;
+  ManualEntry: undefined;
 };

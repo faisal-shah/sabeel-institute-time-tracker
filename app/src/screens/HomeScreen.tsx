@@ -1,53 +1,138 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { UserDoc, TokenClaims } from '@sabeel/shared';
+import {
+  dayKeyFor,
+  deviceTimeZone,
+  formatDuration,
+  minutesBetween,
+  timeOfDayFor,
+  type TokenClaims,
+  type UserDoc,
+} from '@sabeel/shared';
 import type { RootStackParamList } from '../nav';
 import { signOut } from '../session';
-import { Button, Screen } from '../components/ui';
+import { useActivities } from '../activities';
+import { clockIn, clockOut, useEntry, useDayMinutes } from '../entries';
+import { ActivityPicker } from '../components/ActivityPicker';
+import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
 export function HomeScreen({
+  uid,
   profile,
   claims,
 }: {
+  uid: string;
   profile: UserDoc;
   claims: TokenClaims;
 }) {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const activities = useActivities({ includeArchived: false });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const running = useEntry(profile.activeEntryId);
+
+  // Tick once a minute while clocked in so the elapsed figure stays honest.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  const tz = deviceTimeZone();
+  const todayKey = dayKeyFor(Date.now(), tz);
+  const todayMinutes = useDayMinutes(uid, todayKey);
+
+  const selected = activities.find((a) => a.id === selectedId) ?? null;
+
+  const onClockIn = async () => {
+    if (!selected) return;
+    setError(null);
+    try {
+      await clockIn(uid, selected);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const onClockOut = async () => {
+    if (!running) return;
+    setError(null);
+    try {
+      await clockOut(uid, running);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   return (
     <Screen title="Sabeel Time Tracker">
       <Text style={styles.greeting}>Salaam, {profile.displayName}</Text>
-      <View style={styles.badges}>
-        <Text style={styles.badge}>{profile.role}</Text>
-        {profile.admin ? <Text style={[styles.badge, styles.badgeAdmin]}>admin</Text> : null}
+      <Text style={styles.today}>Today: {formatDuration(todayMinutes)}</Text>
+
+      {running ? (
+        <View style={styles.runningCard}>
+          <Text style={styles.runningLabel}>CLOCKED IN</Text>
+          <Text style={styles.runningActivity}>{running.activityName}</Text>
+          <Text style={styles.runningSince}>
+            since {timeOfDayFor(running.start, running.timeZone)} ·{' '}
+            {formatDuration(Math.max(0, minutesBetween(running.start, Date.now())))} elapsed
+          </Text>
+          <Button label="Clock out" kind="danger" onPress={onClockOut} />
+        </View>
+      ) : (
+        <View style={styles.clockCard}>
+          <Text style={styles.pickLabel}>What are you working on?</Text>
+          <ActivityPicker
+            activities={activities}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+          <Button label="Clock in" onPress={onClockIn} disabled={!selected} />
+        </View>
+      )}
+      <ErrorText error={error} />
+
+      <Button
+        label="Add hours manually"
+        kind="secondary"
+        onPress={() => nav.navigate('ManualEntry')}
+      />
+
+      <View style={styles.footer}>
+        {claims.role === 'manager' ? (
+          <Button label="Projects & events" onPress={() => nav.navigate('Activities')} />
+        ) : null}
+        {claims.admin ? (
+          <Button label="Manage users" onPress={() => nav.navigate('Users')} />
+        ) : null}
+        <Button label="Sign out" kind="secondary" onPress={() => signOut()} />
       </View>
-      <Text style={styles.placeholder}>
-        Clock in/out arrives in Phase 3 — this is the Phase 1 shell.
-      </Text>
-      {claims.role === 'manager' ? (
-        <Button label="Projects & events" onPress={() => nav.navigate('Activities')} />
-      ) : null}
-      {claims.admin ? (
-        <Button label="Manage users" onPress={() => nav.navigate('Users')} />
-      ) : null}
-      <Button label="Sign out" kind="secondary" onPress={() => signOut()} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   greeting: { fontSize: 20, fontWeight: '600', color: colors.text },
-  badges: { flexDirection: 'row', gap: spacing(2) },
-  badge: {
-    backgroundColor: colors.bgMuted,
-    color: colors.textMuted,
-    borderRadius: 6,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    fontSize: 12,
-    overflow: 'hidden',
+  today: { fontSize: 14, color: colors.textMuted },
+  clockCard: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: spacing(4),
+    gap: spacing(3),
   },
-  badgeAdmin: { backgroundColor: colors.accent, color: '#3A2E00' },
-  placeholder: { color: colors.textMuted, fontSize: 14, marginVertical: spacing(2) },
+  pickLabel: { fontSize: 14, color: colors.textMuted },
+  runningCard: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    padding: spacing(5),
+    gap: spacing(2),
+  },
+  runningLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  runningActivity: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  runningSince: { color: '#D5E3DC', fontSize: 14, marginBottom: spacing(2) },
+  footer: { gap: spacing(3), marginTop: spacing(4) },
 });

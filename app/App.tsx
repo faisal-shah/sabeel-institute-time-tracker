@@ -8,6 +8,7 @@ import { PendingScreen, DisabledScreen } from './src/screens/GateScreens';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
 import { ActivitiesScreen } from './src/screens/ActivitiesScreen';
+import { ManualEntryScreen } from './src/screens/ManualEntryScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 
@@ -40,7 +41,18 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Home">
-            {() => <HomeScreen profile={profile} claims={claims} />}
+            {() => <HomeScreen uid={user.uid} profile={profile} claims={claims} />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="ManualEntry"
+            options={{
+              headerShown: true,
+              title: 'Add hours',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: '#fff',
+            }}
+          >
+            {() => <ManualEntryScreen uid={user.uid} />}
           </Stack.Screen>
           {claims.role === 'manager' ? (
             <Stack.Screen

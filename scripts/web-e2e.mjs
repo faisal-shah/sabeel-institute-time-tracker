@@ -114,6 +114,8 @@ async function main() {
     pages.set(label, page);
     page.on('console', (m) => {
       if (m.type() === 'error') consoleErrors.push(`[${label}] ${m.text()}`);
+      if (m.type() === 'warning' && /listener/.test(m.text()))
+        console.log(`  (listener warning) [${label}] ${m.text()}`);
     });
     await page.goto('http://127.0.0.1:8123/');
     return page;
@@ -190,7 +192,10 @@ async function main() {
       undefined,
       { timeout: 10000 },
     );
-    await admin2.getByText(name, { exact: true }).waitFor();
+    // .last(): the stack navigator keeps Home mounted (hidden) underneath, and
+    // its picker chip for the new activity also matches; the visible Activities
+    // screen is the most recently mounted, so it sits last in the DOM.
+    await admin2.getByText(name, { exact: true }).last().waitFor();
   }
   await addActivity('Tutoring', 'project');
   await addActivity('Food Drive', 'event');
@@ -201,6 +206,30 @@ async function main() {
   // Members don't get the manager entry point.
   const actCount = await vol.getByText('Projects & events').count();
   if (actCount !== 0) throw new Error('member sees the manager Projects & events button');
+
+  console.log('▸ Phase 3: volunteer clocks in, clocks out, adds manual hours…');
+  // Tutoring is the only active activity (Food Drive was archived above).
+  await vol.getByText('Tutoring', { exact: true }).first().click();
+  await vol.getByText('Clock in', { exact: true }).click();
+  await vol.getByText('CLOCKED IN').waitFor();
+  await vol.screenshot({ path: join(shots, '7-clocked-in.png') });
+
+  await vol.getByText('Clock out', { exact: true }).click();
+  await vol.getByText('What are you working on?').waitFor();
+  // The 1-minute floor on clock sessions must show up in today's total.
+  await vol.getByText('Today: 1m').waitFor();
+
+  await vol.getByText('Add hours manually').click();
+  // .last(): ManualEntry mounts on top while Home (with its own chip) stays in the DOM.
+  await vol.getByText('Tutoring', { exact: true }).last().click();
+  const times = vol.locator('input');
+  await times.nth(1).fill('09:00'); // from  (nth(0) is the date)
+  await times.nth(2).fill('10:30'); // to
+  await vol.getByText('What did you work on?', { exact: false }).waitFor();
+  await vol.locator('textarea').fill('Math tutoring with the kids');
+  await vol.getByText('Save hours', { exact: true }).click();
+  await vol.getByText('Today: 1h 31m').waitFor({ timeout: 15000 });
+  await vol.screenshot({ path: join(shots, '8-after-manual.png') });
 
   await browser.close();
   server.close();

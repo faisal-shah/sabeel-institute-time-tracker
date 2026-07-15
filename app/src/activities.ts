@@ -22,8 +22,10 @@ export function useActivities(opts: { includeArchived: boolean }): Activity[] {
     const q = opts.includeArchived
       ? query(base, orderBy('name'))
       : query(base, where('status', '==', 'active'), orderBy('name'));
-    return onSnapshot(q, (snap) =>
-      setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ActivityDoc) }))),
+    return onSnapshot(
+      q,
+      (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ActivityDoc) }))),
+      (e) => console.warn('useActivities listener', e.code ?? e.message),
     );
   }, [opts.includeArchived]);
   return rows;
