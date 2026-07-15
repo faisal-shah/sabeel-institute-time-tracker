@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "858585609550",
+    "project_id": "sabeel-institute-time-tracker",
+    "storage_bucket": "sabeel-institute-time-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858585609550:android:cfd4f81d71b18b6a145a1f",
+        "android_client_info": {
+          "package_name": "com.sabeelinstitute.timetracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "858585609550-4pkumltbrleru9om5q91jhrv1pcnblk9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDggqmvrfwe16_78VCFTWjHju9hxfoL3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "858585609550-4pkumltbrleru9om5q91jhrv1pcnblk9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
