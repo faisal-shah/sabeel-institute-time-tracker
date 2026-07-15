@@ -100,6 +100,7 @@ export function HomeScreen({
         kind="secondary"
         onPress={() => nav.navigate('ManualEntry')}
       />
+      <Button label="My timesheet" kind="secondary" onPress={() => nav.navigate('Timesheet')} />
 
       <View style={styles.footer}>
         {claims.role === 'manager' ? (

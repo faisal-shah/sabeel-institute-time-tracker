@@ -76,6 +76,28 @@ export function monthRange(dayKey: string): { fromKey: string; toKey: string } {
   return { fromKey: `${y}-${pad(m)}-01`, toKey: `${y}-${pad(m)}-${pad(lastDay)}` };
 }
 
+/**
+ * The instant corresponding to a wall-clock time in a given IANA timezone.
+ * Inverse of dayKeyFor/timeOfDayFor, found by correcting a UTC guess against
+ * how it formats back in that timezone (converges in ≤2 steps; DST-gap times
+ * that don't exist resolve to the shifted clock).
+ */
+export function epochFor(dayKey: string, hhmm: string, timeZone: string): number {
+  const { y, m, d } = parseDayKey(dayKey);
+  const [h, min] = hhmm.split(':').map(Number);
+  const wantWall = Date.UTC(y, m - 1, d) / 60000 + h * 60 + min;
+  let guess = Date.UTC(y, m - 1, d, h, min);
+  for (let i = 0; i < 3; i++) {
+    const gotKey = parseDayKey(dayKeyFor(guess, timeZone));
+    const [gh, gm] = timeOfDayFor(guess, timeZone).split(':').map(Number);
+    const gotWall = Date.UTC(gotKey.y, gotKey.m - 1, gotKey.d) / 60000 + gh * 60 + gm;
+    const diffMinutes = wantWall - gotWall;
+    if (diffMinutes === 0) break;
+    guess += diffMinutes * 60000;
+  }
+  return guess;
+}
+
 /** Whole minutes between two instants, rounded to the nearest minute. */
 export function minutesBetween(startMs: number, endMs: number): number {
   return Math.round((endMs - startMs) / 60000);

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  epochFor,
   dayKeyFor,
   timeOfDayFor,
   addDays,
@@ -64,6 +65,31 @@ describe('calendar arithmetic on dayKeys', () => {
   it('monthRange spans the whole month', () => {
     expect(monthRange('2026-02-11')).toEqual({ fromKey: '2026-02-01', toKey: '2026-02-28' });
     expect(monthRange('2028-02-11')).toEqual({ fromKey: '2028-02-01', toKey: '2028-02-29' });
+  });
+});
+
+describe('epochFor — wall time in a timezone back to an instant', () => {
+  it('round-trips Singapore and US times', () => {
+    expect(epochFor('2026-07-13', '09:00', 'Asia/Singapore')).toBe(Date.UTC(2026, 6, 13, 1, 0));
+    expect(epochFor('2026-07-13', '09:00', 'America/Los_Angeles')).toBe(
+      Date.UTC(2026, 6, 13, 16, 0),
+    );
+    expect(epochFor('2026-01-13', '09:00', 'America/Los_Angeles')).toBe(
+      Date.UTC(2026, 0, 13, 17, 0), // PST in winter
+    );
+  });
+
+  it('is the inverse of dayKeyFor + timeOfDayFor', () => {
+    const t = epochFor('2026-11-01', '14:30', 'America/Chicago');
+    expect(dayKeyFor(t, 'America/Chicago')).toBe('2026-11-01');
+    expect(timeOfDayFor(t, 'America/Chicago')).toBe('14:30');
+  });
+
+  it('resolves a nonexistent DST-gap time without crashing', () => {
+    // 02:30 on 2026-03-08 doesn't exist in Los Angeles; it lands on that day
+    // at a shifted clock time.
+    const t = epochFor('2026-03-08', '02:30', 'America/Los_Angeles');
+    expect(dayKeyFor(t, 'America/Los_Angeles')).toBe('2026-03-08');
   });
 });
 

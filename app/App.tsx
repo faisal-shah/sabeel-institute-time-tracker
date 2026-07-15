@@ -9,6 +9,8 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
 import { ActivitiesScreen } from './src/screens/ActivitiesScreen';
 import { ManualEntryScreen } from './src/screens/ManualEntryScreen';
+import { TimesheetScreen } from './src/screens/TimesheetScreen';
+import { EntryEditScreen } from './src/screens/EntryEditScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 
@@ -53,6 +55,33 @@ export default function App() {
             }}
           >
             {() => <ManualEntryScreen uid={user.uid} />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="Timesheet"
+            options={{
+              headerShown: true,
+              title: 'My timesheet',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: '#fff',
+            }}
+          >
+            {() => <TimesheetScreen uid={user.uid} />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="EntryEdit"
+            options={{
+              headerShown: true,
+              title: 'Edit entry',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: '#fff',
+            }}
+          >
+            {({ route }) => (
+              <EntryEditScreen
+                entryId={(route.params as { entryId: string }).entryId}
+                editorUid={user.uid}
+              />
+            )}
           </Stack.Screen>
           {claims.role === 'manager' ? (
             <Stack.Screen

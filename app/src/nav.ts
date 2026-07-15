@@ -3,4 +3,6 @@ export type RootStackParamList = {
   Users: undefined;
   Activities: undefined;
   ManualEntry: undefined;
+  Timesheet: undefined;
+  EntryEdit: { entryId: string };
 };

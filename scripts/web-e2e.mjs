@@ -187,7 +187,9 @@ async function main() {
     await admin2.getByText(type, { exact: true }).click();
     await admin2.getByText('Add', { exact: true }).click();
     // Successful create clears the input; an error would leave it filled.
+    // (Runs in the browser, where document exists — eslint sees only node here.)
     await admin2.waitForFunction(
+      // eslint-disable-next-line no-undef
       () => document.querySelector('input')?.value === '',
       undefined,
       { timeout: 10000 },
@@ -230,6 +232,27 @@ async function main() {
   await vol.getByText('Save hours', { exact: true }).click();
   await vol.getByText('Today: 1h 31m').waitFor({ timeout: 15000 });
   await vol.screenshot({ path: join(shots, '8-after-manual.png') });
+
+  console.log('▸ Phase 4: timesheet day view, edit an entry, delete an entry…');
+  await vol.getByText('My timesheet').click();
+  await vol.getByText('1h 31m', { exact: true }).first().waitFor();
+  await vol.screenshot({ path: join(shots, '9-timesheet.png') });
+
+  // Edit the manual entry (found by its note) to end at 11:00 → total 2h 01m.
+  await vol.getByText('Math tutoring with the kids').click();
+  await vol.locator('input').nth(2).fill('11:00');
+  await vol.getByText('Save changes', { exact: true }).click();
+  await vol.getByText('2h 01m', { exact: true }).first().waitFor();
+
+  // Delete the 1-minute clock entry → total 2h 00m.
+  await vol.getByText('1m', { exact: true }).last().click();
+  await vol.getByText('Delete entry', { exact: true }).click();
+  await vol.getByText('2h 00m', { exact: true }).first().waitFor();
+
+  // Week view still shows the same total.
+  await vol.getByText('week', { exact: true }).click();
+  await vol.getByText('2h 00m', { exact: true }).first().waitFor();
+  await vol.screenshot({ path: join(shots, '10-timesheet-week.png') });
 
   await browser.close();
   server.close();

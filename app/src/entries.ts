@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   query,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -99,6 +101,62 @@ export function useEntry(entryId: string | null): TimeEntry | null {
     );
   }, [entryId]);
   return entry;
+}
+
+/** Live list of a user's entries in an inclusive dayKey range, newest first. */
+export function useEntriesRange(
+  uid: string,
+  fromKey: string,
+  toKey: string,
+): TimeEntry[] {
+  const [rows, setRows] = useState<TimeEntry[]>([]);
+  useEffect(() => {
+    const q = query(
+      collection(db, COLLECTIONS.timeEntries),
+      where('uid', '==', uid),
+      where('dayKey', '>=', fromKey),
+      where('dayKey', '<=', toKey),
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimeEntryDoc) }));
+        list.sort((a, b) => b.dayKey.localeCompare(a.dayKey) || b.start - a.start);
+        setRows(list);
+      },
+      (e) => console.warn('useEntriesRange listener', e.code ?? e.message),
+    );
+  }, [uid, fromKey, toKey]);
+  return rows;
+}
+
+/** Edit a closed entry's fields; recomputes duration/dayKey from the new times. */
+export async function updateEntry(
+  entry: TimeEntry,
+  changes: {
+    activity?: Activity;
+    start: number;
+    end: number;
+    note?: string;
+    editorUid: string;
+  },
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.timeEntries, entry.id), {
+    ...(changes.activity
+      ? { activityId: changes.activity.id, activityName: changes.activity.name }
+      : {}),
+    start: changes.start,
+    end: changes.end,
+    durationMinutes: Math.max(1, minutesBetween(changes.start, changes.end)),
+    dayKey: dayKeyFor(changes.start, entry.timeZone),
+    note: changes.note?.trim() ?? '',
+    updatedAt: Date.now(),
+    ...(changes.editorUid !== entry.uid ? { lastEditedBy: changes.editorUid } : {}),
+  });
+}
+
+export function deleteEntry(entryId: string): Promise<void> {
+  return deleteDoc(doc(db, COLLECTIONS.timeEntries, entryId));
 }
 
 /** Live closed-minutes total for one of my local days (running session excluded). */
