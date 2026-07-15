@@ -7,6 +7,7 @@ import { SignInScreen } from './src/screens/SignInScreen';
 import { PendingScreen, DisabledScreen } from './src/screens/GateScreens';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
+import { ActivitiesScreen } from './src/screens/ActivitiesScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 
@@ -41,6 +42,19 @@ export default function App() {
           <Stack.Screen name="Home">
             {() => <HomeScreen profile={profile} claims={claims} />}
           </Stack.Screen>
+          {claims.role === 'manager' ? (
+            <Stack.Screen
+              name="Activities"
+              options={{
+                headerShown: true,
+                title: 'Projects & events',
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            >
+              {() => <ActivitiesScreen selfUid={user.uid} />}
+            </Stack.Screen>
+          ) : null}
           {claims.admin ? (
             <Stack.Screen
               name="Users"

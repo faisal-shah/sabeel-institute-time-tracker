@@ -107,15 +107,26 @@ async function main() {
   });
 
   const consoleErrors = [];
+  const pages = new Map();
   async function newPage(label) {
     const ctx = await browser.newContext({ viewport: { width: 420, height: 860 } });
     const page = await ctx.newPage();
+    pages.set(label, page);
     page.on('console', (m) => {
       if (m.type() === 'error') consoleErrors.push(`[${label}] ${m.text()}`);
     });
     await page.goto('http://127.0.0.1:8123/');
     return page;
   }
+  // On any failure, dump what every page was showing.
+  process.on('unhandledRejection', () => {});
+  globalThis.dumpPages = async () => {
+    for (const [label, p] of pages) {
+      await p
+        .screenshot({ path: join(shots, `fail-${label}.png`) })
+        .catch(() => {});
+    }
+  };
   async function devSignIn(page, email) {
     await page.getByPlaceholder('email').fill(email);
     await page.getByText('Dev: sign in', { exact: true }).click();
@@ -160,6 +171,37 @@ async function main() {
   const manageCount = await vol.getByText('Manage users').count();
   if (manageCount !== 0) throw new Error('volunteer sees the admin Manage users button');
 
+  console.log('▸ Phase 2: manager creates, archives, restores activities…');
+  // Fresh page, same context: auth persists (IndexedDB), lands on Home.
+  const admin2 = await admin.context().newPage();
+  pages.set('admin2', admin2);
+  await admin2.goto('http://127.0.0.1:8123/');
+  await admin2.getByText('Salaam,', { exact: false }).waitFor();
+  await admin2.getByText('Projects & events').click();
+
+  async function addActivity(name, type) {
+    const input = admin2.getByPlaceholder('New project or event name');
+    await input.fill(name);
+    await admin2.getByText(type, { exact: true }).click();
+    await admin2.getByText('Add', { exact: true }).click();
+    // Successful create clears the input; an error would leave it filled.
+    await admin2.waitForFunction(
+      () => document.querySelector('input')?.value === '',
+      undefined,
+      { timeout: 10000 },
+    );
+    await admin2.getByText(name, { exact: true }).waitFor();
+  }
+  await addActivity('Tutoring', 'project');
+  await addActivity('Food Drive', 'event');
+  await admin2.getByText('Archive', { exact: true }).first().click();
+  await admin2.getByText('Restore', { exact: true }).waitFor();
+  await admin2.screenshot({ path: join(shots, '6-activities.png') });
+
+  // Members don't get the manager entry point.
+  const actCount = await vol.getByText('Projects & events').count();
+  if (actCount !== 0) throw new Error('member sees the manager Projects & events button');
+
   await browser.close();
   server.close();
 
@@ -172,7 +214,8 @@ async function main() {
   cleanup(0);
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
   console.error(e);
+  await globalThis.dumpPages?.();
   cleanup(1);
 });

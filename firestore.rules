@@ -39,5 +39,21 @@ service cloud.firestore {
              .hasOnly(['activeEntryId', 'displayName', 'photoURL']);
       allow delete: if false;
     }
+
+    // Projects/programs/events hours are assigned to. Any active user picks from
+    // them; only managers shape the list. Never deleted — archived (status flip),
+    // so historical entries keep a valid reference.
+    match /activities/{activityId} {
+      allow read: if isActive();
+      allow create: if isManager()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.type in ['project', 'event']
+        && request.resource.data.status in ['active', 'archived'];
+      allow update: if isManager()
+        && request.resource.data.type in ['project', 'event']
+        && request.resource.data.status in ['active', 'archived'];
+      allow delete: if false;
+    }
   }
 }

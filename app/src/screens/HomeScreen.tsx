@@ -25,6 +25,9 @@ export function HomeScreen({
       <Text style={styles.placeholder}>
         Clock in/out arrives in Phase 3 — this is the Phase 1 shell.
       </Text>
+      {claims.role === 'manager' ? (
+        <Button label="Projects & events" onPress={() => nav.navigate('Activities')} />
+      ) : null}
       {claims.admin ? (
         <Button label="Manage users" onPress={() => nav.navigate('Users')} />
       ) : null}
