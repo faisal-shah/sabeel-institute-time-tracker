@@ -9,12 +9,13 @@
     "platforms": ["android", "web"],
     "android": {
       "package": "com.sabeelinstitute.timetracker",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": []
+    "plugins": ["@react-native-google-signin/google-signin"]
   }
 }
