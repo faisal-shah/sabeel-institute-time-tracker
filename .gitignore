@@ -22,3 +22,4 @@ pubsub-debug.log
 # Logs & misc
 *.log
 .DS_Store
+e2e-shots/

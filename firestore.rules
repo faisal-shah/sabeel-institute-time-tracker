@@ -18,6 +18,11 @@ service cloud.firestore {
     function isManager() {
       return isActive() && request.auth.token.get('role', '') == 'manager';
     }
+    // Only admins approve users / change roles; they need to read profiles
+    // (name, email) to do it, even if they aren't managers themselves.
+    function isAdmin() {
+      return isActive() && request.auth.token.get('admin', false) == true;
+    }
 
     match /users/{uid} {
       // Self-registration: a new sign-in creates its own profile, forced pending
@@ -27,7 +32,7 @@ service cloud.firestore {
         && request.resource.data.role == 'member'
         && request.resource.data.admin == false
         && request.resource.data.activeEntryId == null;
-      allow read: if isSignedIn() && (request.auth.uid == uid || isManager());
+      allow read: if isSignedIn() && (request.auth.uid == uid || isManager() || isAdmin());
       // Self may only touch the clock pointer and cosmetic profile fields.
       allow update: if isActive() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()

@@ -5,6 +5,13 @@
 export type UserStatus = 'pending' | 'active' | 'disabled';
 export type UserRole = 'member' | 'manager';
 
+/** Mirrored into the ID token by setUserAccess; what security rules trust. */
+export interface TokenClaims {
+  status?: UserStatus;
+  role?: UserRole;
+  admin?: boolean;
+}
+
 export interface UserDoc {
   displayName: string;
   email: string;

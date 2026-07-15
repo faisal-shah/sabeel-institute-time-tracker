@@ -101,6 +101,18 @@ describe('firestore.rules — users privilege escalation', () => {
     await assertFails(updateDoc(doc(carol.firestore(), 'users/carol'), { displayName: 'C' }));
   });
 
+  it('admins who are not managers can still read profiles (approval needs name+email)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/newbie'), pendingProfile);
+    });
+    const admin = testEnv.authenticatedContext('adm', {
+      status: 'active',
+      role: 'member',
+      admin: true,
+    });
+    await assertSucceeds(getDoc(doc(admin.firestore(), 'users/newbie')));
+  });
+
   it('managers can read any profile; members only their own', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'users/alice'), { ...pendingProfile, status: 'active' });

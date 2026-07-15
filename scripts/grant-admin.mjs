@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+// One-time bootstrap: promote a user (by email) to active manager+admin.
+// Solves the chicken-and-egg of the very first admin; later grants go through
+// the in-app Users screen (setUserAccess).
+//
+// Against the emulators (default):
+//   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+//     node scripts/grant-admin.mjs you@example.com
+// Against production (needs gcloud ADC or GOOGLE_APPLICATION_CREDENTIALS):
+//   GCLOUD_PROJECT=<real-project-id> node scripts/grant-admin.mjs you@example.com
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+const email = process.argv[2];
+if (!email) {
+  console.error('usage: node scripts/grant-admin.mjs <email>');
+  process.exit(1);
+}
+
+const projectId = process.env.GCLOUD_PROJECT ?? 'demo-sabeel';
+if (projectId === 'demo-sabeel' && !process.env.FIRESTORE_EMULATOR_HOST) {
+  process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+}
+
+initializeApp({ projectId });
+
+const user = await getAuth().getUserByEmail(email);
+const next = { status: 'active', role: 'manager', admin: true };
+await getAuth().setCustomUserClaims(user.uid, next);
+await getFirestore().collection('users').doc(user.uid).set(
+  {
+    ...next,
+    approvedAt: Date.now(),
+    approvedBy: 'grant-admin-script',
+  },
+  { merge: true },
+);
+console.log(`${email} (${user.uid}) is now an active admin+manager on ${projectId}.`);
+console.log('They must sign out/in (or wait for token refresh) to pick up the claims.');

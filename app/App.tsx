@@ -1,41 +1,68 @@
+import { ActivityIndicator, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { formatDuration } from '@sabeel/shared';
-import { colors, spacing } from './src/theme';
+import { useSession } from './src/session';
+import { SignInScreen } from './src/screens/SignInScreen';
+import { PendingScreen, DisabledScreen } from './src/screens/GateScreens';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { UsersScreen } from './src/screens/UsersScreen';
+import type { RootStackParamList } from './src/nav';
+import { colors } from './src/theme';
 
-// Phase 0 walking skeleton: proves the Expo app builds and renders on Android and
-// web, and that @sabeel/shared resolves through Metro. Replaced in Phase 1.
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
 export default function App() {
+  const session = useSession();
+
+  let content;
+  if (session.phase === 'loading') {
+    content = (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  } else if (session.phase === 'signedOut') {
+    content = <SignInScreen />;
+  } else if (!session.profile || session.claims.status !== 'active') {
+    // Signed in but not (yet) an active member — gate on the doc/claims state.
+    const email = session.user.email ?? '';
+    content =
+      session.profile?.status === 'disabled' ? (
+        <DisabledScreen email={email} />
+      ) : (
+        <PendingScreen email={email} />
+      );
+  } else {
+    const { profile, claims, user } = session;
+    content = (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Home">
+            {() => <HomeScreen profile={profile} claims={claims} />}
+          </Stack.Screen>
+          {claims.admin ? (
+            <Stack.Screen
+              name="Users"
+              options={{
+                headerShown: true,
+                title: 'Users',
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            >
+              {() => <UsersScreen selfUid={user.uid} />}
+            </Stack.Screen>
+          ) : null}
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sabeel Time Tracker</Text>
-      <Text style={styles.subtitle}>Phase 0 — walking skeleton</Text>
-      <Text style={styles.demo}>shared lib says: {formatDuration(125)}</Text>
+    <>
+      {content}
       <StatusBar style="light" />
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing(2),
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: colors.accent,
-    fontSize: 16,
-  },
-  demo: {
-    color: '#FFFFFF',
-    opacity: 0.8,
-    fontSize: 14,
-  },
-});

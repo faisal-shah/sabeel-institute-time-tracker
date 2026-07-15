@@ -6,7 +6,7 @@ phase boundary.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Repo + monorepo scaffold + CI green | **complete** (2026-07-15: CI green, 22 tests, hello screen verified on tb_emu AVD + web export) |
-| 1 | Google auth + admin approval of users | pending |
+| 1 | Google auth + admin approval of users | **complete** (2026-07-15: web e2e + Android emulator verified; live claims-refresh un-gating works) |
 | 2 | Activities CRUD | pending |
 | 3 | Time entry (clock + manual) | pending |
 | 4 | Timesheets (day/week) | pending |
