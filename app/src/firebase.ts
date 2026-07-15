@@ -7,7 +7,12 @@ import { firebaseConfig } from './firebase-config';
 import { initAuth } from './authInit';
 import { USE_EMULATORS, EMULATOR_HOST } from './env';
 
-export const app = initializeApp(firebaseConfig);
+// Against the emulators, use the emulator's demo project id (what the emulator
+// suite and tests run as) so the app reads/writes the same namespace. The real
+// projectId in firebaseConfig is for production only.
+export const app = initializeApp(
+  USE_EMULATORS ? { ...firebaseConfig, projectId: 'demo-sabeel' } : firebaseConfig,
+);
 export const auth = initAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app, REGION);

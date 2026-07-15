@@ -7,11 +7,11 @@ export const COLLECTIONS = {
 // Functions region must match setGlobalOptions in functions/src/setup.ts.
 export const REGION = 'us-central1';
 
-// The *Web* OAuth client id from the Firebase console (NOT the Android one) —
-// required by native Google Sign-In to mint an idToken Firebase accepts.
-// Placeholder until the real Firebase project exists (see TODO.md).
+// The *Web* OAuth client id (NOT the Android one) — required by native Google
+// Sign-In to mint an idToken Firebase accepts. This is the client_type 3 entry
+// from app/google-services.json (auto-created when Google sign-in was enabled).
 export const WEB_CLIENT_ID =
-  'PLACEHOLDER.apps.googleusercontent.com';
+  '858585609550-4pkumltbrleru9om5q91jhrv1pcnblk9.apps.googleusercontent.com';
 
 /** Clock sessions running longer than this get auto-closed at start + cap. */
 export const SESSION_CAP_HOURS = 12;

@@ -4,28 +4,37 @@ Manual console/account steps I can't (or shouldn't) do autonomously. Delete line
 you complete them. Nothing here blocks Phases 0–5 — everything runs against the
 Firebase emulators until deploy time (Phase 6).
 
-## Firebase / Google Cloud (needed for Phase 6 deploy)
+## Firebase / Google Cloud (needed for deploy)
 
-- [ ] **Create the Firebase project** (suggested id: `sabeel-time-tracker`) at
-  https://console.firebase.google.com — Blaze plan (required for Cloud Functions).
-  Firestore location: `nam5` (US multi-region) — immutable, pick carefully.
-  Then update `.firebaserc` with the real project id.
-- [ ] **Enable Google as the only sign-in provider**: Authentication → Sign-in
-  method → Google → Enable. Do NOT enable email/password.
-- [ ] **OAuth consent screen** (GCP console → APIs & Services → OAuth consent
-  screen): External, app name "Sabeel Time Tracker", your support email.
-- [ ] **Register the Android app**: Project settings → Add app → Android, package
-  `com.sabeelinstitute.timetracker`. Add your debug-keystore SHA-1:
+- [x] **Create the Firebase project** — done: `sabeel-institute-time-tracker`.
+  `.firebaserc` updated.
+- [x] **Enable Google as the only sign-in provider** — done.
+- [x] **Register the Web app** — done; real config integrated into
+  `app/src/firebase-config.ts`.
+- [x] **Web OAuth client ID** — done; taken from the `client_type: 3` entry in
+  `app/google-services.json` and set in `WEB_CLIENT_ID`
+  (`packages/shared/src/constants.ts`).
+- [x] **google-services.json committed** — done (Android app registered).
+- [ ] **Confirm the Firestore location is `nam5`** (US multi-region) if you
+  haven't already — it's immutable. Firebase Console → Firestore Database → the
+  region shown at the top. (Skip if already created; just note what it is.)
+- [ ] **OAuth consent screen — let volunteers actually sign in** (currently
+  "External" + Testing, so ONLY listed test users can sign in). Console:
+  https://console.cloud.google.com → project `sabeel-institute-time-tracker` →
+  APIs & Services → OAuth consent screen → **Audience** tab. Pick ONE:
+    - **Publish app** (recommended): click "Publish app". The app only uses basic
+      scopes (email/profile/openid, non-sensitive) so NO Google verification is
+      required — any Google account can sign in (users may see a one-time
+      "Google hasn't verified this app" notice they click through). Access is
+      then controlled by the app's own admin-approval gate, not an email list.
+    - **Stay in Testing**: under **Test users → + Add users**, add each
+      volunteer's email (up to 100). Only those can sign in; no warning screen.
+- [ ] **Android SHA-1 (only when you want native Google sign-in in the APK)**:
+  Firebase Console → Project settings → your Android app → Add fingerprint →
+  debug SHA-1 from
   `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA1`
-  Download `google-services.json` → `app/google-services.json`.
-  (Repeat with the release-keystore SHA-1 before shipping the release APK, and
-  re-download `google-services.json` after every SHA change.)
-- [ ] **Register the Web app**: Project settings → Add app → Web. Paste the config
-  object into `app/src/firebase-config.ts`.
-- [ ] **Copy the Web OAuth client ID** (GCP console → Credentials → the
-  "Web client (auto created by Google Service)") into `WEB_CLIENT_ID` in
-  `packages/shared/src/constants.ts`. ⚠️ Mobile Google Sign-In needs the *Web*
-  client id, not the Android one — using the Android one causes DEVELOPER_ERROR.
+  then re-download `google-services.json`. (The website works without this; the
+  native android google-signin module is still stubbed off until launch anyway.)
 
 ## Google Drive sync (Phase 5b/6)
 
@@ -35,13 +44,10 @@ Firebase emulators until deploy time (Phase 6).
   snapshots; **share it (Editor) with the service-account email**.
 - [ ] Create the Google Sheet inside that folder (any name); note its spreadsheet
   ID from the URL.
-- [ ] Set the two function config params before deploy (empty = sync is a safe
-  no-op, so nothing breaks until you do this):
-  `firebase functions:config` is legacy — use params: put
-  `DRIVE_SPREADSHEET_ID=<id>` and `DRIVE_FOLDER_ID=<id>` in `functions/.env`
-  (gitignored) or set them as deploy-time params. The deployed function's
-  service account must be the one you shared the folder with (grant it via the
-  function's runtime service account in GCP, or deploy with that SA).
+- [ ] Put `DRIVE_SPREADSHEET_ID=<id>` and `DRIVE_FOLDER_ID=<id>` in
+  `functions/.env` (gitignored; see `functions/.env.example`). Empty = the sync
+  is a safe no-op, so nothing breaks until you fill these in. The deployed
+  function's runtime service account must be the one you shared the folder with.
 
 ## Sentry (Phase 6)
 
