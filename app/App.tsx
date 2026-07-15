@@ -15,6 +15,9 @@ import { ReportsScreen } from './src/screens/ReportsScreen';
 import { PersonDetailScreen } from './src/screens/PersonDetailScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
+import { initSentry } from './src/sentry';
+
+initSentry();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

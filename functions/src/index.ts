@@ -6,3 +6,4 @@ initializeApp();
 export { setUserAccess } from './users';
 export { exportCsv, reportTotals } from './reporting';
 export { syncToDrive, syncDriveNow } from './drive';
+export { autoCloseStaleSessions } from './sessions';

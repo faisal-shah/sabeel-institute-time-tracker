@@ -12,7 +12,7 @@ phase boundary.
 | 4 | Timesheets (day/week) | **complete** (2026-07-15: epochFor tz tests + e2e edit/delete flow) |
 | 5 | Reporting + CSV + statements | **complete** (2026-07-15: reporting integration tests + e2e CSV download + statement) |
 | 5b | Drive sync (Sheet + CSV snapshots) | **complete** (2026-07-15: driveRows unit + runSync integration tests + full e2e green) |
-| 6 | Polish + deploy readiness | pending |
+| 6 | Polish + deploy readiness | **complete** (2026-07-15: auto-close + nudge, Sentry seams, deploy/secrets docs) |
 
 ## Decision log
 

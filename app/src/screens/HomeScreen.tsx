@@ -80,6 +80,12 @@ export function HomeScreen({
             since {timeOfDayFor(running.start, running.timeZone)} ·{' '}
             {formatDuration(Math.max(0, minutesBetween(running.start, Date.now())))} elapsed
           </Text>
+          {minutesBetween(running.start, Date.now()) >= 8 * 60 ? (
+            <Text style={styles.longWarning}>
+              You've been clocked in a long time — remember to clock out. Sessions over
+              12h are closed automatically.
+            </Text>
+          ) : null}
           <Button label="Clock out" kind="danger" onPress={onClockOut} />
         </View>
       ) : (
@@ -142,5 +148,11 @@ const styles = StyleSheet.create({
   runningLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   runningActivity: { color: '#fff', fontSize: 22, fontWeight: '700' },
   runningSince: { color: '#D5E3DC', fontSize: 14, marginBottom: spacing(2) },
+  longWarning: {
+    color: colors.accent,
+    fontSize: 13,
+    marginBottom: spacing(2),
+    lineHeight: 18,
+  },
   footer: { gap: spacing(3), marginTop: spacing(4) },
 });
