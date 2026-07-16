@@ -14,6 +14,17 @@ phase boundary.
 | 5b | Drive sync (Sheet + CSV snapshots) | **complete** (2026-07-15: driveRows unit + runSync integration tests + full e2e green) |
 | 6 | Polish + deploy readiness | **complete** (2026-07-15: auto-close + nudge, Sentry seams, deploy/secrets docs) |
 
+## Deploy log
+
+- 2026-07-16 — **First live deploy** to `sabeel-institute-time-tracker`. Firestore
+  rules + indexes, all 6 Cloud Functions (us-central1, nodejs22), and Hosting
+  (https://sabeel-institute-time-tracker.web.app, HTTP 200). Functions are now
+  bundled with esbuild (commit de32168) so Cloud Build resolves the private
+  `@sabeel/shared` workspace package. Drive sync deployed as a safe no-op (no
+  `functions/.env` yet). **Pending:** first-admin bootstrap (sign in on the live
+  site, then `scripts/grant-admin.mjs`), OAuth consent screen publish/test-users,
+  and Drive service-account wiring — see `TODO.md`.
+
 ## Decision log
 
 - 2026-07-15 — Approval is **admin-only** (Faisal): no org-domain auto-approval;
