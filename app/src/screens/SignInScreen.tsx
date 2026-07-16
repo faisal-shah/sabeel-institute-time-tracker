@@ -69,10 +69,10 @@ const styles = StyleSheet.create({
     padding: spacing(6),
     gap: spacing(2),
   },
-  title: { color: '#fff', fontSize: 30, fontWeight: '700' },
+  title: { color: colors.onPrimary, fontSize: 30, fontWeight: '700' },
   tagline: { color: colors.accent, fontSize: 15, marginBottom: spacing(6) },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.onPrimary,
     borderRadius: 14,
     padding: spacing(5),
     gap: spacing(3),

@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  totalValue: { color: '#fff', fontSize: 32, fontWeight: '700' },
+  totalValue: { color: colors.onPrimary, fontSize: 32, fontWeight: '700' },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',

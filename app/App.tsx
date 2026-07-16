@@ -59,7 +59,7 @@ export default function App() {
               headerShown: true,
               title: 'Add hours',
               headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#fff',
+              headerTintColor: '#FBF3E4',
             }}
           >
             {({ route }) => {
@@ -73,7 +73,7 @@ export default function App() {
               headerShown: true,
               title: 'My timesheet',
               headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#fff',
+              headerTintColor: '#FBF3E4',
             }}
           >
             {() => <TimesheetScreen uid={user.uid} profile={profile} claims={claims} />}
@@ -84,7 +84,7 @@ export default function App() {
               headerShown: true,
               title: 'Edit entry',
               headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#fff',
+              headerTintColor: '#FBF3E4',
             }}
           >
             {({ route }) => (
@@ -101,7 +101,7 @@ export default function App() {
                 headerShown: true,
                 title: 'Reports',
                 headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#fff',
+                headerTintColor: '#FBF3E4',
               }}
             >
               {() => <ReportsScreen />}
@@ -114,7 +114,7 @@ export default function App() {
                 headerShown: true,
                 title: 'Lifetime hours',
                 headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#fff',
+                headerTintColor: '#FBF3E4',
               }}
             >
               {({ route }) => {
@@ -130,7 +130,7 @@ export default function App() {
                 headerShown: true,
                 title: 'Projects & events',
                 headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#fff',
+                headerTintColor: '#FBF3E4',
               }}
             >
               {() => <ActivitiesScreen selfUid={user.uid} />}
@@ -143,7 +143,7 @@ export default function App() {
                 headerShown: true,
                 title: 'Approvals',
                 headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#fff',
+                headerTintColor: '#FBF3E4',
               }}
             >
               {() => <ApprovalsScreen uid={user.uid} claims={claims} />}
@@ -156,7 +156,7 @@ export default function App() {
                 headerShown: true,
                 title: 'Review timesheet',
                 headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#fff',
+                headerTintColor: '#FBF3E4',
               }}
             >
               {({ route }) => {
@@ -183,7 +183,7 @@ export default function App() {
                 headerShown: true,
                 title: 'Users',
                 headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#fff',
+                headerTintColor: '#FBF3E4',
               }}
             >
               {() => <UsersScreen selfUid={user.uid} claims={claims} />}

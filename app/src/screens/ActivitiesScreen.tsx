@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   },
   typeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   typeLabel: { color: colors.textMuted, fontSize: 14 },
-  typeLabelOn: { color: '#fff' },
+  typeLabelOn: { color: colors.onPrimary },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

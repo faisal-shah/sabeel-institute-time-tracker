@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   toggleOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   toggleLabel: { color: colors.textMuted, fontSize: 13 },
-  toggleLabelOn: { color: '#fff' },
+  toggleLabelOn: { color: colors.onPrimary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

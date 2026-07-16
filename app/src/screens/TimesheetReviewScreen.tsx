@@ -12,7 +12,7 @@ import { colors, spacing } from '../theme';
 
 const STATUS_LINE = {
   draft: { label: 'Not submitted', color: colors.textMuted },
-  submitted: { label: 'Submitted — awaiting your decision', color: colors.accent },
+  submitted: { label: 'Submitted — awaiting your decision', color: colors.accentDeep },
   approved: { label: 'Approved', color: colors.primary },
   rejected: { label: 'Rejected — back with the owner', color: colors.danger },
 } as const;

@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: spacing(3),
   },
-  rejectedText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  rejectedText: { color: colors.onPrimary, fontSize: 14, fontWeight: '600' },
   periodStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -247,8 +247,8 @@ const styles = StyleSheet.create({
     gap: spacing(2),
   },
   runningLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  runningActivity: { color: '#fff', fontSize: 22, fontWeight: '700' },
-  runningSince: { color: '#D5E3DC', fontSize: 14, marginBottom: spacing(2) },
+  runningActivity: { color: colors.onPrimary, fontSize: 22, fontWeight: '700' },
+  runningSince: { color: '#EBCAD5', fontSize: 14, marginBottom: spacing(2) },
   longWarning: {
     color: colors.accent,
     fontSize: 13,

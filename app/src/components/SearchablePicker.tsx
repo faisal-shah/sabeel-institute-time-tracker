@@ -154,8 +154,8 @@ const styles = StyleSheet.create({
   rowOn: { backgroundColor: colors.primary },
   rowMain: { flex: 1 },
   rowLabel: { fontSize: 15, color: colors.text, fontWeight: '600' },
-  rowLabelOn: { color: '#fff' },
+  rowLabelOn: { color: colors.onPrimary },
   rowSub: { fontSize: 12, color: colors.textMuted },
   rowSubOn: { color: colors.accent },
-  check: { color: '#fff', fontWeight: '700' },
+  check: { color: colors.onPrimary, fontWeight: '700' },
 });

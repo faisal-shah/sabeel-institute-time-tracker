@@ -61,7 +61,7 @@ export function Button({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color={kind === 'secondary' ? colors.primary : '#fff'} />
+        <ActivityIndicator color={kind === 'secondary' ? colors.primary : colors.onPrimary} />
       ) : (
         <Text style={[styles.btnLabel, kind === 'secondary' && styles.btnLabelSecondary]}>
           {label}
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing(4),
     paddingHorizontal: spacing(5),
   },
-  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  headerTitle: { color: colors.onPrimary, fontSize: 22, fontWeight: '700' },
   body: { padding: spacing(5), gap: spacing(3) },
   btn: {
     borderRadius: 10,
@@ -98,16 +98,16 @@ const styles = StyleSheet.create({
   btnSecondary: {
     backgroundColor: colors.bgMuted,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.sage,
   },
   btnDanger: { backgroundColor: colors.danger },
   btnDim: { opacity: 0.6 },
-  btnLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  btnLabel: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
   btnLabelSecondary: { color: colors.primary },
   error: { color: colors.danger, fontSize: 14 },
   listenerError: {
     backgroundColor: colors.danger,
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 13,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(5),

@@ -62,7 +62,7 @@ export function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => 
 
 const STATUS_CHIP = {
   draft: { label: 'Not submitted', color: colors.textMuted },
-  submitted: { label: 'Submitted', color: colors.accent },
+  submitted: { label: 'Submitted', color: colors.accentDeep },
   approved: { label: 'Approved', color: colors.primary },
   rejected: { label: 'Rejected', color: colors.danger },
 } as const;
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   monthChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   monthChipFuture: { opacity: 0.45 },
   monthChipLabel: { fontSize: 12, color: colors.textMuted },
-  monthChipLabelOn: { color: '#fff' },
+  monthChipLabelOn: { color: colors.onPrimary },
   dot: { width: 8, height: 8, borderRadius: 4 },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
   navCenter: { flex: 1, alignItems: 'center' },

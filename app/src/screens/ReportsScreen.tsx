@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipLabel: { color: colors.textMuted, fontSize: 13 },
-  chipLabelOn: { color: '#fff' },
+  chipLabelOn: { color: colors.onPrimary },
   totalCard: {
     backgroundColor: colors.primary,
     borderRadius: 14,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     marginTop: spacing(3),
   },
   totalLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  totalValue: { color: '#fff', fontSize: 32, fontWeight: '700' },
+  totalValue: { color: colors.onPrimary, fontSize: 32, fontWeight: '700' },
   breakdown: { gap: spacing(1) },
   row: {
     flexDirection: 'row',
