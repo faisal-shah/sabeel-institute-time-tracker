@@ -13,7 +13,7 @@ phase boundary.
 | 5 | Reporting + CSV + statements | **complete** (2026-07-15: reporting integration tests + e2e CSV download + statement) |
 | 5b | Drive sync (Sheet + CSV snapshots) | **complete** (2026-07-15: driveRows unit + runSync integration tests + full e2e green) |
 | 6 | Polish + deploy readiness | **complete** (2026-07-15: auto-close + nudge, Sentry seams, deploy/secrets docs) |
-| 7 | Weekly timesheets: submit/approve workflow | **in progress** (2026-07-16: shared period math + rules + lifecycle tests + full UI + approved-only reporting built; suite green; deploy + wipe pending) |
+| 7 | Weekly timesheets: submit/approve workflow | **complete** (2026-07-16: full lifecycle e2e green; deployed to prod; greenfield wipe done — 2 test users + 8 docs removed, admin kept, approver=self) |
 
 ## Deploy log
 
@@ -27,6 +27,12 @@ phase boundary.
   screen is **published** (any Google account can sign in; app admin-approval
   gates access). **Pending:** Drive service-account wiring (`functions/.env`) and
   the release keystore/SHA-1 for a shareable Android APK — see `TODO.md`.
+
+- 2026-07-16 — **Phase 7 deploy**: indexes → rules → functions → one-time
+  token-guarded `wipeForTimesheets` (deployed, curled once, deleted) → hosting.
+  `web:export` now always `--clear`s Metro's cache (it can serve a bundle built
+  under different `EXPO_PUBLIC_*` env — an emulator-mode bundle must never ship).
+  Live smoke: prod sign-in page clean, no dev row, no console errors.
 
 ## Decision log
 
