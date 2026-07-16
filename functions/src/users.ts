@@ -2,6 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { requireAdmin } from './auth';
+import { guarded, sentryDsn } from './sentry';
 
 export interface UserAccessInput {
   uid: string;
@@ -73,8 +74,11 @@ export async function applyUserAccess(callerUid: string, input: UserAccessInput)
 }
 
 /** Only admins approve/disable users or change roles (product decision). */
-export const setUserAccess = onCall(async (req) => {
-  const callerUid = requireAdmin(req);
-  const input = validateInput(req.data);
-  return applyUserAccess(callerUid, input);
-});
+export const setUserAccess = onCall(
+  { secrets: [sentryDsn] },
+  guarded(async (req) => {
+    const callerUid = requireAdmin(req);
+    const input = validateInput(req.data);
+    return applyUserAccess(callerUid, input);
+  }),
+);

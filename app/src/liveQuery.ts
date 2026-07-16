@@ -16,6 +16,7 @@ import {
   type Query,
   type QuerySnapshot,
 } from 'firebase/firestore';
+import { captureError } from './sentry';
 
 // ---- Listener-error visibility -------------------------------------------
 // A server-rejected listen used to die as a console.warn nobody sees on a
@@ -29,6 +30,9 @@ function reportListenerError(label: string, e: { code?: string; message: string 
   lastListenerError = `Live data error (${label}): ${e.code ?? e.message}`;
   errorWatchers.forEach((w) => w(lastListenerError));
   console.warn(`${label} listener`, e.code ?? e.message);
+  // Off-device visibility: the 2026-07-16 index incident sat invisible in a
+  // phone console for a day; with Sentry wired it is one dashboard event.
+  captureError(e, { source: label });
 }
 
 function reportListenerSuccess(label: string) {

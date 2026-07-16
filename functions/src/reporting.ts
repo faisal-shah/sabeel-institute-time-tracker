@@ -8,6 +8,7 @@ import {
   type TimesheetDoc,
 } from '@sabeel/shared';
 import { requireManager } from './auth';
+import { guarded, sentryDsn } from './sentry';
 
 export interface ExportInput {
   uid?: string;
@@ -171,31 +172,37 @@ export async function computeTotals(input: ExportInput): Promise<Totals> {
   };
 }
 
-export const exportCsv = onCall(async (req) => {
-  requireManager(req);
-  const input = validate(req.data);
-  const csv = await buildCsv(input);
-  const suffix = input.includeUnapproved ? '_unofficial' : '';
-  return { csv, filename: `hours_${input.fromKey}_to_${input.toKey}${suffix}.csv` };
-});
+export const exportCsv = onCall(
+  { secrets: [sentryDsn] },
+  guarded(async (req) => {
+    requireManager(req);
+    const input = validate(req.data);
+    const csv = await buildCsv(input);
+    const suffix = input.includeUnapproved ? '_unofficial' : '';
+    return { csv, filename: `hours_${input.fromKey}_to_${input.toKey}${suffix}.csv` };
+  }),
+);
 
-export const reportTotals = onCall(async (req) => {
-  requireManager(req);
-  const input = validate(req.data);
-  const totals = await computeTotals(input);
-  // Attach display names so the dashboard shows people, not uids.
-  const names = new Map<string, string>();
-  await Promise.all(
-    totals.byPerson.map(async (p) => {
-      const u = await getFirestore().collection('users').doc(p.uid).get();
-      names.set(p.uid, (u.data()?.displayName as string) ?? p.uid);
-    }),
-  );
-  return {
-    ...totals,
-    byPerson: totals.byPerson.map((p) => ({ ...p, displayName: names.get(p.uid) ?? p.uid })),
-  };
-});
+export const reportTotals = onCall(
+  { secrets: [sentryDsn] },
+  guarded(async (req) => {
+    requireManager(req);
+    const input = validate(req.data);
+    const totals = await computeTotals(input);
+    // Attach display names so the dashboard shows people, not uids.
+    const names = new Map<string, string>();
+    await Promise.all(
+      totals.byPerson.map(async (p) => {
+        const u = await getFirestore().collection('users').doc(p.uid).get();
+        names.set(p.uid, (u.data()?.displayName as string) ?? p.uid);
+      }),
+    );
+    return {
+      ...totals,
+      byPerson: totals.byPerson.map((p) => ({ ...p, displayName: names.get(p.uid) ?? p.uid })),
+    };
+  }),
+);
 
 // Re-exported so callers importing from one module get a stable surface.
 export { formatDuration };

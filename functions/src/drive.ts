@@ -3,6 +3,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore } from 'firebase-admin/firestore';
 import { monthRange, type TimeEntryDoc } from '@sabeel/shared';
 import { requireManager } from './auth';
+import { guarded, reportError, sentryDsn } from './sentry';
 import { approvedPeriodSet, buildCsv } from './reporting';
 import {
   entriesGrid,
@@ -143,18 +144,29 @@ function currentTarget(): DriveTarget | null {
 }
 
 /** Nightly at 02:15; on the 1st, also snapshot the prior month to CSV. */
-export const syncToDrive = onSchedule('15 2 * * *', async () => {
-  const now = new Date();
-  let monthToSnapshot: string | undefined;
-  if (now.getUTCDate() === 1) {
-    const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-    monthToSnapshot = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`;
-  }
-  await runSync(currentTarget(), { monthToSnapshot });
-});
+export const syncToDrive = onSchedule(
+  { schedule: '15 2 * * *', secrets: [sentryDsn] },
+  async () => {
+    try {
+      const now = new Date();
+      let monthToSnapshot: string | undefined;
+      if (now.getUTCDate() === 1) {
+        const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+        monthToSnapshot = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`;
+      }
+      await runSync(currentTarget(), { monthToSnapshot });
+    } catch (e) {
+      await reportError(e);
+      throw e;
+    }
+  },
+);
 
 /** Manager "sync now" button. */
-export const syncDriveNow = onCall(async (req) => {
-  requireManager(req);
-  return runSync(currentTarget());
-});
+export const syncDriveNow = onCall(
+  { secrets: [sentryDsn] },
+  guarded(async (req) => {
+    requireManager(req);
+    return runSync(currentTarget());
+  }),
+);

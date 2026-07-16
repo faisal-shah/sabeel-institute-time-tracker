@@ -1,6 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { SESSION_CAP_HOURS, minutesBetween, type TimeEntryDoc } from '@sabeel/shared';
+import { reportError, sentryDsn } from './sentry';
 
 const CAP_MS = SESSION_CAP_HOURS * 60 * 60 * 1000;
 
@@ -43,7 +44,15 @@ export async function closeStaleSessions(now: number): Promise<number> {
   return closed;
 }
 
-export const autoCloseStaleSessions = onSchedule('every 60 minutes', async () => {
-  const closed = await closeStaleSessions(Timestamp.now().toMillis());
-  if (closed > 0) console.log(`autoCloseStaleSessions: closed ${closed} stale session(s)`);
-});
+export const autoCloseStaleSessions = onSchedule(
+  { schedule: 'every 60 minutes', secrets: [sentryDsn] },
+  async () => {
+    try {
+      const closed = await closeStaleSessions(Timestamp.now().toMillis());
+      if (closed > 0) console.log(`autoCloseStaleSessions: closed ${closed} stale session(s)`);
+    } catch (e) {
+      await reportError(e);
+      throw e;
+    }
+  },
+);
