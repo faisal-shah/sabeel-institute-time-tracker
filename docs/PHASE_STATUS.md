@@ -21,9 +21,11 @@ phase boundary.
   (https://sabeel-institute-time-tracker.web.app, HTTP 200). Functions are now
   bundled with esbuild (commit de32168) so Cloud Build resolves the private
   `@sabeel/shared` workspace package. Drive sync deployed as a safe no-op (no
-  `functions/.env` yet). **Pending:** first-admin bootstrap (sign in on the live
-  site, then `scripts/grant-admin.mjs`), OAuth consent screen publish/test-users,
-  and Drive service-account wiring — see `TODO.md`.
+  `functions/.env` yet). First admin (faisal.shah@gmail.com) promoted via a
+  temporary one-shot bootstrap function (deployed, called, deleted). OAuth consent
+  screen is **published** (any Google account can sign in; app admin-approval
+  gates access). **Pending:** Drive service-account wiring (`functions/.env`) and
+  the release keystore/SHA-1 for a shareable Android APK — see `TODO.md`.
 
 ## Decision log
 

@@ -18,17 +18,10 @@ Firebase emulators until deploy time (Phase 6).
 - [ ] **Confirm the Firestore location is `nam5`** (US multi-region) if you
   haven't already — it's immutable. Firebase Console → Firestore Database → the
   region shown at the top. (Skip if already created; just note what it is.)
-- [ ] **OAuth consent screen — let volunteers actually sign in** (currently
-  "External" + Testing, so ONLY listed test users can sign in). Console:
-  https://console.cloud.google.com → project `sabeel-institute-time-tracker` →
-  APIs & Services → OAuth consent screen → **Audience** tab. Pick ONE:
-    - **Publish app** (recommended): click "Publish app". The app only uses basic
-      scopes (email/profile/openid, non-sensitive) so NO Google verification is
-      required — any Google account can sign in (users may see a one-time
-      "Google hasn't verified this app" notice they click through). Access is
-      then controlled by the app's own admin-approval gate, not an email list.
-    - **Stay in Testing**: under **Test users → + Add users**, add each
-      volunteer's email (up to 100). Only those can sign in; no warning screen.
+- [x] **OAuth consent screen — published** (2026-07-16, confirmed by Faisal). Any
+  Google account can now sign in; access is gated by the app's own admin-approval
+  flow. App uses only basic non-sensitive scopes (email/profile/openid) so no
+  Google verification was required.
 - [x] **Android debug SHA-1 registered** + `google-services.json` re-downloaded
   (now has the `client_type: 1` Android OAuth client). Native Google Sign-In is
   wired and the app builds; complete a real sign-in on a device/emulator with a
