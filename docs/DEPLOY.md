@@ -35,8 +35,15 @@ admin claim. From then on, promote others in-app (Manage users).
 `android/` is committed (no EAS). Build locally:
 ```sh
 cd app && npx expo run:android            # debug, onto a device/emulator
-cd app/android && ./gradlew assembleRelease   # release APK
+cd app/android && ./gradlew assembleRelease   # release APK (universal)
+cd app/android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a  # arm64-only (~30MB)
 ```
+**Distribution is ALWAYS a GitHub release** (never chat/ad-hoc file sharing):
+```sh
+gh release create vX.Y.Z --title "..." --notes "..." path/to/renamed.apk
+```
+Verify the APK is production-mode before publishing: install on the tb_emu AVD
+and screenshot — the sign-in screen must NOT show the dev sign-in row.
 Before sharing a release build: generate a real keystore (the debug key is only for
 sideloading your own device) and register its SHA-1 on the Firebase Android app, then
 re-download `google-services.json`. See `TODO.md`.
