@@ -15,18 +15,35 @@ import {
   dayKeyFor,
   deviceTimeZone,
   minutesBetween,
+  periodKeyFor,
   type TimeEntryDoc,
 } from '@sabeel/shared';
+import { FirebaseError } from 'firebase/app';
 import { db } from './firebase';
 import type { Activity } from './activities';
 
 export type TimeEntry = TimeEntryDoc & { id: string };
+
+/**
+ * Entry writes into a submitted/approved period are denied by rules; turn the
+ * opaque permission error into the message users need to see.
+ */
+export function explainEntryWriteError(e: unknown): string {
+  if (e instanceof FirebaseError && e.code === 'permission-denied') {
+    return (
+      "This week's timesheet has been submitted or approved, so its hours are " +
+      'locked. Withdraw the timesheet (or ask your approver / an admin) to make changes.'
+    );
+  }
+  return (e as Error).message;
+}
 
 /** Clock in: create the running entry and point activeEntryId at it, atomically. */
 export async function clockIn(uid: string, activity: Activity): Promise<void> {
   const now = Date.now();
   const tz = deviceTimeZone();
   const entryRef = doc(collection(db, COLLECTIONS.timeEntries));
+  const dayKey = dayKeyFor(now, tz);
   const entry: TimeEntryDoc = {
     uid,
     activityId: activity.id,
@@ -34,7 +51,8 @@ export async function clockIn(uid: string, activity: Activity): Promise<void> {
     start: now,
     end: null,
     timeZone: tz,
-    dayKey: dayKeyFor(now, tz),
+    dayKey,
+    periodKey: periodKeyFor(dayKey),
     source: 'clock',
     createdAt: now,
     updatedAt: now,
@@ -64,9 +82,12 @@ export async function createManualEntry(input: {
   start: number;
   end: number;
   note?: string;
+  /** Who is writing. When ≠ uid (manager/approver adding on behalf), rules require the lastEditedBy flag. */
+  creatorUid: string;
 }): Promise<void> {
   const now = Date.now();
   const tz = deviceTimeZone();
+  const dayKey = dayKeyFor(input.start, tz);
   const entry: TimeEntryDoc = {
     uid: input.uid,
     activityId: input.activity.id,
@@ -75,9 +96,11 @@ export async function createManualEntry(input: {
     end: input.end,
     durationMinutes: Math.max(1, minutesBetween(input.start, input.end)),
     timeZone: tz,
-    dayKey: dayKeyFor(input.start, tz),
+    dayKey,
+    periodKey: periodKeyFor(dayKey),
     source: 'manual',
     ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    ...(input.creatorUid !== input.uid ? { lastEditedBy: input.creatorUid } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -141,6 +164,7 @@ export async function updateEntry(
     editorUid: string;
   },
 ): Promise<void> {
+  const dayKey = dayKeyFor(changes.start, entry.timeZone);
   await updateDoc(doc(db, COLLECTIONS.timeEntries, entry.id), {
     ...(changes.activity
       ? { activityId: changes.activity.id, activityName: changes.activity.name }
@@ -148,7 +172,8 @@ export async function updateEntry(
     start: changes.start,
     end: changes.end,
     durationMinutes: Math.max(1, minutesBetween(changes.start, changes.end)),
-    dayKey: dayKeyFor(changes.start, entry.timeZone),
+    dayKey,
+    periodKey: periodKeyFor(dayKey),
     note: changes.note?.trim() ?? '',
     updatedAt: Date.now(),
     ...(changes.editorUid !== entry.uid ? { lastEditedBy: changes.editorUid } : {}),

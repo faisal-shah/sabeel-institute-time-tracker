@@ -18,6 +18,7 @@ const pendingProfile = {
   role: 'member',
   admin: false,
   activeEntryId: null,
+  approverUid: null,
   createdAt: 1,
 };
 
@@ -66,6 +67,15 @@ describe('firestore.rules — users self-registration', () => {
   it("blocks creating someone else's profile", async () => {
     const alice = testEnv.authenticatedContext('alice');
     await assertFails(setDoc(doc(alice.firestore(), 'users/bob'), pendingProfile));
+  });
+
+  it('blocks a profile created without approverUid: null', async () => {
+    const alice = testEnv.authenticatedContext('alice');
+    const { approverUid: _omit, ...noApprover } = pendingProfile;
+    await assertFails(setDoc(doc(alice.firestore(), 'users/alice'), noApprover));
+    await assertFails(
+      setDoc(doc(alice.firestore(), 'users/alice'), { ...pendingProfile, approverUid: 'mgr' }),
+    );
   });
 
   it('blocks anonymous access entirely', async () => {
@@ -121,5 +131,71 @@ describe('firestore.rules — users privilege escalation', () => {
     await assertSucceeds(getDoc(doc(manager.firestore(), 'users/alice')));
     const bob = testEnv.authenticatedContext('bob', activeClaims);
     await assertFails(getDoc(doc(bob.firestore(), 'users/alice')));
+  });
+});
+
+describe('firestore.rules — approver assignment', () => {
+  // alice: active member; mgr: active manager; adm: active admin (non-manager);
+  // bob: active member (invalid approver target).
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/alice'), { ...pendingProfile, status: 'active' });
+      await setDoc(doc(db, 'users/bob'), { ...pendingProfile, status: 'active' });
+      await setDoc(doc(db, 'users/mgr'), {
+        ...pendingProfile,
+        status: 'active',
+        role: 'manager',
+      });
+      await setDoc(doc(db, 'users/adm'), { ...pendingProfile, status: 'active', admin: true });
+    });
+  });
+
+  const alice = () => testEnv.authenticatedContext('alice', activeClaims);
+  const mgr = () => testEnv.authenticatedContext('mgr', managerClaims);
+  const adm = () =>
+    testEnv.authenticatedContext('adm', { status: 'active', role: 'member', admin: true });
+
+  it('self-set: to an active manager ✓, to an admin ✓, to a plain member ✗, to null ✓', async () => {
+    const me = doc(alice().firestore(), 'users/alice');
+    await assertSucceeds(updateDoc(me, { approverUid: 'mgr' }));
+    await assertSucceeds(updateDoc(me, { approverUid: 'adm' }));
+    await assertFails(updateDoc(me, { approverUid: 'bob' }));
+    await assertSucceeds(updateDoc(me, { approverUid: null }));
+  });
+
+  it("manager sets a member's approver ✓, an admin's ✗, and nothing else ✗", async () => {
+    await assertSucceeds(
+      updateDoc(doc(mgr().firestore(), 'users/alice'), { approverUid: 'mgr' }),
+    );
+    await assertFails(updateDoc(doc(mgr().firestore(), 'users/adm'), { approverUid: 'mgr' }));
+    await assertFails(
+      updateDoc(doc(mgr().firestore(), 'users/alice'), { approverUid: 'mgr', role: 'manager' }),
+    );
+    await assertFails(updateDoc(doc(mgr().firestore(), 'users/alice'), { status: 'disabled' }));
+  });
+
+  it("admin sets anyone's approver, including another admin's", async () => {
+    await assertSucceeds(
+      updateDoc(doc(adm().firestore(), 'users/alice'), { approverUid: 'mgr' }),
+    );
+    await assertSucceeds(updateDoc(doc(adm().firestore(), 'users/mgr'), { approverUid: 'adm' }));
+  });
+
+  it('members cannot set other people’s approver', async () => {
+    await assertFails(updateDoc(doc(alice().firestore(), 'users/bob'), { approverUid: 'mgr' }));
+  });
+
+  it('cannot point approverUid at a disabled or pending manager', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/oldmgr'), {
+        ...pendingProfile,
+        status: 'disabled',
+        role: 'manager',
+      });
+    });
+    await assertFails(
+      updateDoc(doc(alice().firestore(), 'users/alice'), { approverUid: 'oldmgr' }),
+    );
   });
 });

@@ -6,6 +6,8 @@ export interface ReportFilter {
   activityId?: string;
   fromKey: string;
   toKey: string;
+  /** Official numbers are approved-timesheets-only; true adds unapproved hours (marked unofficial). */
+  includeUnapproved?: boolean;
 }
 
 export interface Totals {

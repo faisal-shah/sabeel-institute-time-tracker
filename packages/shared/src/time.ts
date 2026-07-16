@@ -76,6 +76,67 @@ export function monthRange(dayKey: string): { fromKey: string; toKey: string } {
   return { fromKey: `${y}-${pad(m)}-01`, toKey: `${y}-${pad(m)}-${pad(lastDay)}` };
 }
 
+// Timesheet periods: calendar weeks Sunday–Saturday, CLIPPED to month boundaries,
+// so the first/last period of a month may be partial and a period never crosses
+// months. A period is identified by its start dayKey (the "periodKey"). Like weeks,
+// periods are calendar constructs on local dates — no timezone involved; an entry
+// belongs to the period containing its (work-local) dayKey.
+// firestore.rules recomputes the same key independently (periodKeyOf) so a client
+// cannot stamp a false periodKey to dodge a submitted/approved lock — any change
+// here MUST be mirrored there.
+
+/** 0 = Sunday … 6 = Saturday for a dayKey. */
+export function sundayIndex(dayKey: string): number {
+  const { y, m, d } = parseDayKey(dayKey);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** The periodKey (start dayKey) of the clipped Sun–Sat period containing dayKey. */
+export function periodKeyFor(dayKey: string): string {
+  const sunday = addDays(dayKey, -sundayIndex(dayKey));
+  const { fromKey } = monthRange(dayKey);
+  return sunday < fromKey ? fromKey : sunday;
+}
+
+/** The clipped period containing dayKey, as an inclusive dayKey range. */
+export function periodRangeFor(dayKey: string): { fromKey: string; toKey: string } {
+  const fromKey = periodKeyFor(dayKey);
+  const saturday = addDays(addDays(dayKey, -sundayIndex(dayKey)), 6);
+  const { toKey: monthEnd } = monthRange(dayKey);
+  return { fromKey, toKey: saturday > monthEnd ? monthEnd : saturday };
+}
+
+/** All periods of dayKey's month, in order (4–6; first/last may be partial). */
+export function periodsOfMonth(dayKey: string): { fromKey: string; toKey: string }[] {
+  const { toKey: monthEnd } = monthRange(dayKey);
+  const periods: { fromKey: string; toKey: string }[] = [];
+  let cursor = monthRange(dayKey).fromKey;
+  while (cursor <= monthEnd) {
+    const p = periodRangeFor(cursor);
+    periods.push(p);
+    cursor = addDays(p.toKey, 1);
+  }
+  return periods;
+}
+
+/** True once the period has begun — future periods cannot be submitted. */
+export function periodHasStarted(periodKey: string, todayKey: string): boolean {
+  return periodKey <= todayKey;
+}
+
+/** Human label for a period: 'Jul 5 – Jul 11' (or 'Dec 28 – Jan 3' across years). */
+export function periodLabel(range: { fromKey: string; toKey: string }): string {
+  const fmt = (dayKey: string) => {
+    const { y, m, d } = parseDayKey(dayKey);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(Date.UTC(y, m - 1, d)));
+  };
+  return `${fmt(range.fromKey)} – ${fmt(range.toKey)}`;
+}
+
 /**
  * The instant corresponding to a wall-clock time in a given IANA timezone.
  * Inverse of dayKeyFor/timeOfDayFor, found by correcting a UTC guess against

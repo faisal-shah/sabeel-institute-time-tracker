@@ -81,6 +81,7 @@ export function useSession(): Session {
             role: 'member',
             admin: false,
             activeEntryId: null,
+            approverUid: null,
             createdAt: Date.now(),
           };
           await setDoc(ref, profile);

@@ -20,6 +20,13 @@ export interface UserDoc {
   role: UserRole;
   admin: boolean;
   activeEntryId: string | null;
+  /**
+   * Sticky choice of who approves this user's timesheets (an active manager or
+   * admin). Stamped onto each timesheet at submission — changing it affects only
+   * future submissions. null until chosen; submission requires one (admins may
+   * self-stamp).
+   */
+  approverUid: string | null;
   createdAt: number;
   approvedAt?: number;
   approvedBy?: string;
@@ -62,4 +69,42 @@ export interface TimeEntryDoc {
   updatedAt: number;
   /** Present when someone other than the owner last edited (manager correction). */
   lastEditedBy?: string;
+  /**
+   * periodKeyFor(dayKey) — start dayKey of the Sun–Sat month-clipped timesheet
+   * period this entry belongs to. Rules recompute it canonically (spoof-proof);
+   * kept on the doc so reporting can group entries by `${uid}_${periodKey}`.
+   */
+  periodKey: string;
+}
+
+// Timesheets: one doc per (user, period) once the user submits; no doc while the
+// period is an implicit draft. Doc id is `${uid}_${periodKey}` so rules can get()
+// the covering timesheet from an entry's fields. Withdraw (owner, pre-approval)
+// and admin reopen are deletes — the period returns to draft.
+export type TimesheetStatus = 'submitted' | 'approved' | 'rejected';
+
+export interface TimesheetDoc {
+  uid: string;
+  /** Start dayKey of the period (canonical, see periodKeyFor). */
+  periodKey: string;
+  /** Inclusive end dayKey (denormalized for range queries and display). */
+  toKey: string;
+  status: TimesheetStatus;
+  /** Stamped from users/{uid}.approverUid at (re)submission; admins may self-stamp. */
+  approverUid: string;
+  submittedAt: number;
+  /** Decision fields: set on approve/reject, cleared again on resubmit. */
+  decidedAt?: number;
+  decidedBy?: string;
+  /** Required when status === 'rejected'. */
+  rejectReason?: string;
+  /**
+   * Informational snapshot at submit/decide time (queue rows, reports). The live
+   * truth is always the period's entries — approver edits make this stale until
+   * the decision rewrites it.
+   */
+  totalMinutes: number;
+  entryCount: number;
+  createdAt: number;
+  updatedAt: number;
 }

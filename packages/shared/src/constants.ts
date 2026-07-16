@@ -2,6 +2,7 @@ export const COLLECTIONS = {
   users: 'users',
   activities: 'activities',
   timeEntries: 'timeEntries',
+  timesheets: 'timesheets',
 } as const;
 
 // Functions region must match setGlobalOptions in functions/src/setup.ts.

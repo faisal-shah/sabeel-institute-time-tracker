@@ -42,7 +42,7 @@ export function ManualEntryScreen({ uid }: { uid: string }) {
     if (!valid || !activity || start === null || end === null) return;
     setError(null);
     try {
-      await createManualEntry({ uid, activity, start, end, note });
+      await createManualEntry({ uid, activity, start, end, note, creatorUid: uid });
       nav.goBack();
     } catch (e) {
       setError((e as Error).message);
