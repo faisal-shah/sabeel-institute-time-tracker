@@ -7,9 +7,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useListenerError } from '../liveQuery';
 import { colors, spacing } from '../theme';
 
 export function Screen({ children, title }: { children: ReactNode; title?: string }) {
+  // Live-data failures surface on every screen — a silently broken listener
+  // must never look like "there's just no data" (see the 2026-07-16 postmortem).
+  const listenerError = useListenerError();
   return (
     <View style={styles.screen}>
       {title ? (
@@ -17,6 +21,7 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
       ) : null}
+      {listenerError ? <Text style={styles.listenerError}>{listenerError}</Text> : null}
       <ScrollView contentContainerStyle={styles.body}>{children}</ScrollView>
     </View>
   );
@@ -100,4 +105,11 @@ const styles = StyleSheet.create({
   btnLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
   btnLabelSecondary: { color: colors.primary },
   error: { color: colors.danger, fontSize: 14 },
+  listenerError: {
+    backgroundColor: colors.danger,
+    color: '#fff',
+    fontSize: 13,
+    paddingVertical: spacing(2),
+    paddingHorizontal: spacing(5),
+  },
 });

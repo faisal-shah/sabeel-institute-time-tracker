@@ -17,6 +17,40 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore';
 
+// ---- Listener-error visibility -------------------------------------------
+// A server-rejected listen used to die as a console.warn nobody sees on a
+// phone; the 2026-07-16 index-direction incident hid behind exactly that.
+// Every screen shows the latest live-data error via useListenerError (the
+// Screen component renders it); a later success from the same source clears it.
+const errorWatchers = new Set<(msg: string | null) => void>();
+let lastListenerError: string | null = null;
+
+function reportListenerError(label: string, e: { code?: string; message: string }) {
+  lastListenerError = `Live data error (${label}): ${e.code ?? e.message}`;
+  errorWatchers.forEach((w) => w(lastListenerError));
+  console.warn(`${label} listener`, e.code ?? e.message);
+}
+
+function reportListenerSuccess(label: string) {
+  if (lastListenerError?.includes(`(${label})`)) {
+    lastListenerError = null;
+    errorWatchers.forEach((w) => w(null));
+  }
+}
+
+/** Latest live-listener failure, app-wide; null when healthy. */
+export function useListenerError(): string | null {
+  const [err, setErr] = useState(lastListenerError);
+  useEffect(() => {
+    errorWatchers.add(setErr);
+    return () => {
+      errorWatchers.delete(setErr);
+    };
+  }, []);
+  return err;
+}
+// ---------------------------------------------------------------------------
+
 /** Live query results. `make`/`map` are called fresh per (re)subscription. */
 export function useLiveQuery<T>(
   label: string,
@@ -30,10 +64,13 @@ export function useLiveQuery<T>(
     setValue(empty);
     return onSnapshot(
       make(),
-      (snap) => setValue(map(snap)),
+      (snap) => {
+        setValue(map(snap));
+        reportListenerSuccess(label);
+      },
       (e) => {
         setValue(empty);
-        console.warn(`${label} listener`, e.code ?? e.message);
+        reportListenerError(label, e);
       },
     );
     // deps are the caller's subscription inputs; make/map/empty are per-render
@@ -57,10 +94,13 @@ export function useLiveDoc<T>(
     if (!ref) return;
     return onSnapshot(
       ref,
-      (snap) => setValue(map(snap)),
+      (snap) => {
+        setValue(map(snap));
+        reportListenerSuccess(label);
+      },
       (e) => {
         setValue(empty);
-        console.warn(`${label} listener`, e.code ?? e.message);
+        reportListenerError(label, e);
       },
     );
   }, deps);

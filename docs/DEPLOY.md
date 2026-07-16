@@ -61,6 +61,12 @@ return a Firebase JSON `{"error":{... "UNAUTHENTICATED"}}` (code ran), NOT a pla
 Run "request was not authenticated" 403.
 
 ## Verify after deploy
+- **Query/index probe** (REQUIRED after any change to `firestore.indexes.json`
+  or to a query shape — the emulator does NOT enforce composite indexes, so
+  only production can confirm them):
+  `curl "https://us-central1-<project>.cloudfunctions.net/probeQueries?token=$PROBE_TOKEN"`
+  (token in `functions/.env`; every line must read `OK`). Keep the shapes in
+  `functions/src/probe.ts` in sync with the app's queries.
 - Emulator suite still green locally: `npm test && npm run test:emulator`.
 - Smoke the live site: sign in, get approved, clock in/out, add manual hours, check a
   report + CSV export, run "Sync to Google Drive now" and confirm the Sheet updates.

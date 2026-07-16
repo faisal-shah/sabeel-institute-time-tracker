@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "uid", "order": "ASCENDING" },
-        { "fieldPath": "dayKey", "order": "DESCENDING" }
+        { "fieldPath": "dayKey", "order": "ASCENDING" }
       ]
     },
     {
@@ -13,7 +13,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "activityId", "order": "ASCENDING" },
-        { "fieldPath": "dayKey", "order": "DESCENDING" }
+        { "fieldPath": "dayKey", "order": "ASCENDING" }
       ]
     },
     {
@@ -22,7 +22,7 @@
       "fields": [
         { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "activityId", "order": "ASCENDING" },
-        { "fieldPath": "dayKey", "order": "DESCENDING" }
+        { "fieldPath": "dayKey", "order": "ASCENDING" }
       ]
     },
     {

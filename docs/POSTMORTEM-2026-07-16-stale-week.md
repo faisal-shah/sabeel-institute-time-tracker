@@ -81,6 +81,46 @@ WebChannel, forever. Whatever week you looked at last "bled" into the next.
 4. **Recorded.** CLAUDE.md conventions point here so the invariant survives
    context loss.
 
+## Addendum (same day): the fix unmasked the real server-side cause
+
+After the reset-on-change fix shipped, the symptom *changed shape*: the correct
+week's hours flashed for ~100–200ms, then vanished. That flash was Firestore's
+local cache answering; the vanish was the new clear-on-error handler reacting to
+the **server rejecting the query**. A temporary admin-SDK probe function run
+against production returned the verdict for every query shape the app uses:
+
+```
+FAIL entries uid==, dayKey range → FAILED_PRECONDITION: The query requires an index
+```
+
+The three `timeEntries` composite indexes had been defined with `dayKey
+DESCENDING` since Phase 0, but every range query needs ASCENDING — and Firestore
+does not serve a `(equality, range ASC)` query from a `(equality, range DESC)`
+composite. **The Firestore emulator does not enforce composite indexes at all**,
+so the entire local test pyramid — unit, rules, integration, browser e2e — was
+green against queries production had always rejected. Person-filtered reports
+and CSV exports were latently broken from the first deploy; the week navigator
+merely made the failure visible.
+
+So the fuller answer to why #3 ("why did no test catch it?") is two-layered:
+the *client* flaw (no reset) was invisible at localhost speed, and the *server*
+flaw (wrong index direction) was invisible to the emulator by design.
+
+Additional countermeasures:
+
+5. **Indexes flipped** to `dayKey ASCENDING` (all three timeEntries composites)
+   and verified against production.
+6. **`probeQueries` is now a permanent, token-guarded function**: it executes
+   every query shape the app uses via the admin SDK and reports OK/FAIL with the
+   exact server error. It runs after any change to `firestore.indexes.json` or
+   to a query shape (DEPLOY.md verify step). This is the only layer that can see
+   index problems before users do.
+7. **Listener errors now surface on-screen** (`useListenerError` + a banner in
+   the shared `Screen`): a server-rejected listen shows "Live data error
+   (hook): failed-precondition" on every screen instead of dying as a console
+   warning on a phone. A silently broken listener must never look like "there's
+   just no data."
+
 ## Process lessons (beyond this bug)
 
 - **Latency is an input.** Any UI backed by async data must be exercised at
@@ -93,3 +133,10 @@ WebChannel, forever. Whatever week you looked at last "bled" into the next.
 - **Treat filtered test noise as a signal.** The e2e's allow-list for WebChannel
   transport errors was documented evidence that this transport flakes; that
   should have prompted "what breaks when it flakes?" during design review.
+- **Know what your emulator does NOT emulate.** The Firestore emulator skips
+  composite-index enforcement, so index correctness is untestable locally —
+  production is the only oracle, and it must be asked explicitly (the probe)
+  rather than waited on.
+- **Errors must be visible where the user is.** `console.warn` on a phone is a
+  black hole; every failure path needs a surface a human actually sees, or the
+  failure will be reported as a different, more confusing bug.
