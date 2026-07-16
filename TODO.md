@@ -44,10 +44,18 @@ Firebase emulators until deploy time (Phase 6).
   is a safe no-op, so nothing breaks until you fill these in. The deployed
   function's runtime service account must be the one you shared the folder with.
 
-## Sentry (Phase 6)
+## Sentry (do soon — the 2026-07-16 index incident would have been one Sentry event)
 
-- [ ] Create a Sentry project; run `firebase functions:secrets:set SENTRY_DSN`.
-- [ ] Put the client DSN in `app/.env.local` (key name provided when wired).
+- [ ] Sign up at sentry.io (free Developer plan is fine).
+- [ ] Create project `sabeel-app` (platform: React Native); copy its DSN from
+  Settings → Projects → sabeel-app → Client Keys.
+- [ ] Create project `sabeel-functions` (platform: Node.js); copy its DSN.
+- [ ] Client DSN → put in gitignored `app/.env.local` as
+  `EXPO_PUBLIC_SENTRY_DSN=<dsn>` (never in chat/git).
+- [ ] Functions DSN → run `firebase functions:secrets:set SENTRY_DSN` and paste
+  it at the prompt.
+- [ ] Tell Claude "DSNs are in place" → wiring happens code-side (web + native
+  init, listener-error capture, functions handler wrapping) and redeploy.
 
 ## First admin (after first deploy)
 
