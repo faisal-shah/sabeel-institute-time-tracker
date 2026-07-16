@@ -1,6 +1,12 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Query } from 'firebase-admin/firestore';
-import { formatDuration, timeOfDayFor, type TimeEntryDoc } from '@sabeel/shared';
+import {
+  addDays,
+  formatDuration,
+  timeOfDayFor,
+  type TimeEntryDoc,
+  type TimesheetDoc,
+} from '@sabeel/shared';
 import { requireManager } from './auth';
 
 export interface ExportInput {
@@ -8,6 +14,8 @@ export interface ExportInput {
   activityId?: string;
   fromKey: string; // inclusive dayKey 'YYYY-MM-DD'
   toKey: string; // inclusive dayKey
+  /** Official numbers count approved timesheets only; true includes the rest (unofficial view). */
+  includeUnapproved?: boolean;
 }
 
 const KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,7 +33,30 @@ function validate(data: unknown): ExportInput {
     toKey: d.toKey!,
     ...(typeof d.uid === 'string' ? { uid: d.uid } : {}),
     ...(typeof d.activityId === 'string' ? { activityId: d.activityId } : {}),
+    ...(d.includeUnapproved === true ? { includeUnapproved: true } : {}),
   };
+}
+
+/**
+ * Ids (`${uid}_${periodKey}`) of APPROVED timesheets whose period overlaps the
+ * inclusive [fromKey, toKey] dayKey range. Periods span at most 7 days, so a
+ * period overlapping the range must start no earlier than fromKey-6.
+ */
+export async function approvedPeriodSet(fromKey: string, toKey: string): Promise<Set<string>> {
+  const snap = await getFirestore()
+    .collection('timesheets')
+    .where('status', '==', 'approved')
+    .where('periodKey', '>=', addDays(fromKey, -6))
+    .where('periodKey', '<=', toKey)
+    .get();
+  return new Set(
+    snap.docs.filter((d) => (d.data() as TimesheetDoc).toKey >= fromKey).map((d) => d.id),
+  );
+}
+
+/** Keep only entries covered by an approved timesheet (the official view). */
+function approvedOnly(rows: TimeEntryDoc[], approved: Set<string>): TimeEntryDoc[] {
+  return rows.filter((e) => approved.has(`${e.uid}_${e.periodKey}`));
 }
 
 /** Build the filtered, dayKey-ordered query shared by CSV export and Drive sync. */
@@ -45,26 +76,32 @@ function csvCell(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** Closed entries → CSV, times rendered in each entry's own timezone. Names are
- *  resolved from the users collection so the report shows people, not uids. */
+/** Closed entries (approved-only unless asked otherwise) → CSV, times rendered
+ *  in each entry's own timezone. People show as name + email, never raw uids. */
 export async function buildCsv(input: ExportInput): Promise<string> {
   const snap = await entriesQuery(input).get();
-  const rows = snap.docs
+  let rows = snap.docs
     .map((d) => d.data() as TimeEntryDoc)
     .filter((e) => e.end !== null); // running sessions excluded
+  if (!input.includeUnapproved) {
+    rows = approvedOnly(rows, await approvedPeriodSet(input.fromKey, input.toKey));
+  }
 
   const uids = [...new Set(rows.map((e) => e.uid))];
-  const names = new Map<string, string>();
+  const people = new Map<string, { name: string; email: string }>();
   await Promise.all(
     uids.map(async (uid) => {
       const u = await getFirestore().collection('users').doc(uid).get();
-      names.set(uid, (u.data()?.displayName as string) ?? uid);
+      people.set(uid, {
+        name: (u.data()?.displayName as string) ?? uid,
+        email: (u.data()?.email as string) ?? '',
+      });
     }),
   );
 
   const header = [
     'Person',
-    'Email hint',
+    'Email',
     'Activity',
     'Date',
     'Start',
@@ -79,8 +116,8 @@ export async function buildCsv(input: ExportInput): Promise<string> {
   for (const e of rows) {
     lines.push(
       [
-        names.get(e.uid) ?? e.uid,
-        e.uid,
+        people.get(e.uid)?.name ?? e.uid,
+        people.get(e.uid)?.email ?? '',
         e.activityName,
         e.dayKey,
         timeOfDayFor(e.start, e.timeZone),
@@ -107,7 +144,10 @@ export interface Totals {
 /** In-memory rollups for dashboards over the same filtered set. */
 export async function computeTotals(input: ExportInput): Promise<Totals> {
   const snap = await entriesQuery(input).get();
-  const rows = snap.docs.map((d) => d.data() as TimeEntryDoc).filter((e) => e.end !== null);
+  let rows = snap.docs.map((d) => d.data() as TimeEntryDoc).filter((e) => e.end !== null);
+  if (!input.includeUnapproved) {
+    rows = approvedOnly(rows, await approvedPeriodSet(input.fromKey, input.toKey));
+  }
 
   const act = new Map<string, { activityName: string; minutes: number }>();
   const per = new Map<string, number>();
@@ -135,7 +175,8 @@ export const exportCsv = onCall(async (req) => {
   requireManager(req);
   const input = validate(req.data);
   const csv = await buildCsv(input);
-  return { csv, filename: `hours_${input.fromKey}_to_${input.toKey}.csv` };
+  const suffix = input.includeUnapproved ? '_unofficial' : '';
+  return { csv, filename: `hours_${input.fromKey}_to_${input.toKey}${suffix}.csv` };
 });
 
 export const reportTotals = onCall(async (req) => {

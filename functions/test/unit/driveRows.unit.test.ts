@@ -17,6 +17,7 @@ function entry(over: Partial<TimeEntryDoc>): TimeEntryDoc {
     durationMinutes: 120,
     timeZone: 'America/Chicago',
     dayKey: '2026-07-13',
+    periodKey: '2026-07-12',
     source: 'manual',
     createdAt: 1,
     updatedAt: 1,
@@ -25,8 +26,8 @@ function entry(over: Partial<TimeEntryDoc>): TimeEntryDoc {
 }
 
 const names = new Map([
-  ['alice', 'Alice A.'],
-  ['bob', 'Bob B.'],
+  ['alice', { name: 'Alice A.', email: 'alice@example.com' }],
+  ['bob', { name: 'Bob B.', email: 'bob@example.com' }],
 ]);
 
 describe('driveRows builders', () => {
@@ -37,12 +38,14 @@ describe('driveRows builders', () => {
     entry({ end: null, durationMinutes: undefined, dayKey: '2026-08-10' }), // running — excluded
   ];
 
-  it('entriesGrid: header + one row per closed entry, work-local times', () => {
+  it('entriesGrid: header + one row per closed entry, work-local times, real emails', () => {
     const g = entriesGrid(data, names);
     expect(g[0][0]).toBe('Person');
+    expect(g[0][1]).toBe('Email');
     expect(g).toHaveLength(4); // header + 3 closed
     // 14:00 UTC on 2026-07-13 = 09:00 America/Chicago (CDT)
     expect(g[1]).toContain('09:00');
+    expect(g[1][1]).toBe('alice@example.com');
     expect(g[1][7]).toBe(2); // hours
   });
 

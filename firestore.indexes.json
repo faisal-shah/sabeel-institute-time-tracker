@@ -40,6 +40,38 @@
         { "fieldPath": "end", "order": "ASCENDING" },
         { "fieldPath": "start", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "timesheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "periodKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timesheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "approverUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timesheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "periodKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timesheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

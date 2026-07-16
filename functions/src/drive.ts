@@ -3,8 +3,14 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore } from 'firebase-admin/firestore';
 import { monthRange, type TimeEntryDoc } from '@sabeel/shared';
 import { requireManager } from './auth';
-import { buildCsv } from './reporting';
-import { entriesGrid, personSummaryGrid, activityMonthGrid, type Row } from './driveRows';
+import { approvedPeriodSet, buildCsv } from './reporting';
+import {
+  entriesGrid,
+  personSummaryGrid,
+  activityMonthGrid,
+  type PeopleMap,
+  type Row,
+} from './driveRows';
 
 // Drive target config comes from plain env vars (functions/.env for deploy; see
 // TODO.md). Deliberately NOT firebase-functions `defineString` params: those make
@@ -27,20 +33,31 @@ export interface SyncResult {
   csvWritten?: string | null;
 }
 
-/** Load every entry (admin SDK bypasses rules) for the full-history Sheet. */
-async function allEntries(): Promise<{ entries: TimeEntryDoc[]; names: Map<string, string> }> {
+/**
+ * Load the full history of APPROVED entries (admin SDK bypasses rules) for the
+ * Sheet — Drive is the official record, so it never shows unapproved hours.
+ */
+async function allEntries(): Promise<{ entries: TimeEntryDoc[]; people: PeopleMap }> {
   const db = getFirestore();
-  const snap = await db.collection('timeEntries').orderBy('dayKey').get();
-  const entries = snap.docs.map((d) => d.data() as TimeEntryDoc);
+  const [snap, approved] = await Promise.all([
+    db.collection('timeEntries').orderBy('dayKey').get(),
+    approvedPeriodSet('2000-01-01', '2999-12-31'),
+  ]);
+  const entries = snap.docs
+    .map((d) => d.data() as TimeEntryDoc)
+    .filter((e) => approved.has(`${e.uid}_${e.periodKey}`));
   const uids = [...new Set(entries.map((e) => e.uid))];
-  const names = new Map<string, string>();
+  const people: PeopleMap = new Map();
   await Promise.all(
     uids.map(async (uid) => {
       const u = await db.collection('users').doc(uid).get();
-      names.set(uid, (u.data()?.displayName as string) ?? uid);
+      people.set(uid, {
+        name: (u.data()?.displayName as string) ?? uid,
+        email: (u.data()?.email as string) ?? '',
+      });
     }),
   );
-  return { entries, names };
+  return { entries, people };
 }
 
 /** Core sync, target injected so tests drive it without real Google APIs.
@@ -51,9 +68,9 @@ export async function runSync(
 ): Promise<SyncResult> {
   if (!target) return { skipped: true };
 
-  const { entries, names } = await allEntries();
-  await target.writeSheet('Entries', entriesGrid(entries, names));
-  await target.writeSheet('By person', personSummaryGrid(entries, names));
+  const { entries, people } = await allEntries();
+  await target.writeSheet('Entries', entriesGrid(entries, people));
+  await target.writeSheet('By person', personSummaryGrid(entries, people));
   await target.writeSheet('By activity & month', activityMonthGrid(entries));
 
   let csvWritten: string | null = null;
