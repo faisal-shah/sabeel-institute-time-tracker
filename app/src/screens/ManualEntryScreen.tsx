@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { addDays, dayKeyFor, deviceTimeZone, entryTimesValid, parseDayKey } from '@sabeel/shared';
+import {
+  addDays,
+  dayKeyFor,
+  deviceTimeZone,
+  entryTimesValid,
+  formatDuration,
+  minutesBetween,
+  parseDayKey,
+} from '@sabeel/shared';
 import { useActivities } from '../activities';
 import { createManualEntry, explainEntryWriteError } from '../entries';
 import { ActivityPicker } from '../components/ActivityPicker';
@@ -92,6 +100,10 @@ export function ManualEntryScreen({
           <DateTimeField kind="time" value={to} onChange={setTo} />
         </View>
       </View>
+      {/* Live duration echo — catches AM/PM slips before saving. */}
+      {start !== null && end !== null && end > start ? (
+        <Text style={styles.durationPreview}>= {formatDuration(minutesBetween(start, end))}</Text>
+      ) : null}
 
       <Text style={styles.label}>What did you work on? (optional)</Text>
       <TextInput
@@ -115,6 +127,7 @@ export function ManualEntryScreen({
 
 const styles = StyleSheet.create({
   onBehalf: { fontSize: 14, fontWeight: '700', color: colors.primary },
+  durationPreview: { fontSize: 15, fontWeight: '700', color: colors.primary, textAlign: 'right' },
   label: { fontSize: 13, color: colors.textMuted, marginTop: spacing(2) },
   input: {
     borderWidth: 1,

@@ -23,6 +23,16 @@ function ensureConfigured() {
   configured = true;
 }
 
+/**
+ * Clear the remembered Google account. Without this, the next signIn() silently
+ * reuses the previous account and there is no way to switch users — sign-out
+ * from the app must also sign out of Google so the account chooser reappears.
+ */
+export async function googleSignOut(): Promise<void> {
+  ensureConfigured();
+  await GoogleSignin.signOut();
+}
+
 export async function signInWithGoogle(): Promise<void> {
   ensureConfigured();
   try {

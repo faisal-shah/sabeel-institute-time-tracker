@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut as fbSignOut, type User } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { COLLECTIONS, type TokenClaims, type UserDoc } from '@sabeel/shared';
+import { googleSignOut } from './auth/google';
 import { auth, db } from './firebase';
 
 export type Session =
@@ -9,8 +10,11 @@ export type Session =
   | { phase: 'signedOut' }
   | { phase: 'signedIn'; user: User; profile: UserDoc | null; claims: TokenClaims };
 
-export function signOut(): Promise<void> {
-  return fbSignOut(auth);
+export async function signOut(): Promise<void> {
+  // Also clear the native Google session, or the next sign-in silently reuses
+  // the same account with no way to switch users.
+  await googleSignOut().catch(() => undefined);
+  await fbSignOut(auth);
 }
 
 // Fresh accounts carry no claims; that matches a pending profile, so the missing

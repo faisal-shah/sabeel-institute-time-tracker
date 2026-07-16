@@ -5,6 +5,8 @@ import {
   dayKeyFor,
   entryTimesValid,
   epochFor,
+  formatDuration,
+  minutesBetween,
   timeOfDayFor,
   tzLabelFor,
 } from '@sabeel/shared';
@@ -100,6 +102,10 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
           <DateTimeField kind="time" value={to} onChange={setTo} />
         </View>
       </View>
+      {/* Live duration echo — catches AM/PM slips before saving. */}
+      {start !== null && end !== null && end > start ? (
+        <Text style={styles.durationPreview}>= {formatDuration(minutesBetween(start, end))}</Text>
+      ) : null}
 
       <Text style={styles.label}>Note</Text>
       <TextInput
@@ -121,6 +127,7 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
 
 const styles = StyleSheet.create({
   meta: { fontSize: 13, color: colors.textMuted },
+  durationPreview: { fontSize: 15, fontWeight: '700', color: colors.primary, textAlign: 'right' },
   label: { fontSize: 13, color: colors.textMuted, marginTop: spacing(2) },
   input: {
     borderWidth: 1,

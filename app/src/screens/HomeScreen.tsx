@@ -25,10 +25,11 @@ import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
+// Short labels — this strip shares a row with the week dates on narrow phones.
 const STATUS_LABEL = {
-  submitted: 'Submitted — awaiting approval',
+  submitted: 'Awaiting approval',
   approved: 'Approved',
-  rejected: 'Rejected — needs your attention',
+  rejected: 'Rejected',
 } as const;
 
 export function HomeScreen({
@@ -220,6 +221,7 @@ const styles = StyleSheet.create({
   rejectedText: { color: colors.onPrimary, fontSize: 14, fontWeight: '600' },
   periodStrip: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
@@ -228,7 +230,7 @@ const styles = StyleSheet.create({
     padding: spacing(3),
     gap: spacing(2),
   },
-  periodLabel: { fontSize: 13, color: colors.textMuted },
+  periodLabel: { fontSize: 13, color: colors.textMuted, flexShrink: 1 },
   periodStatus: { fontSize: 13, fontWeight: '700', color: colors.text },
   statusApproved: { color: colors.primary },
   statusRejected: { color: colors.danger },

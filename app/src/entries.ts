@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   query,
   updateDoc,
   where,
@@ -10,11 +11,14 @@ import {
 } from 'firebase/firestore';
 import { useLiveDoc, useLiveQuery } from './liveQuery';
 import {
+  addDays,
   COLLECTIONS,
   dayKeyFor,
   deviceTimeZone,
+  epochFor,
   minutesBetween,
   periodKeyFor,
+  timeOfDayFor,
   type TimeEntryDoc,
 } from '@sabeel/shared';
 import { FirebaseError } from 'firebase/app';
@@ -171,6 +175,82 @@ export async function updateEntry(
 
 export function deleteEntry(entryId: string): Promise<void> {
   return deleteDoc(doc(db, COLLECTIONS.timeEntries, entryId));
+}
+
+/**
+ * Copy last week's closed entries into a (still empty) week, one weekday later
+ * by exactly seven days, preserving each entry's wall-clock start time and
+ * duration in its own timezone (a +7d epoch shift would drift across DST).
+ * Entries whose target day falls outside the destination period are skipped —
+ * month-clipped weeks are shorter than the source week.
+ */
+export async function copyPeriodEntries(
+  uid: string,
+  fromPeriod: { fromKey: string; toKey: string },
+  toPeriod: { fromKey: string; toKey: string },
+): Promise<{ copied: number; skipped: number }> {
+  const snap = await getDocs(
+    query(
+      collection(db, COLLECTIONS.timeEntries),
+      where('uid', '==', uid),
+      where('dayKey', '>=', fromPeriod.fromKey),
+      where('dayKey', '<=', fromPeriod.toKey),
+    ),
+  );
+  const now = Date.now();
+  const batch = writeBatch(db);
+  let copied = 0;
+  let skipped = 0;
+  for (const d of snap.docs) {
+    const e = d.data() as TimeEntryDoc;
+    if (e.end === null) continue; // never copy a running session
+    const dayKey = addDays(e.dayKey, 7);
+    if (dayKey < toPeriod.fromKey || dayKey > toPeriod.toKey) {
+      skipped++;
+      continue;
+    }
+    const start = epochFor(dayKey, timeOfDayFor(e.start, e.timeZone), e.timeZone);
+    const copy: TimeEntryDoc = {
+      uid,
+      activityId: e.activityId,
+      activityName: e.activityName,
+      start,
+      end: start + (e.end - e.start),
+      durationMinutes: e.durationMinutes ?? Math.max(1, minutesBetween(e.start, e.end)),
+      timeZone: e.timeZone,
+      dayKey,
+      periodKey: periodKeyFor(dayKey),
+      source: 'manual',
+      ...(e.note ? { note: e.note } : {}),
+      createdAt: now,
+      updatedAt: now,
+    };
+    batch.set(doc(collection(db, COLLECTIONS.timeEntries)), copy);
+    copied++;
+  }
+  if (copied > 0) await batch.commit();
+  return { copied, skipped };
+}
+
+/**
+ * Live set of periodKeys (in an inclusive dayKey range) that have ANY entries —
+ * lets the week navigator distinguish "hours logged, not submitted" from
+ * "empty week" without loading every entry's fields.
+ */
+export function useEntryPeriods(uid: string, fromKey: string, toKey: string): Set<string> {
+  return useLiveQuery(
+    'useEntryPeriods',
+    () =>
+      query(
+        collection(db, COLLECTIONS.timeEntries),
+        where('uid', '==', uid),
+        where('dayKey', '>=', fromKey),
+        where('dayKey', '<=', toKey),
+      ),
+    (snap) => new Set(snap.docs.map((d) => (d.data() as TimeEntryDoc).periodKey)),
+    new Set<string>(),
+    [uid, fromKey, toKey],
+  );
 }
 
 /** Live closed-minutes total for one of my local days (running session excluded). */

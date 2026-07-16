@@ -1,6 +1,8 @@
 import { type ReactNode, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,7 +24,16 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
         </View>
       ) : null}
       {listenerError ? <Text style={styles.listenerError}>{listenerError}</Text> : null}
-      <ScrollView contentContainerStyle={styles.body}>{children}</ScrollView>
+      {/* Keyboard must never cover a bottom-of-screen input (e.g. the reject
+          reason): pad the scroll area by the keyboard height. Inert on web. */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -78,6 +89,7 @@ export function ErrorText({ error }: { error: string | null }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
   header: {
     backgroundColor: colors.primary,
     paddingTop: spacing(12),

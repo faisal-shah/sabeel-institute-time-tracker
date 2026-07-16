@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { httpsCallable } from 'firebase/functions';
 import { type TokenClaims, type UserRole, type UserStatus } from '@sabeel/shared';
 import { functions } from '../firebase';
+import { confirmAction } from '../confirm';
 import { approverChoices, setApprover, useUsers } from '../users';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
@@ -82,59 +83,120 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
             </View>
           ) : null}
 
-          {isAdmin ? (
+          {isAdmin && u.status === 'pending' ? (
             <View style={styles.actions}>
-              {u.status === 'pending' && (
-                <Button label="Approve" onPress={() => change({ uid: u.uid, status: 'active' })} />
-              )}
-              {u.status === 'active' && u.uid !== selfUid && (
-                <Button
-                  label="Disable"
-                  kind="danger"
-                  onPress={() => change({ uid: u.uid, status: 'disabled' })}
-                />
-              )}
-              {u.status === 'disabled' && (
-                <Button
-                  label="Re-activate"
-                  kind="secondary"
-                  onPress={() => change({ uid: u.uid, status: 'active' })}
-                />
-              )}
-              {u.status === 'active' && u.role === 'member' && (
-                <Button
-                  label="Make manager"
-                  kind="secondary"
-                  onPress={() => change({ uid: u.uid, role: 'manager' })}
-                />
-              )}
-              {u.status === 'active' && u.role === 'manager' && u.uid !== selfUid && (
-                <Button
-                  label="Make member"
-                  kind="secondary"
-                  onPress={() => change({ uid: u.uid, role: 'member' })}
-                />
-              )}
-              {u.status === 'active' && !u.admin && (
-                <Button
-                  label="Make admin"
-                  kind="secondary"
-                  onPress={() => change({ uid: u.uid, admin: true })}
-                />
-              )}
-              {u.status === 'active' && u.admin && u.uid !== selfUid && (
-                <Button
-                  label="Remove admin"
-                  kind="secondary"
-                  onPress={() => change({ uid: u.uid, admin: false })}
-                />
-              )}
+              <Button label="Approve" onPress={() => change({ uid: u.uid, status: 'active' })} />
             </View>
+          ) : null}
+
+          {isAdmin && u.status !== 'pending' ? (
+            <>
+              {/* State editors, not verb buttons: each row SHOWS the current
+                  value; changing it asks for confirmation, so a mistap is a
+                  visible flip you decline instead of an action you discover. */}
+              <StateRow label="Role">
+                <Segmented
+                  options={['member', 'manager'] as const}
+                  value={u.role}
+                  disabled={u.status !== 'active' || (u.uid === selfUid && u.role === 'manager')}
+                  onChange={async (role) => {
+                    if (
+                      await confirmAction(
+                        `Change role to ${role}?`,
+                        `${u.displayName} will ${role === 'manager' ? 'gain' : 'lose'} manager tools (activities, reports, approvals).`,
+                      )
+                    )
+                      change({ uid: u.uid, role: role as UserRole });
+                  }}
+                />
+              </StateRow>
+              <StateRow label="Admin">
+                <Switch
+                  value={u.admin}
+                  disabled={u.status !== 'active' || u.uid === selfUid}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                  onValueChange={async (next) => {
+                    if (
+                      await confirmAction(
+                        next ? 'Grant admin?' : 'Remove admin?',
+                        next
+                          ? `${u.displayName} will manage users and reopen approved timesheets.`
+                          : `${u.displayName} will no longer manage users.`,
+                      )
+                    )
+                      change({ uid: u.uid, admin: next });
+                  }}
+                />
+              </StateRow>
+              <StateRow label="Account">
+                <Segmented
+                  options={['active', 'disabled'] as const}
+                  value={u.status}
+                  disabled={u.uid === selfUid}
+                  danger="disabled"
+                  onChange={async (status) => {
+                    if (
+                      await confirmAction(
+                        status === 'disabled' ? 'Disable account?' : 'Re-activate account?',
+                        status === 'disabled'
+                          ? `${u.displayName} will be signed out of the app and unable to log hours.`
+                          : `${u.displayName} will regain access.`,
+                      )
+                    )
+                      change({ uid: u.uid, status: status as UserStatus });
+                  }}
+                />
+              </StateRow>
+            </>
           ) : null}
         </View>
       ))}
       {sorted.length === 0 && <Text style={styles.empty}>No users yet.</Text>}
     </Screen>
+  );
+}
+
+function StateRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <View style={styles.stateRow}>
+      <Text style={styles.stateLabel}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+/** Two-value segmented control that shows the current state. */
+function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  disabled,
+  danger,
+}: {
+  options: readonly T[];
+  value: T;
+  onChange: (next: T) => void;
+  disabled?: boolean;
+  /** Option rendered in danger color when selected (e.g. 'disabled'). */
+  danger?: T;
+}) {
+  return (
+    <View style={[styles.seg, disabled && styles.segDisabled]}>
+      {options.map((o) => {
+        const on = o === value;
+        return (
+          <Pressable
+            key={o}
+            disabled={disabled || on}
+            onPress={() => onChange(o)}
+            style={[styles.segOpt, on && (o === danger ? styles.segOnDanger : styles.segOn)]}
+          >
+            <Text style={[styles.segLabel, on && styles.segLabelOn]}>{o}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -163,5 +225,26 @@ const styles = StyleSheet.create({
   approverRow: { gap: spacing(1), marginTop: spacing(1) },
   approverLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(2) },
+  stateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing(2),
+    gap: spacing(3),
+  },
+  stateLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  seg: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.sage,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  segDisabled: { opacity: 0.5 },
+  segOpt: { paddingHorizontal: spacing(3.5), paddingVertical: spacing(1.5) },
+  segOn: { backgroundColor: colors.primary },
+  segOnDanger: { backgroundColor: colors.danger },
+  segLabel: { fontSize: 13, color: colors.textMuted },
+  segLabelOn: { color: colors.onPrimary, fontWeight: '700' },
   empty: { color: colors.textMuted },
 });

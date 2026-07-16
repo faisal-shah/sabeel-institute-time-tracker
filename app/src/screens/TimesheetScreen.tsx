@@ -17,7 +17,8 @@ import {
   type UserDoc,
 } from '@sabeel/shared';
 import type { RootStackParamList } from '../nav';
-import { useEntriesRange, type TimeEntry } from '../entries';
+import { confirmAction } from '../confirm';
+import { copyPeriodEntries, useEntriesRange, useEntryPeriods, type TimeEntry } from '../entries';
 import {
   submitTimesheet,
   resubmitTimesheet,
@@ -94,6 +95,12 @@ export function TimesheetScreen({
     () => new Map(monthSheets.map((t) => [t.periodKey, t])),
     [monthSheets],
   );
+  // Which weeks have hours logged (for the "in progress, not submitted" dot).
+  const periodsWithHours = useEntryPeriods(
+    uid,
+    month[0].fromKey,
+    month[month.length - 1].toKey,
+  );
 
   const total = useMemo(
     () => entries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0),
@@ -128,9 +135,9 @@ export function TimesheetScreen({
 
   return (
     <Screen>
-      {/* Week navigator for the month — a chip per week. A status dot appears
-          only once that week actually HAS a timesheet (submitted/approved/
-          rejected); weeks without one are just weeks, and future ones are dim. */}
+      {/* Week navigator for the month — a chip per week. Dots tell the story:
+          sage = hours logged but not submitted, gold = submitted, raspberry =
+          approved, red = rejected; no dot = empty week. Future weeks are dim. */}
       <View style={styles.monthStrip}>
         {month.map((p) => {
           const st = p.fromKey === period.fromKey && sheet !== undefined
@@ -138,21 +145,40 @@ export function TimesheetScreen({
             : (sheetByPeriod.get(p.fromKey)?.status ?? 'draft');
           const on = p.fromKey === period.fromKey;
           const future = !periodHasStarted(p.fromKey, todayKey);
+          const dotColor =
+            st !== 'draft'
+              ? STATUS_CHIP[st].color
+              : periodsWithHours.has(p.fromKey)
+                ? colors.sage
+                : null;
           return (
             <Pressable
               key={p.fromKey}
               onPress={() => setAnchor(p.fromKey)}
               style={[styles.monthChip, on && styles.monthChipOn, future && styles.monthChipFuture]}
             >
-              {st !== 'draft' ? (
-                <View style={[styles.dot, { backgroundColor: STATUS_CHIP[st].color }]} />
-              ) : null}
+              {dotColor ? <View style={[styles.dot, { backgroundColor: dotColor }]} /> : null}
               <Text style={[styles.monthChipLabel, on && styles.monthChipLabelOn]}>
                 {periodLabel(p)}
               </Text>
             </Pressable>
           );
         })}
+      </View>
+      <View style={styles.legend}>
+        {(
+          [
+            [colors.sage, 'in progress'],
+            [STATUS_CHIP.submitted.color, 'submitted'],
+            [STATUS_CHIP.approved.color, 'approved'],
+            [STATUS_CHIP.rejected.color, 'rejected'],
+          ] as const
+        ).map(([c, label]) => (
+          <View key={label} style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: c }]} />
+            <Text style={styles.legendLabel}>{label}</Text>
+          </View>
+        ))}
       </View>
 
       <View style={styles.navRow}>
@@ -207,6 +233,30 @@ export function TimesheetScreen({
       ) : null}
       {status === 'draft' && started ? (
         <>
+          {entries.length === 0 ? (
+            <Button
+              label="Copy last week's hours"
+              kind="secondary"
+              onPress={() =>
+                act(async () => {
+                  const prev = periodRangeFor(addDays(period.fromKey, -1));
+                  if (
+                    !(await confirmAction(
+                      'Copy last week?',
+                      `Copies every entry from ${periodLabel(prev)} into this week (same days, same times). You can edit or delete them afterwards.`,
+                    ))
+                  )
+                    return;
+                  const { copied, skipped } = await copyPeriodEntries(uid, prev, period);
+                  if (copied === 0) throw new Error('Last week has no entries to copy.');
+                  if (skipped > 0)
+                    throw new Error(
+                      `Copied ${copied}; skipped ${skipped} that fall outside this (shorter) week.`,
+                    );
+                })
+              }
+            />
+          ) : null}
           {!approverUid ? (
             <Text style={styles.hint}>Pick your timesheet approver on the home screen first.</Text>
           ) : null}
@@ -270,6 +320,9 @@ const styles = StyleSheet.create({
   monthChipLabel: { fontSize: 12, color: colors.textMuted },
   monthChipLabelOn: { color: colors.onPrimary },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(3), marginTop: spacing(1) },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing(1) },
+  legendLabel: { fontSize: 11, color: colors.textMuted },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
   navCenter: { flex: 1, alignItems: 'center' },
   navLabel: { fontSize: 15, fontWeight: '600', color: colors.text },

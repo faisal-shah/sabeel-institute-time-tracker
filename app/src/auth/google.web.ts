@@ -6,8 +6,14 @@ import { auth } from '../firebase';
 
 export const REAL_GOOGLE_AVAILABLE = true;
 
+/** Web keeps no Google session of its own — Firebase sign-out is enough. */
+export async function googleSignOut(): Promise<void> {}
+
 export async function signInWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
+  // Always show Google's account chooser (with its own "Use another account")
+  // instead of silently reusing the last signed-in account.
+  provider.setCustomParameters({ prompt: 'select_account' });
   try {
     await signInWithPopup(auth, provider);
   } catch (e) {

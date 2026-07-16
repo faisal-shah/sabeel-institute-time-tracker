@@ -8,6 +8,7 @@ import { useActivities } from '../activities';
 import { useUsers } from '../users';
 import { fetchTotals, fetchCsv, syncDriveNow, type Totals } from '../reporting';
 import { saveCsv } from '../saveCsv';
+import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
@@ -76,33 +77,33 @@ export function ReportsScreen() {
         ))}
       </View>
 
+      {/* Searchable pickers, not chip walls — these lists grow with the org.
+          The first row ("Everyone"/"All …") acts as the clear-filter option. */}
       <Text style={styles.section}>Person</Text>
-      <View style={styles.chipRow}>
-        <Chip label="Everyone" on={!personUid} onPress={() => setPersonUid(null)} />
-        {users
-          .filter((u) => u.status === 'active')
-          .map((u) => (
-            <Chip
-              key={u.uid}
-              label={u.displayName}
-              on={personUid === u.uid}
-              onPress={() => setPersonUid(u.uid)}
-            />
-          ))}
-      </View>
+      <SearchablePicker
+        items={[
+          { id: '', label: 'Everyone' },
+          ...users
+            .filter((u) => u.status === 'active')
+            .map((u) => ({ id: u.uid, label: u.displayName, sublabel: u.email })),
+        ]}
+        selectedId={personUid ?? ''}
+        onSelect={(id) => setPersonUid(id || null)}
+        placeholder="Everyone"
+        title="Filter by person"
+      />
 
       <Text style={styles.section}>Activity</Text>
-      <View style={styles.chipRow}>
-        <Chip label="All" on={!activityId} onPress={() => setActivityId(null)} />
-        {activities.map((a) => (
-          <Chip
-            key={a.id}
-            label={a.name}
-            on={activityId === a.id}
-            onPress={() => setActivityId(a.id)}
-          />
-        ))}
-      </View>
+      <SearchablePicker
+        items={[
+          { id: '', label: 'All projects & events' },
+          ...activities.map((a) => ({ id: a.id, label: a.name, sublabel: a.type })),
+        ]}
+        selectedId={activityId ?? ''}
+        onSelect={(id) => setActivityId(id || null)}
+        placeholder="All projects & events"
+        title="Filter by activity"
+      />
 
       <Text style={styles.section}>Hours counted</Text>
       <View style={styles.chipRow}>
