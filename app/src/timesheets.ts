@@ -3,13 +3,11 @@
 // decide = update by the stamped approver/admin, resubmit = update after
 // rejection, withdraw/reopen = delete. totalMinutes/entryCount are informational
 // snapshots — the live truth is always the period's entries.
-import { useEffect, useState } from 'react';
 import {
   collection,
   deleteDoc,
   deleteField,
   doc,
-  onSnapshot,
   query,
   setDoc,
   updateDoc,
@@ -17,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { COLLECTIONS, type TimesheetDoc } from '@sabeel/shared';
 import { db } from './firebase';
+import { useLiveDoc, useLiveQuery } from './liveQuery';
 import type { TimeEntry } from './entries';
 
 export type Timesheet = TimesheetDoc & { id: string };
@@ -120,18 +119,13 @@ export function reopenTimesheet(ts: Timesheet): Promise<void> {
  * undefined = still loading; null = no doc (the period is a draft).
  */
 export function useTimesheet(uid: string, periodKey: string): Timesheet | null | undefined {
-  const [ts, setTs] = useState<Timesheet | null | undefined>(undefined);
-  useEffect(() => {
-    setTs(undefined);
-    return onSnapshot(
-      doc(db, COLLECTIONS.timesheets, tsId(uid, periodKey)),
-      (snap) => {
-        setTs(snap.exists() ? { id: snap.id, ...(snap.data() as TimesheetDoc) } : null);
-      },
-      (e) => console.warn('useTimesheet listener', e.code ?? e.message),
-    );
-  }, [uid, periodKey]);
-  return ts;
+  return useLiveDoc<Timesheet | null | undefined>(
+    'useTimesheet',
+    () => doc(db, COLLECTIONS.timesheets, tsId(uid, periodKey)),
+    (snap) => (snap.exists() ? { id: snap.id, ...(snap.data() as TimesheetDoc) } : null),
+    undefined,
+    [uid, periodKey],
+  );
 }
 
 /** Live list of a user's timesheets whose periodKey falls in an inclusive range. */
@@ -140,69 +134,61 @@ export function useMyTimesheetsRange(
   fromKey: string,
   toKey: string,
 ): Timesheet[] {
-  const [rows, setRows] = useState<Timesheet[]>([]);
-  useEffect(() => {
-    setRows([]); // reset on range change; stale rows would mislabel weeks
-    const q = query(
-      collection(db, COLLECTIONS.timesheets),
-      where('uid', '==', uid),
-      where('periodKey', '>=', fromKey),
-      where('periodKey', '<=', toKey),
-    );
-    return onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimesheetDoc) }));
-        list.sort((a, b) => a.periodKey.localeCompare(b.periodKey));
-        setRows(list);
-      },
-      (e) => console.warn('useMyTimesheetsRange listener', e.code ?? e.message),
-    );
-  }, [uid, fromKey, toKey]);
-  return rows;
+  return useLiveQuery(
+    'useMyTimesheetsRange',
+    () =>
+      query(
+        collection(db, COLLECTIONS.timesheets),
+        where('uid', '==', uid),
+        where('periodKey', '>=', fromKey),
+        where('periodKey', '<=', toKey),
+      ),
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimesheetDoc) }));
+      list.sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+      return list;
+    },
+    [],
+    [uid, fromKey, toKey],
+  );
 }
 
 /**
  * Live approval queue: sheets submitted to me — or every submitted sheet when
- * `all` (admin view). Newest submissions first.
+ * `all` (admin view). Oldest submissions first.
  */
 export function useApprovalQueue(approverUid: string, opts?: { all?: boolean }): Timesheet[] {
   const all = opts?.all ?? false;
-  const [rows, setRows] = useState<Timesheet[]>([]);
-  useEffect(() => {
-    setRows([]); // reset when the queue scope changes
-    const base = collection(db, COLLECTIONS.timesheets);
-    const q = all
-      ? query(base, where('status', '==', 'submitted'))
-      : query(base, where('approverUid', '==', approverUid), where('status', '==', 'submitted'));
-    return onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimesheetDoc) }));
-        list.sort((a, b) => a.submittedAt - b.submittedAt);
-        setRows(list);
-      },
-      (e) => console.warn('useApprovalQueue listener', e.code ?? e.message),
-    );
-  }, [approverUid, all]);
-  return rows;
+  return useLiveQuery(
+    'useApprovalQueue',
+    () => {
+      const base = collection(db, COLLECTIONS.timesheets);
+      return all
+        ? query(base, where('status', '==', 'submitted'))
+        : query(base, where('approverUid', '==', approverUid), where('status', '==', 'submitted'));
+    },
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimesheetDoc) }));
+      list.sort((a, b) => a.submittedAt - b.submittedAt);
+      return list;
+    },
+    [],
+    [approverUid, all],
+  );
 }
 
 /** Live count of my rejected timesheets (the "needs your attention" badge). */
 export function useRejectedCount(uid: string): number {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    setCount(0);
-    const q = query(
-      collection(db, COLLECTIONS.timesheets),
-      where('uid', '==', uid),
-      where('status', '==', 'rejected'),
-    );
-    return onSnapshot(
-      q,
-      (snap) => setCount(snap.size),
-      (e) => console.warn('useRejectedCount listener', e.code ?? e.message),
-    );
-  }, [uid]);
-  return count;
+  return useLiveQuery(
+    'useRejectedCount',
+    () =>
+      query(
+        collection(db, COLLECTIONS.timesheets),
+        where('uid', '==', uid),
+        where('status', '==', 'rejected'),
+      ),
+    (snap) => snap.size,
+    0,
+    [uid],
+  );
 }

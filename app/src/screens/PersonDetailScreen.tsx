@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { formatDuration } from '@sabeel/shared';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { dayKeyFor, deviceTimeZone, formatDuration, periodKeyFor } from '@sabeel/shared';
+import type { RootStackParamList } from '../nav';
 import { fetchTotals, type Totals } from '../reporting';
 import { printStatement, CAN_PRINT } from '../printStatement';
 import { Button, ErrorText, Screen } from '../components/ui';
@@ -9,6 +12,7 @@ import { colors, spacing } from '../theme';
 const LIFETIME = { fromKey: '2000-01-01', toKey: '2999-12-31' };
 
 export function PersonDetailScreen({ uid, displayName }: { uid: string; displayName: string }) {
+  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [totals, setTotals] = useState<Totals | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -59,7 +63,18 @@ export function PersonDetailScreen({ uid, displayName }: { uid: string; displayN
       ) : null}
 
       <Button
+        label="View timesheets"
+        onPress={() =>
+          nav.navigate('TimesheetReview', {
+            uid,
+            displayName,
+            periodKey: periodKeyFor(dayKeyFor(Date.now(), deviceTimeZone())),
+          })
+        }
+      />
+      <Button
         label={CAN_PRINT ? 'Print statement' : 'Printing is on the website'}
+        kind="secondary"
         onPress={print}
         disabled={!totals}
       />

@@ -1,21 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import {
-  COLLECTIONS,
-  type TokenClaims,
-  type UserDoc,
-  type UserRole,
-  type UserStatus,
-} from '@sabeel/shared';
-import { db, functions } from '../firebase';
-import { approverChoices, setApprover } from '../users';
+import { type TokenClaims, type UserRole, type UserStatus } from '@sabeel/shared';
+import { functions } from '../firebase';
+import { approverChoices, setApprover, useUsers } from '../users';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
-
-type Row = UserDoc & { uid: string };
 
 const setUserAccess = httpsCallable<
   { uid: string; status?: UserStatus; role?: UserRole; admin?: boolean },
@@ -29,21 +20,9 @@ const statusRank: Record<UserStatus, number> = { pending: 0, active: 1, disabled
  * Managers (non-admin): read-only list + approver assignment for non-admins.
  */
 export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: TokenClaims }) {
-  const [rows, setRows] = useState<Row[]>([]);
+  const rows = useUsers();
   const [error, setError] = useState<string | null>(null);
   const isAdmin = claims.admin === true;
-
-  useEffect(
-    () =>
-      onSnapshot(
-        collection(db, COLLECTIONS.users),
-        (snap) => {
-          setRows(snap.docs.map((d) => ({ uid: d.id, ...(d.data() as UserDoc) })));
-        },
-        (e) => setError(e.message),
-      ),
-    [],
-  );
 
   const sorted = useMemo(
     () =>

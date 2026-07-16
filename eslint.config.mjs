@@ -41,4 +41,29 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // Live Firestore subscriptions must go through useLiveQuery/useLiveDoc,
+    // which reset state when inputs change and on errors — hand-rolled
+    // onSnapshot state showed one week's entries under another on slow
+    // connections (docs/POSTMORTEM-2026-07-16-stale-week.md). Exemptions:
+    // liveQuery.ts is the choke point; session.ts couples its doc listener to
+    // the auth lifecycle and does its own reset.
+    files: ['app/src/**/*.{ts,tsx}'],
+    ignores: ['app/src/liveQuery.ts', 'app/src/session.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'firebase/firestore',
+              importNames: ['onSnapshot'],
+              message:
+                'Subscribe via useLiveQuery/useLiveDoc (src/liveQuery.ts) — they reset on input change and clear on error. See docs/POSTMORTEM-2026-07-16-stale-week.md.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

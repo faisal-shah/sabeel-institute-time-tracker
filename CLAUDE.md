@@ -56,3 +56,7 @@ Key product invariants (do not silently change):
   phase. Before ANY significant install (global/system/major framework), ask first;
   routine project-local npm deps of the locked stack are fine.
 - All repo artifacts (docs, plans, protocols) live in this repo.
+- Live Firestore reads in `app/src` go through `useLiveQuery`/`useLiveDoc`
+  (`app/src/liveQuery.ts`) — never hand-roll `onSnapshot` state (lint-enforced;
+  see docs/POSTMORTEM-2026-07-16-stale-week.md). Async UI must be e2e-tested at
+  least once under injected latency, not just localhost speed.

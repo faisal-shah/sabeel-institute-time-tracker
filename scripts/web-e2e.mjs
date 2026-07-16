@@ -279,6 +279,32 @@ async function main() {
   await vol.getByText('2h 00m', { exact: true }).first().waitFor();
   await vol.screenshot({ path: join(shots, '10-timesheet-period.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
+  console.log('▸ stale-listener guard: switching weeks must clear rows even on a slow network…');
+  // Localhost snapshots arrive in ~ms, which is exactly why this bug class
+  // (docs/POSTMORTEM-2026-07-16-stale-week.md) escaped the e2e: on a real phone
+  // the new week's snapshot lags and the old week's rows lingered on screen.
+  // Simulate the lag by stalling all Firestore emulator traffic; the UI must
+  // clear the previous week's entries IMMEDIATELY (reset-on-input-change),
+  // without waiting for data.
+  const shared = await import('@sabeel/shared');
+  const todayKey = shared.dayKeyFor(Date.now(), shared.deviceTimeZone());
+  const otherWeek = shared
+    .periodsOfMonth(todayKey)
+    .find((p) => p.fromKey !== shared.periodKeyFor(todayKey));
+  const stall = async (route) => {
+    await new Promise((r) => setTimeout(r, 2500));
+    await route.continue().catch(() => {});
+  };
+  await vol.context().route('http://127.0.0.1:8080/**', stall);
+  await vol.getByText(shared.periodLabel(otherWeek), { exact: false }).first().click();
+  // Old rows must vanish at once — long before the stalled snapshot can land.
+  await vol.getByText('No hours in this week.').waitFor({ timeout: 1500 });
+  if ((await vol.getByText('Math tutoring with the kids').count()) !== 0)
+    throw new Error("stale entries visible under a different week's timesheet");
+  await vol.context().unroute('http://127.0.0.1:8080/**');
+  await vol.getByText('Jump to this week', { exact: true }).click();
+  await vol.getByText('Math tutoring with the kids').waitFor({ timeout: 15000 });
+
   console.log('▸ Phase 7: volunteer picks an approver and submits the week…');
   // Submit is gated until an approver is chosen (rules require the stamp).
   await vol.getByText('Pick your timesheet approver', { exact: false }).waitFor();

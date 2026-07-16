@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   query,
   updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { useLiveDoc, useLiveQuery } from './liveQuery';
 import {
   COLLECTIONS,
   dayKeyFor,
@@ -109,21 +108,13 @@ export async function createManualEntry(input: {
 
 /** Live view of a single entry (the running one, usually). */
 export function useEntry(entryId: string | null): TimeEntry | null {
-  const [entry, setEntry] = useState<TimeEntry | null>(null);
-  useEffect(() => {
-    setEntry(null); // never show a previous id's entry while the new one loads
-    if (!entryId) {
-      return;
-    }
-    return onSnapshot(
-      doc(db, COLLECTIONS.timeEntries, entryId),
-      (snap) => {
-        setEntry(snap.exists() ? { id: snap.id, ...(snap.data() as TimeEntryDoc) } : null);
-      },
-      (e) => console.warn('useEntry listener', e.code ?? e.message),
-    );
-  }, [entryId]);
-  return entry;
+  return useLiveDoc(
+    'useEntry',
+    () => (entryId ? doc(db, COLLECTIONS.timeEntries, entryId) : null),
+    (snap) => (snap.exists() ? { id: snap.id, ...(snap.data() as TimeEntryDoc) } : null),
+    null,
+    [entryId],
+  );
 }
 
 /** Live list of a user's entries in an inclusive dayKey range, newest first. */
@@ -132,33 +123,23 @@ export function useEntriesRange(
   fromKey: string,
   toKey: string,
 ): TimeEntry[] {
-  const [rows, setRows] = useState<TimeEntry[]>([]);
-  useEffect(() => {
-    // Reset immediately: until the new range's snapshot lands, showing the
-    // PREVIOUS range's rows would present entries under the wrong week (seen
-    // in the wild on a slow mobile connection). Same on error — empty and a
-    // console warning beat silently-wrong data.
-    setRows([]);
-    const q = query(
-      collection(db, COLLECTIONS.timeEntries),
-      where('uid', '==', uid),
-      where('dayKey', '>=', fromKey),
-      where('dayKey', '<=', toKey),
-    );
-    return onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimeEntryDoc) }));
-        list.sort((a, b) => b.dayKey.localeCompare(a.dayKey) || b.start - a.start);
-        setRows(list);
-      },
-      (e) => {
-        setRows([]);
-        console.warn('useEntriesRange listener', e.code ?? e.message);
-      },
-    );
-  }, [uid, fromKey, toKey]);
-  return rows;
+  return useLiveQuery(
+    'useEntriesRange',
+    () =>
+      query(
+        collection(db, COLLECTIONS.timeEntries),
+        where('uid', '==', uid),
+        where('dayKey', '>=', fromKey),
+        where('dayKey', '<=', toKey),
+      ),
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimeEntryDoc) }));
+      list.sort((a, b) => b.dayKey.localeCompare(a.dayKey) || b.start - a.start);
+      return list;
+    },
+    [],
+    [uid, fromKey, toKey],
+  );
 }
 
 /** Edit a closed entry's fields; recomputes duration/dayKey from the new times. */
@@ -194,25 +175,22 @@ export function deleteEntry(entryId: string): Promise<void> {
 
 /** Live closed-minutes total for one of my local days (running session excluded). */
 export function useDayMinutes(uid: string, dayKey: string): number {
-  const [minutes, setMinutes] = useState(0);
-  useEffect(() => {
-    setMinutes(0); // reset on day change; never carry a previous day's total
-    const q = query(
-      collection(db, COLLECTIONS.timeEntries),
-      where('uid', '==', uid),
-      where('dayKey', '==', dayKey),
-    );
-    return onSnapshot(
-      q,
-      (snap) => {
-        let total = 0;
-        snap.forEach((d) => {
-          total += (d.data() as TimeEntryDoc).durationMinutes ?? 0;
-        });
-        setMinutes(total);
-      },
-      (e) => console.warn('useDayMinutes listener', e.code ?? e.message),
-    );
-  }, [uid, dayKey]);
-  return minutes;
+  return useLiveQuery(
+    'useDayMinutes',
+    () =>
+      query(
+        collection(db, COLLECTIONS.timeEntries),
+        where('uid', '==', uid),
+        where('dayKey', '==', dayKey),
+      ),
+    (snap) => {
+      let total = 0;
+      snap.forEach((d) => {
+        total += (d.data() as TimeEntryDoc).durationMinutes ?? 0;
+      });
+      return total;
+    },
+    0,
+    [uid, dayKey],
+  );
 }

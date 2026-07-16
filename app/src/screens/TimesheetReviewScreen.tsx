@@ -10,9 +10,17 @@ import { EntryRow } from './TimesheetScreen';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
+const STATUS_LINE = {
+  draft: { label: 'Not submitted', color: colors.textMuted },
+  submitted: { label: 'Submitted — awaiting your decision', color: colors.accent },
+  approved: { label: 'Approved', color: colors.primary },
+  rejected: { label: 'Rejected — back with the owner', color: colors.danger },
+} as const;
+
 /**
- * Approver's view of one person's submitted period: per-day breakdown, entry
- * corrections (tap → edit), add-on-behalf, then approve or reject with reason.
+ * A manager's view of one person's weeks: per-day breakdown with week
+ * navigation, entry corrections (tap → edit) and add-on-behalf in any
+ * non-approved week, and approve/reject when the week is submitted.
  */
 export function TimesheetReviewScreen({
   reviewerUid,
@@ -23,14 +31,20 @@ export function TimesheetReviewScreen({
   reviewerUid: string;
   uid: string;
   displayName: string;
+  /** Initial week; the screen navigates freely from here. */
   periodKey: string;
 }) {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const period = periodRangeFor(periodKey);
-  const sheet = useTimesheet(uid, periodKey);
+  const [anchor, setAnchor] = useState(periodKey);
+  const period = periodRangeFor(anchor);
+  const sheet = useTimesheet(uid, period.fromKey);
+  const status = sheet === undefined ? undefined : (sheet?.status ?? 'draft');
   const entries = useEntriesRange(uid, period.fromKey, period.toKey);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const stepPeriod = (dir: 1 | -1) =>
+    setAnchor(dir === -1 ? addDays(period.fromKey, -1) : addDays(period.toKey, 1));
 
   const total = useMemo(
     () => entries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0),
@@ -58,18 +72,22 @@ export function TimesheetReviewScreen({
 
   return (
     <Screen>
-      <Text style={styles.title}>
-        {displayName} · {periodLabel(period)}
-      </Text>
-      <Text style={styles.total}>Total: {formatDuration(total)}</Text>
-
-      {sheet === null ? (
-        <Text style={styles.gone}>
-          This timesheet is no longer submitted — it was withdrawn or already handled.
-        </Text>
-      ) : null}
-      {sheet && sheet.status !== 'submitted' ? (
-        <Text style={styles.gone}>This timesheet is now “{sheet.status}”.</Text>
+      <Text style={styles.title}>{displayName}</Text>
+      <View style={styles.navRow}>
+        <Button label="‹" kind="secondary" onPress={() => stepPeriod(-1)} />
+        <View style={styles.navCenter}>
+          <Text style={styles.navLabel}>{periodLabel(period)}</Text>
+          <Text style={styles.total}>Total: {formatDuration(total)}</Text>
+          {status ? (
+            <Text style={[styles.statusLine, { color: STATUS_LINE[status].color }]}>
+              {STATUS_LINE[status].label}
+            </Text>
+          ) : null}
+        </View>
+        <Button label="›" kind="secondary" onPress={() => stepPeriod(1)} />
+      </View>
+      {sheet?.status === 'rejected' && sheet.rejectReason ? (
+        <Text style={styles.gone}>Reason: {sheet.rejectReason}</Text>
       ) : null}
 
       {days.map(({ dayKey, dayEntries }) => (
@@ -94,11 +112,17 @@ export function TimesheetReviewScreen({
         </View>
       ))}
 
-      <Button
-        label={`Add entry for ${displayName}`}
-        kind="secondary"
-        onPress={() => nav.navigate('ManualEntry', { forUid: uid, forName: displayName })}
-      />
+      {status === 'approved' ? (
+        <Text style={styles.gone}>
+          Approved — this week is locked. Only an admin can reopen it.
+        </Text>
+      ) : (
+        <Button
+          label={`Add entry for ${displayName}`}
+          kind="secondary"
+          onPress={() => nav.navigate('ManualEntry', { forUid: uid, forName: displayName })}
+        />
+      )}
 
       {sheet && sheet.status === 'submitted' ? (
         <>
@@ -129,6 +153,10 @@ export function TimesheetReviewScreen({
 
 const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
+  navCenter: { flex: 1, alignItems: 'center' },
+  navLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+  statusLine: { fontSize: 13, fontWeight: '700' },
   total: { fontSize: 14, color: colors.textMuted },
   gone: { color: colors.danger, fontSize: 14 },
   dayGroup: { gap: spacing(2) },

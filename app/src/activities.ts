@@ -1,34 +1,24 @@
-import { useEffect, useState } from 'react';
-import {
-  addDoc,
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-  where,
-} from 'firebase/firestore';
+import { addDoc, collection, doc, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { COLLECTIONS, type ActivityDoc, type ActivityType } from '@sabeel/shared';
 import { db } from './firebase';
+import { useLiveQuery } from './liveQuery';
 
 export type Activity = ActivityDoc & { id: string };
 
 /** Live list of activities; active-only for pickers, everything for management. */
 export function useActivities(opts: { includeArchived: boolean }): Activity[] {
-  const [rows, setRows] = useState<Activity[]>([]);
-  useEffect(() => {
-    const base = collection(db, COLLECTIONS.activities);
-    const q = opts.includeArchived
-      ? query(base, orderBy('name'))
-      : query(base, where('status', '==', 'active'), orderBy('name'));
-    return onSnapshot(
-      q,
-      (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ActivityDoc) }))),
-      (e) => console.warn('useActivities listener', e.code ?? e.message),
-    );
-  }, [opts.includeArchived]);
-  return rows;
+  return useLiveQuery(
+    'useActivities',
+    () => {
+      const base = collection(db, COLLECTIONS.activities);
+      return opts.includeArchived
+        ? query(base, orderBy('name'))
+        : query(base, where('status', '==', 'active'), orderBy('name'));
+    },
+    (snap) => snap.docs.map((d) => ({ id: d.id, ...(d.data() as ActivityDoc) })),
+    [],
+    [opts.includeArchived],
+  );
 }
 
 export function createActivity(input: {
