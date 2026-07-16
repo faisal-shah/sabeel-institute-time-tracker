@@ -7,16 +7,29 @@ import {
   dayKeyFor,
   deviceTimeZone,
   formatDuration,
+  periodHasStarted,
+  periodLabel,
+  periodRangeFor,
+  periodsOfMonth,
   timeOfDayFor,
   tzLabelFor,
-  weekRange,
+  type TokenClaims,
+  type UserDoc,
 } from '@sabeel/shared';
 import type { RootStackParamList } from '../nav';
 import { useEntriesRange, type TimeEntry } from '../entries';
-import { Button, Screen } from '../components/ui';
+import {
+  submitTimesheet,
+  resubmitTimesheet,
+  withdrawTimesheet,
+  reopenTimesheet,
+  useTimesheet,
+  useMyTimesheetsRange,
+} from '../timesheets';
+import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
-function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => void }) {
+export function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => void }) {
   const deviceTz = deviceTimeZone();
   const foreign = entry.timeZone !== deviceTz;
   const times =
@@ -47,15 +60,40 @@ function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => void })
   );
 }
 
-export function TimesheetScreen({ uid }: { uid: string }) {
+const STATUS_CHIP = {
+  draft: { label: 'Not submitted', color: colors.textMuted },
+  submitted: { label: 'Submitted', color: colors.accent },
+  approved: { label: 'Approved', color: colors.primary },
+  rejected: { label: 'Rejected', color: colors.danger },
+} as const;
+
+export function TimesheetScreen({
+  uid,
+  profile,
+  claims,
+}: {
+  uid: string;
+  profile: UserDoc;
+  claims: TokenClaims;
+}) {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const tz = deviceTimeZone();
   const todayKey = dayKeyFor(Date.now(), tz);
-  const [mode, setMode] = useState<'day' | 'week'>('day');
   const [anchor, setAnchor] = useState(todayKey);
+  const [error, setError] = useState<string | null>(null);
 
-  const range = mode === 'day' ? { fromKey: anchor, toKey: anchor } : weekRange(anchor);
-  const entries = useEntriesRange(uid, range.fromKey, range.toKey);
+  const period = periodRangeFor(anchor);
+  const entries = useEntriesRange(uid, period.fromKey, period.toKey);
+  const sheet = useTimesheet(uid, period.fromKey);
+  const status = sheet === undefined ? undefined : (sheet?.status ?? 'draft');
+
+  // Month strip: this month's periods with their submission states.
+  const month = useMemo(() => periodsOfMonth(anchor), [anchor]);
+  const monthSheets = useMyTimesheetsRange(uid, month[0].fromKey, month[month.length - 1].fromKey);
+  const sheetByPeriod = useMemo(
+    () => new Map(monthSheets.map((t) => [t.periodKey, t])),
+    [monthSheets],
+  );
 
   const total = useMemo(
     () => entries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0),
@@ -71,43 +109,79 @@ export function TimesheetScreen({ uid }: { uid: string }) {
     return [...groups.entries()];
   }, [entries]);
 
-  const step = (dir: 1 | -1) => setAnchor(addDays(anchor, dir * (mode === 'day' ? 1 : 7)));
-  const label =
-    mode === 'day' ? anchor : `${range.fromKey} → ${range.toKey}`;
+  const stepPeriod = (dir: 1 | -1) =>
+    setAnchor(dir === -1 ? addDays(period.fromKey, -1) : addDays(period.toKey, 1));
+
+  // Submission preconditions (rules enforce them too; these make the UI honest).
+  const approverUid = profile.approverUid ?? (claims.admin ? uid : null);
+  const hasRunningInPeriod = entries.some((e) => e.end === null);
+  const started = periodHasStarted(period.fromKey, todayKey);
+
+  const act = async (fn: () => Promise<void>) => {
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   return (
     <Screen>
-      <View style={styles.toggleRow}>
-        {(['day', 'week'] as const).map((m) => (
-          <Pressable
-            key={m}
-            onPress={() => setMode(m)}
-            style={[styles.toggle, mode === m && styles.toggleOn]}
-          >
-            <Text style={[styles.toggleLabel, mode === m && styles.toggleLabelOn]}>{m}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.monthStrip}>
+        {month.map((p) => {
+          const st = p.fromKey === period.fromKey && sheet !== undefined
+            ? (sheet?.status ?? 'draft')
+            : (sheetByPeriod.get(p.fromKey)?.status ?? 'draft');
+          const on = p.fromKey === period.fromKey;
+          return (
+            <Pressable
+              key={p.fromKey}
+              onPress={() => setAnchor(p.fromKey)}
+              style={[styles.monthChip, on && styles.monthChipOn]}
+            >
+              <View style={[styles.dot, { backgroundColor: STATUS_CHIP[st].color }]} />
+              <Text style={[styles.monthChipLabel, on && styles.monthChipLabelOn]}>
+                {periodLabel(p)}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={styles.navRow}>
-        <Button label="‹" kind="secondary" onPress={() => step(-1)} />
+        <Button label="‹" kind="secondary" onPress={() => stepPeriod(-1)} />
         <View style={styles.navCenter}>
-          <Text style={styles.navLabel}>{label}</Text>
+          <Text style={styles.navLabel}>{periodLabel(period)}</Text>
           <Text style={styles.navTotal}>{formatDuration(total)}</Text>
+          {status && status !== 'draft' ? (
+            <Text style={[styles.statusChip, { color: STATUS_CHIP[status].color }]}>
+              {STATUS_CHIP[status].label}
+            </Text>
+          ) : null}
         </View>
-        <Button label="›" kind="secondary" onPress={() => step(1)} />
+        <Button label="›" kind="secondary" onPress={() => stepPeriod(1)} />
       </View>
-      {anchor !== todayKey ? (
-        <Button label="Jump to today" kind="secondary" onPress={() => setAnchor(todayKey)} />
+      {periodRangeFor(todayKey).fromKey !== period.fromKey ? (
+        <Button label="Jump to this week" kind="secondary" onPress={() => setAnchor(todayKey)} />
+      ) : null}
+
+      {sheet?.status === 'rejected' ? (
+        <View style={styles.rejectCard}>
+          <Text style={styles.rejectTitle}>Rejected</Text>
+          <Text style={styles.rejectReason}>{sheet.rejectReason}</Text>
+          <Text style={styles.rejectHint}>
+            Fix the entries below, then resubmit for approval.
+          </Text>
+        </View>
       ) : null}
 
       {byDay.map(([dayKey, dayEntries]) => (
         <View key={dayKey} style={styles.dayGroup}>
-          {mode === 'week' ? (
-            <Text style={styles.dayHeader}>
-              {dayKey} · {formatDuration(dayEntries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0))}
-            </Text>
-          ) : null}
+          <Text style={styles.dayHeader}>
+            {dayKey} ·{' '}
+            {formatDuration(dayEntries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0))}
+          </Text>
           {dayEntries.map((e) => (
             <EntryRow
               key={e.id}
@@ -117,27 +191,88 @@ export function TimesheetScreen({ uid }: { uid: string }) {
           ))}
         </View>
       ))}
-      {entries.length === 0 && <Text style={styles.empty}>No hours in this {mode}.</Text>}
+      {entries.length === 0 && <Text style={styles.empty}>No hours in this week.</Text>}
+
+      {status === 'draft' ? (
+        <>
+          {!approverUid ? (
+            <Text style={styles.hint}>Pick your timesheet approver on the home screen first.</Text>
+          ) : null}
+          {hasRunningInPeriod ? (
+            <Text style={styles.hint}>Clock out before submitting this week.</Text>
+          ) : null}
+          {!started ? <Text style={styles.hint}>This week hasn't started yet.</Text> : null}
+          <Button
+            label={total === 0 ? 'Submit timesheet (no hours)' : 'Submit timesheet'}
+            onPress={() => act(() => submitTimesheet(uid, period, approverUid!, entries))}
+            disabled={!approverUid || hasRunningInPeriod || !started}
+          />
+        </>
+      ) : null}
+      {sheet && sheet.status === 'submitted' ? (
+        <Button
+          label="Withdraw submission"
+          kind="secondary"
+          onPress={() => act(() => withdrawTimesheet(sheet))}
+        />
+      ) : null}
+      {sheet && sheet.status === 'rejected' ? (
+        <Button
+          label="Resubmit timesheet"
+          onPress={() => act(() => resubmitTimesheet(sheet, approverUid!, entries))}
+          disabled={!approverUid || hasRunningInPeriod}
+        />
+      ) : null}
+      {sheet && sheet.status === 'approved' ? (
+        <>
+          <Text style={styles.hint}>
+            Approved — this week is locked. Only an admin can reopen it.
+          </Text>
+          {claims.admin ? (
+            <Button
+              label="Reopen (admin)"
+              kind="danger"
+              onPress={() => act(() => reopenTimesheet(sheet))}
+            />
+          ) : null}
+        </>
+      ) : null}
+      <ErrorText error={error} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  toggleRow: { flexDirection: 'row', gap: spacing(2) },
-  toggle: {
+  monthStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
+  monthChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(1.5),
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 20,
-    paddingHorizontal: spacing(5),
+    borderRadius: 14,
+    paddingHorizontal: spacing(2.5),
     paddingVertical: spacing(1.5),
   },
-  toggleOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  toggleLabel: { color: colors.textMuted, fontSize: 14 },
-  toggleLabelOn: { color: '#fff' },
+  monthChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  monthChipLabel: { fontSize: 12, color: colors.textMuted },
+  monthChipLabelOn: { color: '#fff' },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
   navCenter: { flex: 1, alignItems: 'center' },
   navLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
   navTotal: { fontSize: 13, color: colors.textMuted },
+  statusChip: { fontSize: 13, fontWeight: '700' },
+  rejectCard: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: 10,
+    padding: spacing(3),
+    gap: spacing(1),
+  },
+  rejectTitle: { color: colors.danger, fontWeight: '700', fontSize: 13 },
+  rejectReason: { color: colors.text, fontSize: 14 },
+  rejectHint: { color: colors.textMuted, fontSize: 12 },
   dayGroup: { gap: spacing(2) },
   dayHeader: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: spacing(2) },
   row: {
@@ -155,4 +290,5 @@ const styles = StyleSheet.create({
   rowNote: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
   rowDuration: { fontSize: 15, fontWeight: '700', color: colors.primary },
   empty: { color: colors.textMuted },
+  hint: { fontSize: 12, color: colors.textMuted },
 });

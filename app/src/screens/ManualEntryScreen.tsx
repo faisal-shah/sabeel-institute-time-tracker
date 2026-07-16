@@ -3,8 +3,9 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { addDays, dayKeyFor, deviceTimeZone, entryTimesValid, parseDayKey } from '@sabeel/shared';
 import { useActivities } from '../activities';
-import { createManualEntry } from '../entries';
+import { createManualEntry, explainEntryWriteError } from '../entries';
 import { ActivityPicker } from '../components/ActivityPicker';
+import { DateTimeField } from '../components/DateTimeField';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
@@ -19,11 +20,22 @@ function toEpoch(dateKey: string, hhmm: string): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-export function ManualEntryScreen({ uid }: { uid: string }) {
+export function ManualEntryScreen({
+  uid,
+  forUid,
+  forName,
+}: {
+  /** The signed-in user (the writer). */
+  uid: string;
+  /** When set, hours are logged on this user's behalf (manager/approver flow). */
+  forUid?: string;
+  forName?: string;
+}) {
   const nav = useNavigation();
   const activities = useActivities({ includeArchived: false });
   const tz = deviceTimeZone();
   const todayKey = dayKeyFor(Date.now(), tz);
+  const targetUid = forUid ?? uid;
 
   const [activityId, setActivityId] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState(todayKey);
@@ -42,21 +54,26 @@ export function ManualEntryScreen({ uid }: { uid: string }) {
     if (!valid || !activity || start === null || end === null) return;
     setError(null);
     try {
-      await createManualEntry({ uid, activity, start, end, note, creatorUid: uid });
+      await createManualEntry({ uid: targetUid, activity, start, end, note, creatorUid: uid });
       nav.goBack();
     } catch (e) {
-      setError((e as Error).message);
+      setError(explainEntryWriteError(e));
     }
   };
 
   return (
     <Screen>
+      {forUid && forUid !== uid ? (
+        <Text style={styles.onBehalf}>Adding hours for {forName ?? forUid}</Text>
+      ) : null}
       <Text style={styles.label}>Activity</Text>
       <ActivityPicker activities={activities} selectedId={activityId} onSelect={setActivityId} />
 
       <Text style={styles.label}>Date</Text>
       <View style={styles.dateRow}>
-        <TextInput value={dateKey} onChangeText={setDateKey} style={[styles.input, styles.grow]} />
+        <View style={styles.grow}>
+          <DateTimeField kind="date" value={dateKey} onChange={setDateKey} />
+        </View>
         <Button label="Today" kind="secondary" onPress={() => setDateKey(todayKey)} />
         <Button
           label="Yesterday"
@@ -68,11 +85,11 @@ export function ManualEntryScreen({ uid }: { uid: string }) {
       <View style={styles.timesRow}>
         <View style={styles.grow}>
           <Text style={styles.label}>From</Text>
-          <TextInput value={from} onChangeText={setFrom} style={styles.input} placeholder="09:00" />
+          <DateTimeField kind="time" value={from} onChange={setFrom} />
         </View>
         <View style={styles.grow}>
           <Text style={styles.label}>To</Text>
-          <TextInput value={to} onChangeText={setTo} style={styles.input} placeholder="17:00" />
+          <DateTimeField kind="time" value={to} onChange={setTo} />
         </View>
       </View>
 
@@ -97,6 +114,7 @@ export function ManualEntryScreen({ uid }: { uid: string }) {
 }
 
 const styles = StyleSheet.create({
+  onBehalf: { fontSize: 14, fontWeight: '700', color: colors.primary },
   label: { fontSize: 13, color: colors.textMuted, marginTop: spacing(2) },
   input: {
     borderWidth: 1,

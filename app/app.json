@@ -6,7 +6,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "platforms": ["android", "web"],
+    "platforms": [
+      "android",
+      "web"
+    ],
     "android": {
       "package": "com.sabeelinstitute.timetracker",
       "predictiveBackGestureEnabled": false,
@@ -16,6 +19,9 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["@react-native-google-signin/google-signin"]
+    "plugins": [
+      "@react-native-google-signin/google-signin",
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

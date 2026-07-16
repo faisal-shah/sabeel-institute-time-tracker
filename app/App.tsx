@@ -13,6 +13,8 @@ import { TimesheetScreen } from './src/screens/TimesheetScreen';
 import { EntryEditScreen } from './src/screens/EntryEditScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
 import { PersonDetailScreen } from './src/screens/PersonDetailScreen';
+import { ApprovalsScreen } from './src/screens/ApprovalsScreen';
+import { TimesheetReviewScreen } from './src/screens/TimesheetReviewScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 import { initSentry } from './src/sentry';
@@ -44,6 +46,7 @@ export default function App() {
       );
   } else {
     const { profile, claims, user } = session;
+    const isApprover = claims.role === 'manager' || claims.admin === true;
     content = (
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -59,7 +62,10 @@ export default function App() {
               headerTintColor: '#fff',
             }}
           >
-            {() => <ManualEntryScreen uid={user.uid} />}
+            {({ route }) => {
+              const p = (route.params ?? {}) as { forUid?: string; forName?: string };
+              return <ManualEntryScreen uid={user.uid} forUid={p.forUid} forName={p.forName} />;
+            }}
           </Stack.Screen>
           <Stack.Screen
             name="Timesheet"
@@ -70,7 +76,7 @@ export default function App() {
               headerTintColor: '#fff',
             }}
           >
-            {() => <TimesheetScreen uid={user.uid} />}
+            {() => <TimesheetScreen uid={user.uid} profile={profile} claims={claims} />}
           </Stack.Screen>
           <Stack.Screen
             name="EntryEdit"
@@ -130,7 +136,47 @@ export default function App() {
               {() => <ActivitiesScreen selfUid={user.uid} />}
             </Stack.Screen>
           ) : null}
-          {claims.admin ? (
+          {isApprover ? (
+            <Stack.Screen
+              name="Approvals"
+              options={{
+                headerShown: true,
+                title: 'Approvals',
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            >
+              {() => <ApprovalsScreen uid={user.uid} claims={claims} />}
+            </Stack.Screen>
+          ) : null}
+          {isApprover ? (
+            <Stack.Screen
+              name="TimesheetReview"
+              options={{
+                headerShown: true,
+                title: 'Review timesheet',
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            >
+              {({ route }) => {
+                const p = route.params as {
+                  uid: string;
+                  displayName: string;
+                  periodKey: string;
+                };
+                return (
+                  <TimesheetReviewScreen
+                    reviewerUid={user.uid}
+                    uid={p.uid}
+                    displayName={p.displayName}
+                    periodKey={p.periodKey}
+                  />
+                );
+              }}
+            </Stack.Screen>
+          ) : null}
+          {isApprover ? (
             <Stack.Screen
               name="Users"
               options={{
@@ -140,7 +186,7 @@ export default function App() {
                 headerTintColor: '#fff',
               }}
             >
-              {() => <UsersScreen selfUid={user.uid} />}
+              {() => <UsersScreen selfUid={user.uid} claims={claims} />}
             </Stack.Screen>
           ) : null}
         </Stack.Navigator>

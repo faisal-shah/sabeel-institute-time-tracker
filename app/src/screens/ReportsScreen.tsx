@@ -30,6 +30,7 @@ export function ReportsScreen() {
   const [window, setWindow] = useState<Window>('month');
   const [personUid, setPersonUid] = useState<string | null>(null);
   const [activityId, setActivityId] = useState<string | null>(null);
+  const [includeUnapproved, setIncludeUnapproved] = useState(false);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -40,8 +41,9 @@ export function ReportsScreen() {
       ...r,
       ...(personUid ? { uid: personUid } : {}),
       ...(activityId ? { activityId } : {}),
+      ...(includeUnapproved ? { includeUnapproved: true } : {}),
     };
-  }, [window, personUid, activityId, todayKey]);
+  }, [window, personUid, activityId, includeUnapproved, todayKey]);
 
   useEffect(() => {
     let live = true;
@@ -101,6 +103,25 @@ export function ReportsScreen() {
           />
         ))}
       </View>
+
+      <Text style={styles.section}>Hours counted</Text>
+      <View style={styles.chipRow}>
+        <Chip
+          label="Official (approved only)"
+          on={!includeUnapproved}
+          onPress={() => setIncludeUnapproved(false)}
+        />
+        <Chip
+          label="Include unapproved"
+          on={includeUnapproved}
+          onPress={() => setIncludeUnapproved(true)}
+        />
+      </View>
+      {includeUnapproved ? (
+        <Text style={styles.unofficial}>
+          Unofficial view — includes hours from timesheets not yet approved.
+        </Text>
+      ) : null}
 
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>Total</Text>
@@ -213,4 +234,5 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 15, color: colors.text },
   rowValue: { fontSize: 15, fontWeight: '600', color: colors.primary },
   status: { color: colors.primary, fontSize: 13 },
+  unofficial: { color: colors.danger, fontSize: 12 },
 });

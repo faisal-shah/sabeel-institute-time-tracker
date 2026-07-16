@@ -9,8 +9,9 @@ import {
   tzLabelFor,
 } from '@sabeel/shared';
 import { useActivities } from '../activities';
-import { useEntry, updateEntry, deleteEntry } from '../entries';
+import { useEntry, updateEntry, deleteEntry, explainEntryWriteError } from '../entries';
 import { ActivityPicker } from '../components/ActivityPicker';
+import { DateTimeField } from '../components/DateTimeField';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
@@ -61,7 +62,7 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
       });
       nav.goBack();
     } catch (e) {
-      setError((e as Error).message);
+      setError(explainEntryWriteError(e));
     }
   };
 
@@ -71,7 +72,7 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
       await deleteEntry(entry.id);
       nav.goBack();
     } catch (e) {
-      setError((e as Error).message);
+      setError(explainEntryWriteError(e));
     }
   };
 
@@ -87,16 +88,16 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
       <ActivityPicker activities={activities} selectedId={activityId} onSelect={setActivityId} />
 
       <Text style={styles.label}>Date</Text>
-      <TextInput value={dateKey} onChangeText={setDateKey} style={styles.input} />
+      <DateTimeField kind="date" value={dateKey} onChange={setDateKey} />
 
       <View style={styles.timesRow}>
         <View style={styles.grow}>
           <Text style={styles.label}>From</Text>
-          <TextInput value={from} onChangeText={setFrom} style={styles.input} />
+          <DateTimeField kind="time" value={from} onChange={setFrom} />
         </View>
         <View style={styles.grow}>
           <Text style={styles.label}>To</Text>
-          <TextInput value={to} onChangeText={setTo} style={styles.input} />
+          <DateTimeField kind="time" value={to} onChange={setTo} />
         </View>
       </View>
 

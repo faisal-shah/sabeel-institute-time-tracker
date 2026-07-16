@@ -80,7 +80,12 @@ service cloud.firestore {
         && request.resource.data.admin == false
         && request.resource.data.activeEntryId == null
         && request.resource.data.approverUid == null;
-      allow read: if isSignedIn() && (request.auth.uid == uid || isManager() || isAdmin());
+      // Everyone active may read manager/admin profiles — users must see the
+      // list of possible approvers to pick theirs (queries filter on role/admin).
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid || isManager() || isAdmin()
+            || (isActive() && resource != null
+                && (resource.data.role == 'manager' || resource.data.admin == true)));
       // Self may touch the clock pointer, cosmetic profile fields, and their own
       // approver choice (which must be an active manager/admin, or null).
       allow update: if isActive() && request.auth.uid == uid

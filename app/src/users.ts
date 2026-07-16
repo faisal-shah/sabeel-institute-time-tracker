@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, or, query, updateDoc, where } from 'firebase/firestore';
 import { COLLECTIONS, type UserDoc } from '@sabeel/shared';
 import { db } from './firebase';
 
@@ -17,6 +17,30 @@ export function setApprover(uid: string, approverUid: string | null): Promise<vo
 /** The active managers/admins a user may pick as their approver. */
 export function approverChoices(users: UserRow[]): UserRow[] {
   return users.filter((u) => u.status === 'active' && (u.role === 'manager' || u.admin));
+}
+
+/**
+ * Live list of possible approvers (active managers/admins). Unlike useUsers,
+ * this query is readable by every active user — rules open manager/admin
+ * profiles to all so people can pick their own approver.
+ */
+export function useApproverChoices(): UserRow[] {
+  const [rows, setRows] = useState<UserRow[]>([]);
+  useEffect(() => {
+    const q = query(
+      collection(db, COLLECTIONS.users),
+      or(where('role', '==', 'manager'), where('admin', '==', true)),
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ uid: d.id, ...(d.data() as UserDoc) }));
+        setRows(approverChoices(list).sort((a, b) => a.displayName.localeCompare(b.displayName)));
+      },
+      (e) => console.warn('useApproverChoices listener', e.code ?? e.message),
+    );
+  }, []);
+  return rows;
 }
 
 /** Live list of all users — managers use it for report filters and person detail. */

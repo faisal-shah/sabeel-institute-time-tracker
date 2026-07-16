@@ -2,8 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { COLLECTIONS, type UserDoc, type UserRole, type UserStatus } from '@sabeel/shared';
+import {
+  COLLECTIONS,
+  type TokenClaims,
+  type UserDoc,
+  type UserRole,
+  type UserStatus,
+} from '@sabeel/shared';
 import { db, functions } from '../firebase';
+import { approverChoices, setApprover } from '../users';
+import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
@@ -16,9 +24,14 @@ const setUserAccess = httpsCallable<
 
 const statusRank: Record<UserStatus, number> = { pending: 0, active: 1, disabled: 2 };
 
-export function UsersScreen({ selfUid }: { selfUid: string }) {
+/**
+ * Admins: approve/disable, roles, admin grants, approver assignment.
+ * Managers (non-admin): read-only list + approver assignment for non-admins.
+ */
+export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: TokenClaims }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const isAdmin = claims.admin === true;
 
   useEffect(
     () =>
@@ -41,6 +54,7 @@ export function UsersScreen({ selfUid }: { selfUid: string }) {
       ),
     [rows],
   );
+  const approvers = useMemo(() => approverChoices(rows), [rows]);
 
   const change = async (input: Parameters<typeof setUserAccess>[0]) => {
     setError(null);
@@ -66,39 +80,78 @@ export function UsersScreen({ selfUid }: { selfUid: string }) {
             <Text style={styles.badge}>{u.role}</Text>
             {u.admin ? <Text style={[styles.badge, styles.badgeAdmin]}>admin</Text> : null}
           </View>
-          <View style={styles.actions}>
-            {u.status === 'pending' && (
-              <Button label="Approve" onPress={() => change({ uid: u.uid, status: 'active' })} />
-            )}
-            {u.status === 'active' && u.uid !== selfUid && (
-              <Button
-                label="Disable"
-                kind="danger"
-                onPress={() => change({ uid: u.uid, status: 'disabled' })}
+
+          {u.status === 'active' && (isAdmin || !u.admin) ? (
+            <View style={styles.approverRow}>
+              <Text style={styles.approverLabel}>Approver</Text>
+              <SearchablePicker
+                items={approvers
+                  .filter((a) => a.uid !== u.uid || u.admin) // only admins may self-approve
+                  .map((a) => ({
+                    id: a.uid,
+                    label: a.uid === u.uid ? `${a.displayName} (self)` : a.displayName,
+                    sublabel: a.admin ? 'admin' : 'manager',
+                  }))}
+                selectedId={u.approverUid}
+                onSelect={(id) => {
+                  setError(null);
+                  setApprover(u.uid, id).catch((e) => setError((e as Error).message));
+                }}
+                placeholder="No approver assigned"
+                title={`Approver for ${u.displayName}`}
               />
-            )}
-            {u.status === 'disabled' && (
-              <Button
-                label="Re-activate"
-                kind="secondary"
-                onPress={() => change({ uid: u.uid, status: 'active' })}
-              />
-            )}
-            {u.status === 'active' && u.role === 'member' && (
-              <Button
-                label="Make manager"
-                kind="secondary"
-                onPress={() => change({ uid: u.uid, role: 'manager' })}
-              />
-            )}
-            {u.status === 'active' && u.role === 'manager' && u.uid !== selfUid && (
-              <Button
-                label="Make member"
-                kind="secondary"
-                onPress={() => change({ uid: u.uid, role: 'member' })}
-              />
-            )}
-          </View>
+            </View>
+          ) : null}
+
+          {isAdmin ? (
+            <View style={styles.actions}>
+              {u.status === 'pending' && (
+                <Button label="Approve" onPress={() => change({ uid: u.uid, status: 'active' })} />
+              )}
+              {u.status === 'active' && u.uid !== selfUid && (
+                <Button
+                  label="Disable"
+                  kind="danger"
+                  onPress={() => change({ uid: u.uid, status: 'disabled' })}
+                />
+              )}
+              {u.status === 'disabled' && (
+                <Button
+                  label="Re-activate"
+                  kind="secondary"
+                  onPress={() => change({ uid: u.uid, status: 'active' })}
+                />
+              )}
+              {u.status === 'active' && u.role === 'member' && (
+                <Button
+                  label="Make manager"
+                  kind="secondary"
+                  onPress={() => change({ uid: u.uid, role: 'manager' })}
+                />
+              )}
+              {u.status === 'active' && u.role === 'manager' && u.uid !== selfUid && (
+                <Button
+                  label="Make member"
+                  kind="secondary"
+                  onPress={() => change({ uid: u.uid, role: 'member' })}
+                />
+              )}
+              {u.status === 'active' && !u.admin && (
+                <Button
+                  label="Make admin"
+                  kind="secondary"
+                  onPress={() => change({ uid: u.uid, admin: true })}
+                />
+              )}
+              {u.status === 'active' && u.admin && u.uid !== selfUid && (
+                <Button
+                  label="Remove admin"
+                  kind="secondary"
+                  onPress={() => change({ uid: u.uid, admin: false })}
+                />
+              )}
+            </View>
+          ) : null}
         </View>
       ))}
       {sorted.length === 0 && <Text style={styles.empty}>No users yet.</Text>}
@@ -128,6 +181,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   badgeAdmin: { backgroundColor: colors.accent, color: '#3A2E00' },
+  approverRow: { gap: spacing(1), marginTop: spacing(1) },
+  approverLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(2) },
   empty: { color: colors.textMuted },
 });

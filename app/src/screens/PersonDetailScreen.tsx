@@ -42,7 +42,7 @@ export function PersonDetailScreen({ uid, displayName }: { uid: string; displayN
     <Screen>
       <Text style={styles.name}>{displayName}</Text>
       <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>LIFETIME HOURS</Text>
+        <Text style={styles.totalLabel}>LIFETIME APPROVED HOURS</Text>
         <Text style={styles.totalValue}>
           {totals ? formatDuration(totals.totalMinutes) : '…'}
         </Text>

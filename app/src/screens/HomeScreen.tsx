@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -7,6 +7,9 @@ import {
   deviceTimeZone,
   formatDuration,
   minutesBetween,
+  periodKeyFor,
+  periodLabel,
+  periodRangeFor,
   timeOfDayFor,
   type TokenClaims,
   type UserDoc,
@@ -14,10 +17,19 @@ import {
 import type { RootStackParamList } from '../nav';
 import { signOut } from '../session';
 import { useActivities } from '../activities';
-import { clockIn, clockOut, useEntry, useDayMinutes } from '../entries';
+import { clockIn, clockOut, useEntry, useDayMinutes, explainEntryWriteError } from '../entries';
+import { useTimesheet, useRejectedCount, useApprovalQueue } from '../timesheets';
+import { setApprover, useApproverChoices } from '../users';
 import { ActivityPicker } from '../components/ActivityPicker';
+import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
+
+const STATUS_LABEL = {
+  submitted: 'Submitted — awaiting approval',
+  approved: 'Approved',
+  rejected: 'Rejected — needs your attention',
+} as const;
 
 export function HomeScreen({
   uid,
@@ -46,6 +58,18 @@ export function HomeScreen({
   const todayKey = dayKeyFor(Date.now(), tz);
   const todayMinutes = useDayMinutes(uid, todayKey);
 
+  // This week's timesheet state: clock-in is locked once it's submitted/approved.
+  const currentPeriod = periodRangeFor(todayKey);
+  const currentSheet = useTimesheet(uid, periodKeyFor(todayKey));
+  const periodLocked =
+    currentSheet != null && (currentSheet.status === 'submitted' || currentSheet.status === 'approved');
+  const rejectedCount = useRejectedCount(uid);
+
+  // Approver self-service (sticky; stamped at submission).
+  const approvers = useApproverChoices();
+  const isApprover = claims.role === 'manager' || claims.admin === true;
+  const queue = useApprovalQueue(uid);
+
   const selected = activities.find((a) => a.id === selectedId) ?? null;
 
   const onClockIn = async () => {
@@ -54,7 +78,7 @@ export function HomeScreen({
     try {
       await clockIn(uid, selected);
     } catch (e) {
-      setError((e as Error).message);
+      setError(explainEntryWriteError(e));
     }
   };
   const onClockOut = async () => {
@@ -72,6 +96,29 @@ export function HomeScreen({
       <Text style={styles.greeting}>Salaam, {profile.displayName}</Text>
       <Text style={styles.today}>Today: {formatDuration(todayMinutes)}</Text>
 
+      {rejectedCount > 0 ? (
+        <Pressable style={styles.rejectedBanner} onPress={() => nav.navigate('Timesheet')}>
+          <Text style={styles.rejectedText}>
+            {rejectedCount === 1
+              ? 'A timesheet was rejected — tap to review and resubmit.'
+              : `${rejectedCount} timesheets were rejected — tap to review and resubmit.`}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      <Pressable style={styles.periodStrip} onPress={() => nav.navigate('Timesheet')}>
+        <Text style={styles.periodLabel}>This week · {periodLabel(currentPeriod)}</Text>
+        <Text
+          style={[
+            styles.periodStatus,
+            currentSheet?.status === 'approved' && styles.statusApproved,
+            currentSheet?.status === 'rejected' && styles.statusRejected,
+          ]}
+        >
+          {currentSheet == null ? 'Not submitted' : STATUS_LABEL[currentSheet.status]}
+        </Text>
+      </Pressable>
+
       {running ? (
         <View style={styles.runningCard}>
           <Text style={styles.runningLabel}>CLOCKED IN</Text>
@@ -87,6 +134,14 @@ export function HomeScreen({
             </Text>
           ) : null}
           <Button label="Clock out" kind="danger" onPress={onClockOut} />
+        </View>
+      ) : periodLocked ? (
+        <View style={styles.clockCard}>
+          <Text style={styles.pickLabel}>
+            This week's timesheet is {currentSheet?.status}. Withdraw it from “My timesheet”
+            {currentSheet?.status === 'approved' ? ' (needs an admin to reopen)' : ''} to log
+            more hours this week.
+          </Text>
         </View>
       ) : (
         <View style={styles.clockCard}>
@@ -108,7 +163,33 @@ export function HomeScreen({
       />
       <Button label="My timesheet" kind="secondary" onPress={() => nav.navigate('Timesheet')} />
 
+      <View style={styles.approverRow}>
+        <Text style={styles.approverLabel}>My timesheet approver</Text>
+        <SearchablePicker
+          items={approvers
+            .filter((a) => a.uid !== uid || claims.admin === true) // only admins may self-approve
+            .map((a) => ({
+              id: a.uid,
+              label: a.uid === uid ? `${a.displayName} (myself)` : a.displayName,
+              sublabel: a.admin ? 'admin' : 'manager',
+            }))}
+          selectedId={profile.approverUid}
+          onSelect={(id) => {
+            setError(null);
+            setApprover(uid, id).catch((e) => setError((e as Error).message));
+          }}
+          placeholder="Choose who approves your hours"
+          title="Timesheet approver"
+        />
+      </View>
+
       <View style={styles.footer}>
+        {isApprover ? (
+          <Button
+            label={queue.length > 0 ? `Approvals (${queue.length})` : 'Approvals'}
+            onPress={() => nav.navigate('Approvals')}
+          />
+        ) : null}
         {claims.role === 'manager' ? (
           <>
             <Button label="Reports" onPress={() => nav.navigate('Reports')} />
@@ -119,7 +200,7 @@ export function HomeScreen({
             />
           </>
         ) : null}
-        {claims.admin ? (
+        {claims.admin || claims.role === 'manager' ? (
           <Button label="Manage users" onPress={() => nav.navigate('Users')} />
         ) : null}
         <Button label="Sign out" kind="secondary" onPress={() => signOut()} />
@@ -131,6 +212,26 @@ export function HomeScreen({
 const styles = StyleSheet.create({
   greeting: { fontSize: 20, fontWeight: '600', color: colors.text },
   today: { fontSize: 14, color: colors.textMuted },
+  rejectedBanner: {
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    padding: spacing(3),
+  },
+  rejectedText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  periodStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: spacing(3),
+    gap: spacing(2),
+  },
+  periodLabel: { fontSize: 13, color: colors.textMuted },
+  periodStatus: { fontSize: 13, fontWeight: '700', color: colors.text },
+  statusApproved: { color: colors.primary },
+  statusRejected: { color: colors.danger },
   clockCard: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -154,5 +255,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
     lineHeight: 18,
   },
+  approverRow: { gap: spacing(2), marginTop: spacing(2) },
+  approverLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   footer: { gap: spacing(3), marginTop: spacing(4) },
 });

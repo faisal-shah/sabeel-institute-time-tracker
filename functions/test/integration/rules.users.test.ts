@@ -186,6 +186,12 @@ describe('firestore.rules — approver assignment', () => {
     await assertFails(updateDoc(doc(alice().firestore(), 'users/bob'), { approverUid: 'mgr' }));
   });
 
+  it('active members read manager/admin profiles (approver picking) but not other members', async () => {
+    await assertSucceeds(getDoc(doc(alice().firestore(), 'users/mgr')));
+    await assertSucceeds(getDoc(doc(alice().firestore(), 'users/adm')));
+    await assertFails(getDoc(doc(alice().firestore(), 'users/bob')));
+  });
+
   it('cannot point approverUid at a disabled or pending manager', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'users/oldmgr'), {
