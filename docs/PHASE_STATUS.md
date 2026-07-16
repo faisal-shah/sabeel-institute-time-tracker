@@ -13,6 +13,7 @@ phase boundary.
 | 5 | Reporting + CSV + statements | **complete** (2026-07-15: reporting integration tests + e2e CSV download + statement) |
 | 5b | Drive sync (Sheet + CSV snapshots) | **complete** (2026-07-15: driveRows unit + runSync integration tests + full e2e green) |
 | 6 | Polish + deploy readiness | **complete** (2026-07-15: auto-close + nudge, Sentry seams, deploy/secrets docs) |
+| 7 | Weekly timesheets: submit/approve workflow | **in progress** (2026-07-16: shared period math + rules + lifecycle tests + full UI + approved-only reporting built; suite green; deploy + wipe pending) |
 
 ## Deploy log
 
@@ -35,3 +36,13 @@ phase boundary.
 - 2026-07-15 — Phone-first for everyone including managers; web = big screen/print.
 - 2026-07-15 — Drive sync scope: live Google Sheet + monthly CSV snapshots via
   service account in a shared folder.
+- 2026-07-16 — **Timesheet workflow supersedes the honor system** (Phase 7):
+  Sun–Sat calendar-week periods clipped to month boundaries; users submit each
+  period; a sticky self-chosen approver (any active manager/admin; assignable by
+  managers/admins too, stamped at submission) approves or rejects with reason;
+  approved = locked, admin-only reopen (delete = back to draft); zero-hour submits
+  OK, mid-period submit of the current week OK, never future periods; reporting/
+  CSV/Drive count approved timesheets only (manager opt-in unofficial view).
+- 2026-07-16 — Admin grants move in-app (Manage users); self-demotion still
+  blocked server-side. Greenfield wipe at deploy: all data + users except the
+  admin.

@@ -51,5 +51,13 @@ Firebase emulators until deploy time (Phase 6).
 
 ## First admin (after first deploy)
 
-- [ ] Sign in once with your own Google account (it lands pending), then run the
-  one-time bootstrap script Claude provides to promote yourself to admin.
+- [x] Done 2026-07-16 via a temporary one-shot bootstrap function (deployed,
+  called once, deleted). You are an active admin+manager.
+
+## Phase 7 rollout (timesheets)
+
+- [ ] **Confirm the data wipe** before Claude runs it: the Phase 7 deploy deletes
+  ALL Firestore data and ALL Auth users except faisal.shah@gmail.com (greenfield,
+  agreed 2026-07-16). Nothing to do in a console — just say go when asked.
+- [ ] After the wipe + deploy: sign in on the site, confirm you're still admin,
+  and note your approver defaults to yourself (admins self-approve).

@@ -68,7 +68,9 @@ async function main() {
   // 1. Build functions + export the web bundle in emulator mode.
   console.log('▸ building functions and web bundle (emulator mode)…');
   execFileSync('npm', ['run', 'build'], { cwd: root, stdio: 'inherit' });
-  execFileSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-web'], {
+  // --clear: EXPO_PUBLIC_* vars are inlined at bundle time and Metro's cache can
+  // serve a bundle built under DIFFERENT env (e.g. a prod export) — never trust it.
+  execFileSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-web', '--clear'], {
     cwd: join(root, 'app'),
     stdio: 'inherit',
     env: { ...process.env, EXPO_PUBLIC_USE_EMULATORS: '1' },
@@ -229,9 +231,17 @@ async function main() {
   const actCount = await vol.getByText('Projects & events').count();
   if (actCount !== 0) throw new Error('member sees the manager Projects & events button');
 
+  // The activity/approver pickers are searchable modals now: click the field,
+  // then the item inside the modal (modals render last in the DOM → .last()).
+  async function pickFromModal(page, fieldText, itemText) {
+    await page.getByText(fieldText, { exact: false }).last().click();
+    await page.getByPlaceholder('Search…').waitFor();
+    await page.getByText(itemText, { exact: false }).last().click();
+  }
+
   console.log('▸ Phase 3: volunteer clocks in, clocks out, adds manual hours…');
   // Tutoring is the only active activity (Food Drive was archived above).
-  await vol.getByText('Tutoring', { exact: true }).first().click();
+  await pickFromModal(vol, 'Pick a project or event', 'Tutoring');
   await vol.getByText('Clock in', { exact: true }).click();
   await vol.getByText('CLOCKED IN').waitFor();
   await vol.screenshot({ path: join(shots, '7-clocked-in.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
@@ -242,8 +252,7 @@ async function main() {
   await vol.getByText('Today: 1m').waitFor();
 
   await vol.getByText('Add hours manually').click();
-  // .last(): ManualEntry mounts on top while Home (with its own chip) stays in the DOM.
-  await vol.getByText('Tutoring', { exact: true }).last().click();
+  await pickFromModal(vol, 'Pick a project or event', 'Tutoring');
   const times = vol.locator('input');
   await times.nth(1).fill('09:00'); // from  (nth(0) is the date)
   await times.nth(2).fill('10:30'); // to
@@ -253,8 +262,8 @@ async function main() {
   await vol.getByText('Today: 1h 31m').waitFor({ timeout: 15000 });
   await vol.screenshot({ path: join(shots, '8-after-manual.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
-  console.log('▸ Phase 4: timesheet day view, edit an entry, delete an entry…');
-  await vol.getByText('My timesheet').click();
+  console.log('▸ Phase 4: period timesheet — edit an entry, delete an entry…');
+  await vol.getByText('My timesheet', { exact: true }).click();
   await vol.getByText('1h 31m', { exact: true }).first().waitFor();
   await vol.screenshot({ path: join(shots, '9-timesheet.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
@@ -268,23 +277,82 @@ async function main() {
   await vol.getByText('1m', { exact: true }).last().click();
   await vol.getByText('Delete entry', { exact: true }).click();
   await vol.getByText('2h 00m', { exact: true }).first().waitFor();
+  await vol.screenshot({ path: join(shots, '10-timesheet-period.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
-  // Week view still shows the same total.
-  await vol.getByText('week', { exact: true }).click();
-  await vol.getByText('2h 00m', { exact: true }).first().waitFor();
-  await vol.screenshot({ path: join(shots, '10-timesheet-week.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  console.log('▸ Phase 7: volunteer picks an approver and submits the week…');
+  // Submit is gated until an approver is chosen (rules require the stamp).
+  await vol.getByText('Pick your timesheet approver', { exact: false }).waitFor();
+  await vol.goto(baseUrl + '/');
+  await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await pickFromModal(vol, 'Choose who approves your hours', 'Admin');
+  // The field echoes the selection once the profile listener catches up — wait
+  // for it so Submit isn't clicked while still disabled.
+  await vol.getByText('Admin', { exact: true }).first().waitFor();
+  await vol.getByText('My timesheet', { exact: true }).click();
+  await vol.getByText('Submit timesheet', { exact: true }).click();
+  await vol.getByText('Submitted', { exact: true }).first().waitFor();
+  await vol.screenshot({ path: join(shots, '11-submitted.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
-  console.log('▸ Phase 5: admin/manager reports, CSV export, lifetime statement…');
-  // Reuse the already-authenticated admin page (it's a manager+admin). Reload to
-  // Home to leave the Users screen; avoids a fresh-context auth-rehydration race.
+  console.log('▸ Phase 7: approver rejects with a reason → volunteer sees it live…');
   const mgr = admin;
   await mgr.goto(baseUrl + '/');
   await mgr.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await mgr.getByText('Approvals (1)', { exact: true }).click();
+  await mgr.getByText('Volunteer', { exact: true }).last().click();
+  await mgr.getByText('Total: 2h 00m', { exact: false }).waitFor();
+  await mgr.getByPlaceholder('What needs fixing?').fill('Tuesday hours belong to Food Drive.');
+  await mgr.getByText('Reject timesheet', { exact: true }).click();
+  await mgr.getByText('Nothing waiting for approval', { exact: false }).waitFor();
+
+  // Volunteer home shows the rejection banner live; the reason shows on the sheet.
+  await vol.goto(baseUrl + '/');
+  await vol.getByText('A timesheet was rejected', { exact: false }).waitFor({ timeout: 30000 });
+  await vol.getByText('A timesheet was rejected', { exact: false }).click();
+  await vol.getByText('Tuesday hours belong to Food Drive.').waitFor();
+  await vol.screenshot({ path: join(shots, '12-rejected.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+
+  console.log('▸ Phase 7: volunteer resubmits; approver adds hours on behalf + approves…');
+  await vol.getByText('Resubmit timesheet', { exact: true }).click();
+  await vol.getByText('Submitted', { exact: true }).first().waitFor();
+
+  await mgr.goto(baseUrl + '/');
+  await mgr.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await mgr.getByText('Approvals (1)', { exact: true }).click();
+  await mgr.getByText('Volunteer', { exact: true }).last().click();
+  // Add a 1h entry on the volunteer's behalf (approver correction path).
+  await mgr.getByText('Add entry for Volunteer', { exact: true }).click();
+  await mgr.getByText('Adding hours for Volunteer', { exact: false }).waitFor();
+  await pickFromModal(mgr, 'Pick a project or event', 'Tutoring');
+  const mgrTimes = mgr.locator('input');
+  await mgrTimes.nth(1).fill('14:00');
+  await mgrTimes.nth(2).fill('15:00');
+  await mgr.getByText('Save hours', { exact: true }).click();
+  // Back on the review screen the live total includes the added hour.
+  await mgr.getByText('Total: 3h 00m', { exact: false }).waitFor({ timeout: 15000 });
+  await mgr.getByText('Approve timesheet', { exact: true }).click();
+  await mgr.getByText('Nothing waiting for approval', { exact: false }).waitFor();
+  await mgr.screenshot({ path: join(shots, '13-approved-queue-empty.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+
+  console.log('▸ Phase 7: approved week is locked for the volunteer…');
+  await vol.goto(baseUrl + '/');
+  await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await vol.getByText('Approved', { exact: true }).first().waitFor({ timeout: 30000 });
+  // The clock-in card is replaced by the lock notice.
+  await vol.getByText("This week's timesheet is approved", { exact: false }).waitFor();
+  await vol.getByText('My timesheet', { exact: true }).click();
+  await vol.getByText('this week is locked', { exact: false }).waitFor();
+  const editCount = await vol.getByText('Submit timesheet', { exact: true }).count();
+  if (editCount !== 0) throw new Error('approved sheet still offers Submit');
+  await vol.screenshot({ path: join(shots, '14-approved-locked.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+
+  console.log('▸ Phase 5: reports count APPROVED hours; CSV has real emails…');
+  await mgr.goto(baseUrl + '/');
+  await mgr.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
   await mgr.getByText('Reports', { exact: true }).click();
-  // 'all' period, everyone: the volunteer's 2h and any admin hours (none) → 2h 00m.
+  // 'all' period, everyone, official view → the volunteer's approved 3h.
   await mgr.getByText('all', { exact: true }).click();
-  await mgr.getByText('2h 00m', { exact: true }).first().waitFor({ timeout: 15000 });
-  await mgr.screenshot({ path: join(shots, '11-reports.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  await mgr.getByText('3h 00m', { exact: true }).first().waitFor({ timeout: 15000 });
+  await mgr.screenshot({ path: join(shots, '15-reports.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   // CSV download: capture the browser download and assert its contents.
   const [dl] = await Promise.all([
@@ -294,9 +362,10 @@ async function main() {
   const dlPath = join(shots, 'export.csv');
   await dl.saveAs(dlPath);
   const csv = readFileSync(dlPath, 'utf8');
-  if (!/Person,Email hint,Activity,Date,Start,End/.test(csv))
+  if (!/Person,Email,Activity,Date,Start,End/.test(csv))
     throw new Error('CSV missing header: ' + csv.slice(0, 80));
   if (!/Volunteer/.test(csv)) throw new Error('CSV missing the volunteer row');
+  if (!/volunteer@example\.com/.test(csv)) throw new Error('CSV missing the volunteer email');
 
   console.log('▸ Phase 5b: Drive sync button degrades gracefully when unconfigured…');
   // Still on Reports here — test the sync button before navigating away.
@@ -307,9 +376,9 @@ async function main() {
   // filter chip (earlier) and as the tappable By-person row (later) — .last()
   // is the row that navigates to the statement.
   await mgr.getByText('Volunteer', { exact: true }).last().click();
-  await mgr.getByText('LIFETIME HOURS').last().waitFor();
-  await mgr.getByText('2h 00m', { exact: true }).last().waitFor();
-  await mgr.screenshot({ path: join(shots, '12-person-detail.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  await mgr.getByText('LIFETIME APPROVED HOURS').last().waitFor();
+  await mgr.getByText('3h 00m', { exact: true }).last().waitFor();
+  await mgr.screenshot({ path: join(shots, '16-person-detail.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   await browser.close();
   staticServer.close();

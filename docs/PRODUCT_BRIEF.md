@@ -9,7 +9,7 @@ Faisal is building a time-tracking platform (Android app + website) for Sabeel I
 | Topic | Decision |
 |---|---|
 | Auth | Sign in with Google **only**. Any Google account may sign in; **every** new user — org-domain accounts included, no domain auto-approval — is `pending` until an **admin** approves (the approver sees the requester's name and email). |
-| Trust model | Honor system — hours count immediately, no approval workflow for entries; managers can edit/correct anyone's entries. |
+| Trust model | **Weekly timesheets with submit/approve** (supersedes the v1 honor system, decided 2026-07-16). Users log hours freely into the current period (Sun–Sat calendar week, clipped to month boundaries); they review and **submit** each period's timesheet; their sticky, self-chosen **approver** (an active manager/admin; assignment changeable by managers/admins too) approves or rejects with a reason. Approved periods are locked (admin reopen only). **Official reporting counts approved timesheets only** (managers get an explicit unofficial include-unapproved view). Managers/approvers can correct and add entries on a user's behalf. Admins self-approve (top of chain). |
 | Scope | Generic time tracking; roles are member / manager (+ admin flag). **Admins** approve/disable users and change roles; **managers** create/archive activities, run reports, and correct entries. |
 | Platforms v1 | Android app + responsive website from **one Expo codebase** (react-native-web, PineTimeCompanion-style). No iOS, no EAS. |
 | Clock-in | Own device, anywhere; one active session per user; plus manual entry (start/end or duration) with activity + optional note. |
@@ -63,6 +63,7 @@ users/{uid}
   role: 'member' | 'manager'
   admin: boolean
   activeEntryId: string | null        # running clock session pointer
+  approverUid: string | null          # sticky timesheet approver (active manager/admin)
   createdAt, approvedAt?, approvedBy?
 
 activities/{id}
@@ -75,24 +76,49 @@ timeEntries/{id}                      # top-level: managers query across users
   durationMinutes?: number            # set on close; ABSENT while running (excludes from sums)
   timeZone: string                    # IANA tz captured from device at creation (work-local)
   dayKey: string                      # 'YYYY-MM-DD' of start in `timeZone` — the bucketing key
+  periodKey: string                   # periodKeyFor(dayKey) — the entry's timesheet period;
+                                      # recomputed canonically by rules (spoof-proof)
   source: 'clock' | 'manual'
   note?, autoClosed?, createdAt, updatedAt, lastEditedBy?
+
+timesheets/{uid}_{periodKey}          # one doc per (user, period) once submitted; no doc = draft
+  uid, periodKey, toKey               # Sun–Sat week clipped to the month (first/last may be partial)
+  status: 'submitted' | 'approved' | 'rejected'
+  approverUid                         # stamped from users/{uid}.approverUid at (re)submission
+  submittedAt, decidedAt?, decidedBy?, rejectReason?
+  totalMinutes, entryCount            # informational snapshot; live truth = the period's entries
+  createdAt, updatedAt
 ```
+
+**Timesheet lifecycle**: submit = owner creates the doc (zero-hour OK; current week may
+be submitted mid-period; never future periods); decide = stamped approver or any admin
+(reject requires a reason); resubmit after rejection re-stamps the owner's current
+approver; withdraw = owner deletes pre-approval; admin delete reopens anything.
+Entry writes per period state: draft/rejected → owner + any manager/admin (on-behalf
+creates are closed-only and flagged `lastEditedBy`); submitted → stamped approver +
+admins only; approved → nobody. Exception: the owner may always close their own
+running session (clock-out is never bricked).
 
 **Timezone semantics** (Faisal's Singapore example is the spec): every entry carries the IANA timezone of the device that created it; `dayKey` is the local calendar date of `start` in that timezone, computed by a shared helper (`Intl.DateTimeFormat`-based, no date library). Timesheets and reports bucket by `dayKey` (string range queries), and times display in `entry.timeZone` with a tz label (e.g. "09:00–17:00 SGT") — so the manager in California sees Monday 9–5, not Sunday 9pm. Edits recompute `dayKey` via the same helper.
 
 **Totals** (dashboard, lifetime): Firestore aggregation queries (`getAggregateFromServer` + `sum('durationMinutes')`) on the fly — no counter docs; effectively free at this scale and running sessions are excluded automatically.
 
-**Indexes** (`firestore.indexes.json`): `timeEntries (uid, dayKey DESC)`, `(activityId, dayKey DESC)`, `(uid, activityId, dayKey DESC)`; `activities (status, name)`.
+**Indexes** (`firestore.indexes.json`): `timeEntries (uid, dayKey DESC)`, `(activityId, dayKey DESC)`, `(uid, activityId, dayKey DESC)`, `(end, start)`; `activities (status, name)`; `timesheets (status, periodKey)`, `(approverUid, status)`, `(uid, periodKey)`, `(uid, status)`.
+
+**Reporting scope**: `reportTotals`/`exportCsv`/Drive sync filter entries through the
+approved-timesheet set (`${uid}_${periodKey}` membership) by default; `includeUnapproved`
+is an explicit manager opt-in and marks the CSV filename `_unofficial`. The Drive Sheet
+is always approved-only (it is the official record).
 
 ## Security rules (deny-by-default, tajweed style)
 
 Roles via **custom claims** (`role`, `status`, `admin`) set only by the `setUserAccess` callable; user doc mirrors them for UI. Client refreshes token (`getIdToken(true)`) when its user doc disagrees with its claims.
 
-- `users/{uid}`: self-create own doc forced to `{status:'pending', role:'member', admin:false, activeEntryId:null}`; read = self or manager; self-update limited via `diff().affectedKeys().hasOnly(['activeEntryId','displayName','photoURL'])`.
+- `users/{uid}`: self-create own doc forced to `{status:'pending', role:'member', admin:false, activeEntryId:null, approverUid:null}`; read = self, manager/admin, or (for manager/admin profiles) any active user — people must see the approver choices; self-update limited via `diff().affectedKeys().hasOnly(['activeEntryId','displayName','photoURL','approverUid'])` with the approver validated as an active manager/admin; managers may set any non-admin's `approverUid`, admins anyone's (that single field only).
 - `activities`: read = any active user; create/update = manager; delete = never (archive only).
-- `timeEntries`: read = owner or manager; create = owner, validated (start ≤ end, 0 < duration ≤ 24h); clock-in create requires the same batch to set `users/{uid}.activeEntryId` (checked with `getAfter()`); update/delete = owner or manager, `uid` immutable.
-- One-active-session enforced by the `activeEntryId == null` precondition at clock-in; the rare race is harmless under the honor system.
+- `timeEntries`: read = owner or manager; writes gated by the covering timesheet's state (`canTouchPeriod`, one `get()` on `timesheets/{uid}_{periodKey}`) and `periodKey == periodKeyOf(dayKey)` recomputed in rules (pure integer date math — spoofing a periodKey cannot dodge a lock); clock-in create requires the same batch to set `users/{uid}.activeEntryId` (checked with `getAfter()`); on-behalf writes are closed-entries-only and must set `lastEditedBy`; the owner's clock-out carve-out bypasses the period lock but may touch only `end/durationMinutes/updatedAt`.
+- `timesheets/{uid}_{periodKey}`: the full lifecycle state machine lives in rules (submit/resubmit/decide/withdraw/reopen — see the data-model section); the doc id must equal `uid + '_' + periodKey` so entry rules can `get()` it deterministically.
+- One-active-session enforced by the `activeEntryId == null` precondition at clock-in; the rare race is harmless at this scale.
 
 Rules tests with `@firebase/rules-unit-testing` (tajweed's exact harness).
 
