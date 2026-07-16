@@ -142,6 +142,7 @@ export function useMyTimesheetsRange(
 ): Timesheet[] {
   const [rows, setRows] = useState<Timesheet[]>([]);
   useEffect(() => {
+    setRows([]); // reset on range change; stale rows would mislabel weeks
     const q = query(
       collection(db, COLLECTIONS.timesheets),
       where('uid', '==', uid),
@@ -169,6 +170,7 @@ export function useApprovalQueue(approverUid: string, opts?: { all?: boolean }):
   const all = opts?.all ?? false;
   const [rows, setRows] = useState<Timesheet[]>([]);
   useEffect(() => {
+    setRows([]); // reset when the queue scope changes
     const base = collection(db, COLLECTIONS.timesheets);
     const q = all
       ? query(base, where('status', '==', 'submitted'))
@@ -190,6 +192,7 @@ export function useApprovalQueue(approverUid: string, opts?: { all?: boolean }):
 export function useRejectedCount(uid: string): number {
   const [count, setCount] = useState(0);
   useEffect(() => {
+    setCount(0);
     const q = query(
       collection(db, COLLECTIONS.timesheets),
       where('uid', '==', uid),

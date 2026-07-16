@@ -128,19 +128,25 @@ export function TimesheetScreen({
 
   return (
     <Screen>
+      {/* Week navigator for the month — a chip per week. A status dot appears
+          only once that week actually HAS a timesheet (submitted/approved/
+          rejected); weeks without one are just weeks, and future ones are dim. */}
       <View style={styles.monthStrip}>
         {month.map((p) => {
           const st = p.fromKey === period.fromKey && sheet !== undefined
             ? (sheet?.status ?? 'draft')
             : (sheetByPeriod.get(p.fromKey)?.status ?? 'draft');
           const on = p.fromKey === period.fromKey;
+          const future = !periodHasStarted(p.fromKey, todayKey);
           return (
             <Pressable
               key={p.fromKey}
               onPress={() => setAnchor(p.fromKey)}
-              style={[styles.monthChip, on && styles.monthChipOn]}
+              style={[styles.monthChip, on && styles.monthChipOn, future && styles.monthChipFuture]}
             >
-              <View style={[styles.dot, { backgroundColor: STATUS_CHIP[st].color }]} />
+              {st !== 'draft' ? (
+                <View style={[styles.dot, { backgroundColor: STATUS_CHIP[st].color }]} />
+              ) : null}
               <Text style={[styles.monthChipLabel, on && styles.monthChipLabelOn]}>
                 {periodLabel(p)}
               </Text>
@@ -193,7 +199,13 @@ export function TimesheetScreen({
       ))}
       {entries.length === 0 && <Text style={styles.empty}>No hours in this week.</Text>}
 
-      {status === 'draft' ? (
+      {status === 'draft' && !started ? (
+        <Text style={styles.hint}>
+          This week hasn't started yet — there's nothing to submit. Timesheets exist
+          only once you submit them.
+        </Text>
+      ) : null}
+      {status === 'draft' && started ? (
         <>
           {!approverUid ? (
             <Text style={styles.hint}>Pick your timesheet approver on the home screen first.</Text>
@@ -201,11 +213,10 @@ export function TimesheetScreen({
           {hasRunningInPeriod ? (
             <Text style={styles.hint}>Clock out before submitting this week.</Text>
           ) : null}
-          {!started ? <Text style={styles.hint}>This week hasn't started yet.</Text> : null}
           <Button
             label={total === 0 ? 'Submit timesheet (no hours)' : 'Submit timesheet'}
             onPress={() => act(() => submitTimesheet(uid, period, approverUid!, entries))}
-            disabled={!approverUid || hasRunningInPeriod || !started}
+            disabled={!approverUid || hasRunningInPeriod}
           />
         </>
       ) : null}
@@ -255,6 +266,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(1.5),
   },
   monthChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  monthChipFuture: { opacity: 0.45 },
   monthChipLabel: { fontSize: 12, color: colors.textMuted },
   monthChipLabelOn: { color: '#fff' },
   dot: { width: 8, height: 8, borderRadius: 4 },
