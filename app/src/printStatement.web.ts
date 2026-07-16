@@ -31,6 +31,7 @@ export function printStatement(data: StatementData): string {
   .foot { margin-top: 40px; color: #7C6A5A; font-size: 13px; }
   @media print { body { margin: 0; } }
 </style></head><body>
+  <img src="/logo.png" alt="Sabeel Institute" style="width:180px;display:block;margin-bottom:16px" onerror="this.remove()">
   <h1>Statement of Volunteer Hours</h1>
   <p class="sub">Sabeel Institute · generated ${esc(data.generatedOn)}</p>
   <p><strong>${esc(data.displayName)}</strong></p>

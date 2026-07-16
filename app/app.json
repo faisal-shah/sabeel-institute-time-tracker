@@ -17,11 +17,13 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "@react-native-google-signin/google-signin",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "icon": "./assets/icon.png"
   }
 }

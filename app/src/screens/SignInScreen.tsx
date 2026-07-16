@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import { signInWithGoogle, REAL_GOOGLE_AVAILABLE } from '../auth/google';
 import { devSignInAsGoogle } from '../auth/devSignIn';
 import { USE_EMULATORS } from '../env';
 import { Button, ErrorText } from '../components/ui';
 import { colors, spacing } from '../theme';
+
+// Static asset import (Metro resolves images; lint forbids inline require()).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const logoAsset = require('../../assets/logo.png');
 
 export function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +41,14 @@ export function SignInScreen() {
       <Text style={styles.title}>Sabeel Time Tracker</Text>
       <Text style={styles.tagline}>Track your hours. All of it counts.</Text>
       <View style={styles.card}>
+        {/* The calligraphy is black+gold — it lives on ivory surfaces only,
+            never directly on the raspberry field (brand guide). */}
+        <Image
+          source={logoAsset}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Sabeel Institute"
+        />
         {(REAL_GOOGLE_AVAILABLE || !USE_EMULATORS) && (
           <Button label="Sign in with Google" onPress={google} />
         )}
@@ -79,6 +91,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 380,
   },
+  logo: { width: '100%', height: 110, marginBottom: spacing(2) },
   devLabel: { color: colors.textMuted, fontSize: 12, marginTop: spacing(2) },
   input: {
     borderWidth: 1,
