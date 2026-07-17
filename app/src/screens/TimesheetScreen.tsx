@@ -8,6 +8,7 @@ import {
   deviceTimeZone,
   formatDuration,
   monthLabel,
+  overlappingEntryIds,
   periodHasStarted,
   periodLabel,
   periodRangeFor,
@@ -31,7 +32,16 @@ import {
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
 
-export function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => void }) {
+export function EntryRow({
+  entry,
+  onPress,
+  conflict = false,
+}: {
+  entry: TimeEntry;
+  onPress: () => void;
+  /** Overlaps another entry on the same day — highlighted, must be fixed. */
+  conflict?: boolean;
+}) {
   const deviceTz = deviceTimeZone();
   const foreign = entry.timeZone !== deviceTz;
   const times =
@@ -39,7 +49,7 @@ export function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => 
       ? `${timeOfDayFor(entry.start, entry.timeZone)} — running`
       : `${timeOfDayFor(entry.start, entry.timeZone)}–${timeOfDayFor(entry.end, entry.timeZone)}`;
   return (
-    <Pressable onPress={onPress} style={styles.row}>
+    <Pressable onPress={onPress} style={[styles.row, conflict && styles.rowConflict]}>
       <View style={styles.rowMain}>
         <Text style={styles.rowActivity}>{entry.activityName}</Text>
         <Text style={styles.rowTimes}>
@@ -54,6 +64,7 @@ export function EntryRow({ entry, onPress }: { entry: TimeEntry; onPress: () => 
             {entry.note}
           </Text>
         ) : null}
+        {conflict ? <Text style={styles.rowConflictLabel}>Overlaps another entry</Text> : null}
       </View>
       <Text style={styles.rowDuration}>
         {entry.durationMinutes != null ? formatDuration(entry.durationMinutes) : '…'}
@@ -131,6 +142,7 @@ export function TimesheetScreen({
   const approverUid = profile.approverUid ?? (claims.admin ? uid : null);
   const hasRunningInPeriod = entries.some((e) => e.end === null);
   const started = periodHasStarted(period.fromKey, todayKey);
+  const conflicts = useMemo(() => overlappingEntryIds(entries), [entries]);
 
   const act = async (fn: () => Promise<void>) => {
     setError(null);
@@ -143,14 +155,16 @@ export function TimesheetScreen({
 
   return (
     <Screen>
-      <Text style={styles.monthTitle}>{monthLabel(period.fromKey)}</Text>
-      {/* Week navigator for the month — a chip per week, flanked by month
-          arrows. Dots tell the story: sage = hours logged but not submitted,
-          gold = submitted, raspberry = approved, red = rejected; no dot =
-          empty week. Future weeks are dim. */}
-      <View style={styles.stripRow}>
+      {/* Month bar (arrows step months) over a chip per week. Dots tell the
+          story: sage = hours logged but not submitted, gold = submitted,
+          raspberry = approved, red = rejected; no dot = empty week. Future
+          weeks are dim. */}
+      <View style={styles.monthBar}>
         <Button label="‹" kind="secondary" onPress={() => stepMonth(-1)} />
-        <View style={styles.monthStrip}>
+        <Text style={styles.monthTitle}>{monthLabel(period.fromKey)}</Text>
+        <Button label="›" kind="secondary" onPress={() => stepMonth(1)} />
+      </View>
+      <View style={styles.monthStrip}>
         {month.map((p) => {
           const st = p.fromKey === period.fromKey && sheet !== undefined
             ? (sheet?.status ?? 'draft')
@@ -176,8 +190,6 @@ export function TimesheetScreen({
             </Pressable>
           );
         })}
-        </View>
-        <Button label="›" kind="secondary" onPress={() => stepMonth(1)} />
       </View>
       <View style={styles.legend}>
         {(
@@ -227,6 +239,7 @@ export function TimesheetScreen({
             <EntryRow
               key={e.id}
               entry={e}
+              conflict={conflicts.has(e.id)}
               onPress={() => (e.end !== null ? nav.navigate('EntryEdit', { entryId: e.id }) : null)}
             />
           ))}
@@ -272,10 +285,15 @@ export function TimesheetScreen({
           {hasRunningInPeriod ? (
             <Text style={styles.hint}>Clock out before submitting this week.</Text>
           ) : null}
+          {conflicts.size > 0 ? (
+            <Text style={styles.conflictHint}>
+              Some entries overlap — fix the highlighted times before submitting.
+            </Text>
+          ) : null}
           <Button
             label={total === 0 ? 'Submit timesheet (no hours)' : 'Submit timesheet'}
             onPress={() => act(() => submitTimesheet(uid, period, approverUid!, entries))}
-            disabled={!approverUid || hasRunningInPeriod}
+            disabled={!approverUid || hasRunningInPeriod || conflicts.size > 0}
           />
         </>
       ) : null}
@@ -287,11 +305,18 @@ export function TimesheetScreen({
         />
       ) : null}
       {sheet && sheet.status === 'rejected' ? (
-        <Button
-          label="Resubmit timesheet"
-          onPress={() => act(() => resubmitTimesheet(sheet, approverUid!, entries))}
-          disabled={!approverUid || hasRunningInPeriod}
-        />
+        <>
+          {conflicts.size > 0 ? (
+            <Text style={styles.conflictHint}>
+              Some entries overlap — fix the highlighted times before resubmitting.
+            </Text>
+          ) : null}
+          <Button
+            label="Resubmit timesheet"
+            onPress={() => act(() => resubmitTimesheet(sheet, approverUid!, entries))}
+            disabled={!approverUid || hasRunningInPeriod || conflicts.size > 0}
+          />
+        </>
       ) : null}
       {sheet && sheet.status === 'approved' ? (
         <>
@@ -313,14 +338,15 @@ export function TimesheetScreen({
 }
 
 const styles = StyleSheet.create({
+  monthBar: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   monthTitle: {
+    flex: 1,
     fontSize: 17,
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
   },
-  stripRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
-  monthStrip: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
+  monthStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
   monthChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,6 +394,8 @@ const styles = StyleSheet.create({
     padding: spacing(3.5),
     gap: spacing(3),
   },
+  rowConflict: { borderColor: colors.danger, borderWidth: 2, backgroundColor: '#FBEDEC' },
+  rowConflictLabel: { fontSize: 12, fontWeight: '700', color: colors.danger },
   rowMain: { flex: 1 },
   rowActivity: { fontSize: 15, fontWeight: '600', color: colors.text },
   rowTimes: { fontSize: 13, color: colors.textMuted },
@@ -375,4 +403,5 @@ const styles = StyleSheet.create({
   rowDuration: { fontSize: 15, fontWeight: '700', color: colors.primary },
   empty: { color: colors.textMuted },
   hint: { fontSize: 12, color: colors.textMuted },
+  conflictHint: { fontSize: 12, fontWeight: '600', color: colors.danger },
 });

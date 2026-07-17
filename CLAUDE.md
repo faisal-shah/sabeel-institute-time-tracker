@@ -56,6 +56,10 @@ Key product invariants (do not silently change):
   phase. Before ANY significant install (global/system/major framework), ask first;
   routine project-local npm deps of the locked stack are fine.
 - All repo artifacts (docs, plans, protocols) live in this repo.
+- User-visible changes ship with their documentation: update `docs/USER-MANUAL.md`
+  (+ regenerate affected `docs/manual/img/` screenshots and the PDF via
+  `docs/render-manual.py`) and PRODUCT_BRIEF/PHASE_STATUS in the same batch as
+  the code — never let the manual lag a release.
 - Live Firestore reads in `app/src` go through `useLiveQuery`/`useLiveDoc`
   (`app/src/liveQuery.ts`) — never hand-roll `onSnapshot` state (lint-enforced;
   see docs/POSTMORTEM-2026-07-16-stale-week.md). Async UI must be e2e-tested at

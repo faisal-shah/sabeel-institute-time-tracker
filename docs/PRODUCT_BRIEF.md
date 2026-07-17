@@ -54,7 +54,7 @@ Reference files to copy/adapt (all under `~/repos/faisal-shah/tajweed-bytes-dev/
 
 ## Firestore data model
 
-Flat `activities` collection (a project and an event are the same thing with a `type` field — hierarchy buys nothing at this scale).
+Flat `activities` collection — just names (the project/event `type` distinction was dropped 2026-07-17: managers name activities however they like; hierarchy and categorization buy nothing at this scale).
 
 ```
 users/{uid}
@@ -64,11 +64,16 @@ users/{uid}
   admin: boolean
   activeEntryId: string | null        # running clock session pointer
   approverUid: string | null          # sticky timesheet approver (active manager/admin)
+  notifPrefs?: { rejected?, approved?, submitted?, newUser?, reminder? }  # missing = on
+  timeZone?: string                   # last-seen device tz (weekly reminder scheduling)
+  lastReminderPeriodKey?: string      # server-only reminder dedup
   createdAt, approvedAt?, approvedBy?
+  pushTokens/{token}                  # subcollection: FCM tokens, owner-only
+    token, platform: 'web' | 'android', updatedAt
 
 activities/{id}
-  name, description?, type: 'project' | 'event'
-  status: 'active' | 'archived', eventDate?, createdAt, createdBy
+  name, description?
+  status: 'active' | 'archived', createdAt, createdBy
 
 timeEntries/{id}                      # top-level: managers query across users
   uid, activityId, activityName       # name denormalized for display/CSV

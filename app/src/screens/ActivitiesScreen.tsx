@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import type { ActivityType } from '@sabeel/shared';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useActivities, createActivity, setActivityStatus } from '../activities';
 import { Button, ErrorText, Screen } from '../components/ui';
 import { colors, spacing } from '../theme';
@@ -8,14 +7,13 @@ import { colors, spacing } from '../theme';
 export function ActivitiesScreen({ selfUid }: { selfUid: string }) {
   const rows = useActivities({ includeArchived: true });
   const [name, setName] = useState('');
-  const [type, setType] = useState<ActivityType>('project');
   const [error, setError] = useState<string | null>(null);
 
   const add = async () => {
     if (!name.trim()) return;
     setError(null);
     try {
-      await createActivity({ name, type, createdBy: selfUid });
+      await createActivity({ name, createdBy: selfUid });
       setName('');
     } catch (e) {
       setError((e as Error).message);
@@ -37,20 +35,9 @@ export function ActivitiesScreen({ selfUid }: { selfUid: string }) {
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="New project or event name"
+          placeholder="New activity name"
           style={styles.input}
         />
-        <View style={styles.typeRow}>
-          {(['project', 'event'] as const).map((t) => (
-            <Pressable
-              key={t}
-              onPress={() => setType(t)}
-              style={[styles.typeChip, type === t && styles.typeChipOn]}
-            >
-              <Text style={[styles.typeLabel, type === t && styles.typeLabelOn]}>{t}</Text>
-            </Pressable>
-          ))}
-        </View>
         <Button label="Add" onPress={add} disabled={!name.trim()} />
         <ErrorText error={error} />
       </View>
@@ -59,10 +46,7 @@ export function ActivitiesScreen({ selfUid }: { selfUid: string }) {
         <View key={a.id} style={[styles.card, a.status === 'archived' && styles.cardArchived]}>
           <View style={styles.cardText}>
             <Text style={styles.name}>{a.name}</Text>
-            <Text style={styles.meta}>
-              {a.type}
-              {a.status === 'archived' ? ' · archived' : ''}
-            </Text>
+            {a.status === 'archived' ? <Text style={styles.meta}>archived</Text> : null}
           </View>
           {a.status === 'active' ? (
             <Button label="Archive" kind="secondary" onPress={() => flip(a.id, 'archived')} />
@@ -85,17 +69,6 @@ const styles = StyleSheet.create({
     padding: spacing(3),
     fontSize: 15,
   },
-  typeRow: { flexDirection: 'row', gap: spacing(2) },
-  typeChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 20,
-    paddingHorizontal: spacing(4),
-    paddingVertical: spacing(1.5),
-  },
-  typeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  typeLabel: { color: colors.textMuted, fontSize: 14 },
-  typeLabelOn: { color: colors.onPrimary },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

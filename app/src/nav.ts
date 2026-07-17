@@ -8,6 +8,7 @@ export type RootStackParamList = {
   Timesheet: { initialPeriodKey?: string } | undefined;
   /** Rejected timesheets awaiting the owner's fix — any month, one list. */
   NeedsAttention: undefined;
+  NotificationSettings: undefined;
   EntryEdit: { entryId: string };
   Reports: undefined;
   PersonDetail: { uid: string; displayName: string };

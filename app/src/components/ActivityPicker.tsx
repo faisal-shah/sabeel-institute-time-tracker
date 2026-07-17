@@ -15,18 +15,16 @@ export function ActivityPicker({
 }) {
   if (activities.length === 0) {
     return (
-      <Text style={styles.empty}>
-        No projects or events yet — a manager needs to create one first.
-      </Text>
+      <Text style={styles.empty}>No activities yet — a manager needs to create one first.</Text>
     );
   }
   return (
     <SearchablePicker
-      items={activities.map((a) => ({ id: a.id, label: a.name, sublabel: a.type }))}
+      items={activities.map((a) => ({ id: a.id, label: a.name }))}
       selectedId={selectedId}
       onSelect={onSelect}
-      placeholder="Pick a project or event"
-      title="Projects & events"
+      placeholder="Pick an activity"
+      title="Activities"
     />
   );
 }

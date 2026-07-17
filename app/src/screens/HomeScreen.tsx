@@ -196,7 +196,7 @@ export function HomeScreen({
           <>
             <Button label="Reports" onPress={() => nav.navigate('Reports')} />
             <Button
-              label="Projects & events"
+              label="Activities"
               kind="secondary"
               onPress={() => nav.navigate('Activities')}
             />
@@ -208,6 +208,11 @@ export function HomeScreen({
             onPress={() => nav.navigate('Users')}
           />
         ) : null}
+        <Button
+          label="Notification settings"
+          kind="secondary"
+          onPress={() => nav.navigate('NotificationSettings')}
+        />
         <Button label="Sign out" kind="secondary" onPress={() => signOut()} />
       </View>
     </Screen>

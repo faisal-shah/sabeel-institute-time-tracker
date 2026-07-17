@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { addDays, formatDuration, periodLabel, periodRangeFor } from '@sabeel/shared';
+import {
+  addDays,
+  formatDuration,
+  overlappingEntryIds,
+  periodLabel,
+  periodRangeFor,
+} from '@sabeel/shared';
 import type { RootStackParamList } from '../nav';
 import { useEntriesRange, type TimeEntry } from '../entries';
 import { approveTimesheet, rejectTimesheet, useTimesheet } from '../timesheets';
@@ -46,6 +52,7 @@ export function TimesheetReviewScreen({
   const stepPeriod = (dir: 1 | -1) =>
     setAnchor(dir === -1 ? addDays(period.fromKey, -1) : addDays(period.toKey, 1));
 
+  const conflicts = useMemo(() => overlappingEntryIds(entries), [entries]);
   const total = useMemo(
     () => entries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0),
     [entries],
@@ -103,6 +110,7 @@ export function TimesheetReviewScreen({
               <EntryRow
                 key={e.id}
                 entry={e}
+                conflict={conflicts.has(e.id)}
                 onPress={() =>
                   e.end !== null ? nav.navigate('EntryEdit', { entryId: e.id }) : null
                 }

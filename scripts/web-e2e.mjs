@@ -201,12 +201,11 @@ async function main() {
   pages.set('admin2', admin2);
   await admin2.goto(baseUrl + '/');
   await admin2.getByText('Salaam,', { exact: false }).waitFor();
-  await admin2.getByText('Projects & events').click();
+  await admin2.getByText('Activities', { exact: true }).click();
 
-  async function addActivity(name, type) {
-    const input = admin2.getByPlaceholder('New project or event name');
+  async function addActivity(name) {
+    const input = admin2.getByPlaceholder('New activity name');
     await input.fill(name);
-    await admin2.getByText(type, { exact: true }).click();
     await admin2.getByText('Add', { exact: true }).click();
     // Successful create clears the input; an error would leave it filled.
     // (Runs in the browser, where document exists — eslint sees only node here.)
@@ -221,15 +220,15 @@ async function main() {
     // screen is the most recently mounted, so it sits last in the DOM.
     await admin2.getByText(name, { exact: true }).last().waitFor();
   }
-  await addActivity('Tutoring', 'project');
-  await addActivity('Food Drive', 'event');
+  await addActivity('Tutoring');
+  await addActivity('Food Drive');
   await admin2.getByText('Archive', { exact: true }).first().click();
   await admin2.getByText('Restore', { exact: true }).waitFor();
   await admin2.screenshot({ path: join(shots, '6-activities.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
-  // Members don't get the manager entry point.
-  const actCount = await vol.getByText('Projects & events').count();
-  if (actCount !== 0) throw new Error('member sees the manager Projects & events button');
+  // Members don't get the manager entry point (Home's Activities button).
+  const actCount = await vol.getByText('Activities', { exact: true }).count();
+  if (actCount !== 0) throw new Error('member sees the manager Activities button');
 
   // The activity/approver pickers are searchable modals now: click the field,
   // then the item inside the modal (modals render last in the DOM → .last()).
@@ -241,7 +240,7 @@ async function main() {
 
   console.log('▸ Phase 3: volunteer clocks in, clocks out, adds manual hours…');
   // Tutoring is the only active activity (Food Drive was archived above).
-  await pickFromModal(vol, 'Pick a project or event', 'Tutoring');
+  await pickFromModal(vol, 'Pick an activity', 'Tutoring');
   await vol.getByText('Clock in', { exact: true }).click();
   await vol.getByText('CLOCKED IN').waitFor();
   await vol.screenshot({ path: join(shots, '7-clocked-in.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
@@ -252,12 +251,14 @@ async function main() {
   await vol.getByText('Today: 1m').waitFor();
 
   await vol.getByText('Add hours manually').click();
-  await pickFromModal(vol, 'Pick a project or event', 'Tutoring');
+  await pickFromModal(vol, 'Pick an activity', 'Tutoring');
   const times = vol.locator('input');
   await times.nth(1).fill('09:00'); // from  (nth(0) is the date)
   await times.nth(2).fill('10:30'); // to
   await vol.getByText('What did you work on?', { exact: false }).waitFor();
   await vol.locator('textarea').fill('Math tutoring with the kids');
+  // The filled form, pre-save — this is the manual's add-hours illustration.
+  await vol.screenshot({ path: join(shots, '8a-add-hours.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
   await vol.getByText('Save hours', { exact: true }).click();
   await vol.getByText('Today: 1h 31m').waitFor({ timeout: 15000 });
   await vol.screenshot({ path: join(shots, '8-after-manual.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
@@ -278,6 +279,36 @@ async function main() {
   await vol.getByText('Delete entry', { exact: true }).click();
   await vol.getByText('Week total: 2h 00m', { exact: true }).waitFor();
   await vol.screenshot({ path: join(shots, '10-timesheet-period.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+
+  console.log('▸ overlap guard: conflicting entries are flagged and block submission…');
+  // 10:00–10:45 overlaps the existing 09:00–11:00 entry → both rows flagged.
+  await vol.goto(baseUrl + '/');
+  await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await vol.getByText('Add hours manually').click();
+  await pickFromModal(vol, 'Pick an activity', 'Tutoring');
+  const ovIn = vol.locator('input');
+  await ovIn.nth(1).fill('10:00');
+  await ovIn.nth(2).fill('10:45');
+  await vol.getByText('Save hours', { exact: true }).click();
+  await vol.getByText('My timesheet', { exact: true }).click();
+  const flagged = vol.getByText('Overlaps another entry', { exact: true });
+  await flagged.first().waitFor();
+  if ((await flagged.count()) !== 2) throw new Error('expected both overlapping rows flagged');
+  await vol.getByText('fix the highlighted times', { exact: false }).waitFor();
+  await vol.screenshot({ path: join(shots, '10b-overlap.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  // A butt-joint edit (start at the other entry's end) clears the conflict.
+  // Select the row by its unique times — both rows carry the same conflict label.
+  await vol.getByText('10:00–10:45', { exact: false }).click();
+  await vol.locator('input').nth(1).fill('11:00');
+  await vol.locator('input').nth(2).fill('11:45');
+  await vol.getByText('Save changes', { exact: true }).click();
+  await vol.getByText('Week total: 2h 45m', { exact: true }).waitFor();
+  if ((await vol.getByText('Overlaps another entry', { exact: true }).count()) !== 0)
+    throw new Error('overlap flag should clear after the fix');
+  // Put the total back where later phases expect it: delete the extra entry.
+  await vol.getByText('45m', { exact: true }).last().click();
+  await vol.getByText('Delete entry', { exact: true }).click();
+  await vol.getByText('Week total: 2h 00m', { exact: true }).waitFor();
 
   console.log('▸ stale-listener guard: switching weeks must clear rows even on a slow network…');
   // Localhost snapshots arrive in ~ms, which is exactly why this bug class
@@ -351,7 +382,7 @@ async function main() {
   // Add a 1h entry on the volunteer's behalf (approver correction path).
   await mgr.getByText('Add entry for Volunteer', { exact: true }).click();
   await mgr.getByText('Adding hours for Volunteer', { exact: false }).waitFor();
-  await pickFromModal(mgr, 'Pick a project or event', 'Tutoring');
+  await pickFromModal(mgr, 'Pick an activity', 'Tutoring');
   const mgrTimes = mgr.locator('input');
   await mgrTimes.nth(1).fill('14:00');
   await mgrTimes.nth(2).fill('15:00');
@@ -411,6 +442,39 @@ async function main() {
   await mgr.getByText('LIFETIME APPROVED HOURS').last().waitFor();
   await mgr.getByText('3h 00m', { exact: true }).last().waitFor();
   await mgr.screenshot({ path: join(shots, '16-person-detail.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+
+  console.log('▸ notification settings: reminder toggle flips and persists…');
+  await vol.goto(baseUrl + '/');
+  await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await vol.getByText('Notification settings', { exact: true }).click();
+  await vol.getByText('Weekly submit reminder').waitFor();
+  // Members see three switches; the reminder is last. RN-web renders them as
+  // checkbox inputs — checked is a DOM *property*, so read it via evaluate.
+  const reminderState = () =>
+    vol.evaluate(() => {
+      // eslint-disable-next-line no-undef
+      const sws = document.querySelectorAll('[role="switch"]');
+      const el = sws[sws.length - 1];
+      return el ? !!el.checked : null;
+    });
+  if ((await reminderState()) !== true) throw new Error('reminder pref should default ON');
+  await vol.locator('[role="switch"]').last().click();
+  // Reload → the pref must come back OFF from Firestore, not local state.
+  await vol.goto(baseUrl + '/');
+  await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  await vol.getByText('Notification settings', { exact: true }).click();
+  await vol.getByText('Weekly submit reminder').waitFor();
+  await vol.waitForFunction(
+    // eslint-disable-next-line no-undef
+    () => {
+      // eslint-disable-next-line no-undef
+      const sws = document.querySelectorAll('[role="switch"]');
+      return sws.length > 0 && sws[sws.length - 1].checked === false;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
+  await vol.screenshot({ path: join(shots, '17-notification-settings.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   await browser.close();
   staticServer.close();

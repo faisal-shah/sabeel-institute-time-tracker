@@ -96,12 +96,12 @@ export function ReportsScreen() {
       <Text style={styles.section}>Activity</Text>
       <SearchablePicker
         items={[
-          { id: '', label: 'All projects & events' },
-          ...activities.map((a) => ({ id: a.id, label: a.name, sublabel: a.type })),
+          { id: '', label: 'All activities' },
+          ...activities.map((a) => ({ id: a.id, label: a.name })),
         ]}
         selectedId={activityId ?? ''}
         onSelect={(id) => setActivityId(id || null)}
-        placeholder="All projects & events"
+        placeholder="All activities"
         title="Filter by activity"
       />
 

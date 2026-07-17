@@ -1,4 +1,9 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { doc, updateDoc } from 'firebase/firestore';
+import { COLLECTIONS, deviceTimeZone } from '@sabeel/shared';
+import { db } from './src/firebase';
+import { registerPush } from './src/notify';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -17,6 +22,7 @@ import { PersonDetailScreen } from './src/screens/PersonDetailScreen';
 import { ApprovalsScreen } from './src/screens/ApprovalsScreen';
 import { TimesheetReviewScreen } from './src/screens/TimesheetReviewScreen';
 import { NeedsAttentionScreen } from './src/screens/NeedsAttentionScreen';
+import { NotificationSettingsScreen } from './src/screens/NotificationSettingsScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 import { initSentry } from './src/sentry';
@@ -27,6 +33,23 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const session = useSession();
+
+  // Once per active sign-in: register this device for push and record the
+  // last-seen timezone (the weekly reminder fires at local Tuesday 10:00).
+  const activeUid =
+    session.phase === 'signedIn' && session.claims.status === 'active' && session.profile
+      ? session.user.uid
+      : null;
+  const knownTz = activeUid && session.phase === 'signedIn' ? session.profile?.timeZone : null;
+  useEffect(() => {
+    if (!activeUid) return;
+    void registerPush(activeUid);
+    const tz = deviceTimeZone();
+    if (knownTz !== tz) {
+      updateDoc(doc(db, COLLECTIONS.users, activeUid), { timeZone: tz }).catch(() => undefined);
+    }
+    // Deps are only who-is-signed-in — deliberately not the profile snapshot.
+  }, [activeUid]);
 
   let content;
   if (session.phase === 'loading') {
@@ -101,6 +124,19 @@ export default function App() {
             {() => <NeedsAttentionScreen uid={user.uid} />}
           </Stack.Screen>
           <Stack.Screen
+            name="NotificationSettings"
+            options={{
+              headerShown: true,
+              title: 'Notifications',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: '#FBF3E4',
+            }}
+          >
+            {() => (
+              <NotificationSettingsScreen uid={user.uid} profile={profile} claims={claims} />
+            )}
+          </Stack.Screen>
+          <Stack.Screen
             name="EntryEdit"
             options={{
               headerShown: true,
@@ -150,7 +186,7 @@ export default function App() {
               name="Activities"
               options={{
                 headerShown: true,
-                title: 'Projects & events',
+                title: 'Activities',
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: '#FBF3E4',
               }}

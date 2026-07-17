@@ -1,6 +1,6 @@
 # Sabeel Institute Time Tracker — User Manual
 
-*For app version 1.0.0-beta.7 · July 2026*
+*For app version 1.0.0-beta.8 · July 2026*
 
 Welcome! This guide explains everything you can do in the Sabeel Institute Time
 Tracker — from logging your first hour to approving your team's timesheets. It is
@@ -16,7 +16,7 @@ account, same data, live everywhere.
 
 ## The big picture (2 minutes)
 
-1. **You log hours** against a *project* or *event* — either by clocking in and
+1. **You log hours** against an *activity* — either by clocking in and
    out while you work, or by adding hours manually afterwards. Every hour
    belongs to a **week** (Sunday to Saturday, never crossing a month boundary —
    so the first or last week of a month can be short).
@@ -64,11 +64,12 @@ From top to bottom:
 - **Clock in card** — pick what you're working on and clock in.
 - **Add hours manually / My timesheet** — the other two things you'll use daily.
 - **My timesheet approver** — who approves your weeks (see 1.5).
+- **Notification settings** — choose which push notifications you get (see 1.9).
 - If a timesheet of yours was rejected, a **red banner** appears at the very
   top — tap it to fix things (see 1.7).
 
-Managers and admins see extra buttons here (Approvals, Reports, Projects &
-events, Manage users) — covered in Parts 2 and 3.
+Managers and admins see extra buttons here (Approvals, Reports, Activities,
+Manage users) — covered in Parts 2 and 3.
 
 ## 1.3 Logging hours
 
@@ -76,7 +77,7 @@ events, Manage users) — covered in Parts 2 and 3.
 
 ![Clocked in](manual/img/clocked-in.png)
 
-1. On Home, tap **Pick a project or event**, search or scroll, tap one.
+1. On Home, tap **Pick an activity**, search or scroll, tap one.
 2. Tap **Clock in**. The raspberry card shows what you're working on and a
    running clock.
 3. When you finish, tap **Clock out**. The session becomes an entry on today's
@@ -113,19 +114,31 @@ no entries yet.)
 
 ![My timesheet](manual/img/timesheet.png)
 
-Home → **My timesheet**. What you're looking at:
+Home → **My timesheet**. What you're looking at, top to bottom:
 
-- **Week chips** across the top — one per week of the month. The colored dots
-  are a status legend (also printed right below the chips):
+- **The month and year**, with **‹ › arrows** that step month by month.
+- **Week chips** — one per week of the month; tap a chip to open that week.
+  The colored dots are a status legend (also printed right below the chips):
   - **sage/green dot** — hours logged, not submitted yet (work in progress)
   - **gold dot** — submitted, awaiting the approver
   - **raspberry dot** — approved (final)
   - **red dot** — rejected (needs your attention)
   - **no dot** — empty week
-- **‹ › arrows** — step week by week, across months.
+- **Week total** — the selected week's hours, with its status next to it.
 - **Day groups** — each day's entries with times and durations. **Tap an entry
   to edit or delete it** (activity, date, times, note).
-- Future weeks are dimmed — there's nothing to do there yet.
+- Future weeks are dimmed — there's nothing to do there yet. Wandered off?
+  **Jump to current week** brings you back.
+
+### Overlapping entries
+
+![Overlapping entries](manual/img/overlap.png)
+
+Two entries on the same day whose times overlap are **highlighted in red**
+("Overlaps another entry") — usually a double-log or an AM/PM slip. A week
+with overlaps **can't be submitted** until you fix the times (tap an entry to
+edit it). Back-to-back entries are fine: one ending at 2:00 PM and the next
+starting at 2:00 PM don't overlap.
 
 ## 1.5 Picking your approver (one-time setup)
 
@@ -152,6 +165,8 @@ Rules of thumb:
 - You can submit the **current week early** (say, Friday) — but you can't log
   more hours into it afterwards without withdrawing first. If you're clocked
   in, clock out before submitting.
+- **Overlapping entries block submission** (see 1.4) — fix the highlighted
+  times first.
 - **Past weeks can be submitted any time, in any order.** No deadlines.
 - **Empty weeks can be submitted too** ("Submit timesheet (no hours)") — useful
   to close out a week you were away.
@@ -181,7 +196,26 @@ An approved week shows **Approved** and is locked for everyone — that's what
 makes it official. Spot a mistake after approval? Ask an **admin** to reopen
 the week; it returns to draft and goes through submit → approve again.
 
-## 1.9 Switching accounts / signing out
+## 1.9 Notifications
+
+![Notification settings](manual/img/notification-settings.png)
+
+The app sends push notifications so nothing sits unnoticed:
+
+- **Your timesheet was rejected** (with the reason) or **approved**.
+- *Approvers:* someone **submitted or resubmitted** a timesheet to you.
+- *Admins:* a **new account** is waiting for approval.
+- A **weekly reminder** — if last week has logged hours that were never
+  submitted (or a rejected sheet), you get a nudge on **Tuesday morning** in
+  your local timezone. Weeks with nothing to submit don't nag.
+
+The app asks for notification permission when you sign in — allow it on each
+device where you want them. Home → **Notification settings** lets you switch
+each kind off individually; the **weekly reminder has its own switch**, so
+people who don't submit every week can silence the nagging while keeping the
+important notifications on.
+
+## 1.10 Switching accounts / signing out
 
 **Sign out** is at the bottom of Home. Signing out fully clears your Google
 session in the app, so the next sign-in always shows Google's account chooser —
@@ -192,7 +226,7 @@ that's how you switch between accounts.
 # Part 2 — For managers & approvers
 
 Managers see three extra buttons on Home — **Approvals**, **Reports**, and
-**Projects & events** — plus **Manage users** (approver assignment).
+**Activities** — plus **Manage users** (approver assignment).
 
 ## 2.1 Approving timesheets
 
@@ -227,13 +261,13 @@ Reports → tap a person in the **By person** list → **View timesheets**. Same
 week-by-week view as above — handy mid-week to see how someone's week is
 shaping up, or to add hours they forgot, without waiting for a submission.
 
-## 2.3 Projects & events
+## 2.3 Activities
 
-![Projects & events](manual/img/activities.png)
+![Activities](manual/img/activities.png)
 
-Home → **Projects & events**. Create the activities people log hours against —
-a *project* (ongoing, e.g. "Tutoring") or an *event* (one-off, e.g. "Food
-Drive").
+Home → **Activities**. Create the activities people log hours against — a
+name is all it takes, whether it's an ongoing program ("Tutoring") or a
+one-off event ("Food Drive").
 
 Activities are never deleted — **archive** them instead. Archived activities
 disappear from pickers but keep their history in every report. **Restore**
@@ -283,8 +317,9 @@ their own).
 ![Approving a new user](manual/img/users-pending.png)
 
 When someone signs in for the first time they appear in **Manage users** with a
-gold *pending* card showing their name and email. Tap **Approve** and their
-screen unlocks live, wherever they are.
+gold *pending* card showing their name and email — the Home button reads
+**"Manage users (1)"** while requests are waiting, and admins get a push
+notification. Tap **Approve** and their screen unlocks live, wherever they are.
 
 ## 3.2 Managing a user
 
@@ -294,8 +329,8 @@ Each active user's card shows their state directly:
 
 - **Approver** — who approves their timesheets. Set it here, or let them pick
   their own on their home screen. (Managers can set this for non-admins too.)
-- **Role: member | manager** — managers get Approvals, Reports, and Projects &
-  events.
+- **Role: member | manager** — managers get Approvals, Reports, and
+  Activities.
 - **Admin** — the full-control switch (see below).
 - **Active** — turn off to disable an account: they're locked out immediately
   and can't log hours. Turn back on to restore. Nothing is ever deleted.
@@ -352,8 +387,8 @@ My timesheet → check the week → Submit timesheet. (Clock out first; pick an
 approver once if you haven't.)
 
 **…submit a week I missed a while ago?**
-My timesheet → ‹ back to it (or the week chips) → Submit. Old weeks have no
-deadline. Empty weeks can be submitted as "(no hours)".
+My timesheet → ‹ back to its month, tap its week chip → Submit. Old weeks have
+no deadline. Empty weeks can be submitted as "(no hours)".
 
 **…add more hours after I submitted?**
 Withdraw submission (while it's still awaiting approval) → add hours →
@@ -370,6 +405,9 @@ submission.
 **…sign in with a different Google account?**
 Sign out (bottom of Home) → Sign in with Google → the account chooser appears.
 
+**…stop the weekly reminder without losing other notifications?**
+Home → Notification settings → switch off **Weekly submit reminder**.
+
 **…approve or reject someone's week?** *(managers)*
 Home → Approvals → tap the submission → Approve, or type a reason and Reject.
 
@@ -377,8 +415,8 @@ Home → Approvals → tap the submission → Approve, or type a reason and Reje
 Approvals → their submission → "Add entry for {name}". Or before they submit:
 Reports → the person → View timesheets → Add entry.
 
-**…create a new project or event?** *(managers)*
-Home → Projects & events → name it, choose project/event → Add.
+**…create a new activity?** *(managers)*
+Home → Activities → name it → Add.
 
 **…get official hours for a grant report?** *(managers)*
 Reports → set the period → keep "Official (approved only)" → Export CSV.
@@ -409,6 +447,8 @@ Open that week → Reopen (admin) → the owner fixes and resubmits.
 | "Pick your timesheet approver…" when submitting | No approver chosen yet | Home → My timesheet approver → pick one |
 | "This week's timesheet is submitted/approved…" when clocking in | The current week is locked | Withdraw the submission (or ask an admin to reopen an approved week) |
 | "Clock out before submitting this week" | A session is still running | Clock out, then submit |
+| An entry is outlined red: "Overlaps another entry" | Two entries on that day have overlapping times | Tap one and fix its times; submission unlocks once no entries overlap |
+| No push notifications arriving | Permission not granted on this device, or that kind is switched off | Allow notifications when the app asks (or in system settings), and check Home → Notification settings |
 | Red "Live data error" bar | The app couldn't load live data | Check connectivity; if it persists, tell the developer — it's also auto-reported |
 | A week chip has a red dot | That week was rejected | Tap the red banner on Home → fix → resubmit |
 

@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, orderBy, query, updateDoc, where } from 'firebase/firestore';
-import { COLLECTIONS, type ActivityDoc, type ActivityType } from '@sabeel/shared';
+import { COLLECTIONS, type ActivityDoc } from '@sabeel/shared';
 import { db } from './firebase';
 import { useLiveQuery } from './liveQuery';
 
@@ -21,14 +21,9 @@ export function useActivities(opts: { includeArchived: boolean }): Activity[] {
   );
 }
 
-export function createActivity(input: {
-  name: string;
-  type: ActivityType;
-  createdBy: string;
-}): Promise<unknown> {
+export function createActivity(input: { name: string; createdBy: string }): Promise<unknown> {
   const docBody: ActivityDoc = {
     name: input.name.trim(),
-    type: input.type,
     status: 'active',
     createdAt: Date.now(),
     createdBy: input.createdBy,

@@ -14,6 +14,7 @@ phase boundary.
 | 5b | Drive sync (Sheet + CSV snapshots) | **complete** (2026-07-15: driveRows unit + runSync integration tests + full e2e green) |
 | 6 | Polish + deploy readiness | **complete** (2026-07-15: auto-close + nudge, Sentry seams, deploy/secrets docs) |
 | 7 | Weekly timesheets: submit/approve workflow | **complete** (2026-07-16: full lifecycle e2e green; deployed to prod; greenfield wipe done — 2 test users + 8 docs removed, admin kept, approver=self) |
+| 8 | Push notifications (FCM) + overlap guard + activities rename | **complete** (2026-07-17: triggers for submit/decide/new-user + Tuesday-local weekly reminder w/ per-event prefs; overlap detection blocks submission; project/event distinction dropped; 85 emulator + 17 functions-unit + 33 shared tests + full e2e green) |
 
 ## Deploy log
 
@@ -52,3 +53,14 @@ phase boundary.
 - 2026-07-16 — Admin grants move in-app (Manage users); self-demotion still
   blocked server-side. Greenfield wipe at deploy: all data + users except the
   admin.
+- 2026-07-17 — **Activities are just names**: the project/event `type` field is
+  gone from UI, rules, and types (existing docs may carry a vestigial field —
+  ignored). Admins/managers encode whatever taxonomy they want in the name.
+- 2026-07-17 — **Notifications (Phase 8)**: FCM push on Android + web; events =
+  rejected/approved (owner), submitted/resubmitted (stamped approver), new
+  pending account (admins), plus a weekly reminder at Tuesday 10:00 local time
+  covering the previous period — sent only when the period has unsubmitted
+  hours or a rejected sheet. Per-event opt-outs (`notifPrefs`, missing = on)
+  with the reminder separately silenceable. Same-day overlapping entries are
+  flagged in the UI and block submission (back-to-back is fine) — client-side
+  only; approvers see the same highlight.

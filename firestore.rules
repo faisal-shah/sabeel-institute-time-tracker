@@ -86,13 +86,20 @@ service cloud.firestore {
         && (request.auth.uid == uid || isManager() || isAdmin()
             || (isActive() && resource != null
                 && (resource.data.role == 'manager' || resource.data.admin == true)));
-      // Self may touch the clock pointer, cosmetic profile fields, and their own
-      // approver choice (which must be an active manager/admin, or null).
+      // Self may touch the clock pointer, cosmetic profile fields, their own
+      // approver choice (must be an active manager/admin, or null), notification
+      // prefs, and last-seen timezone. NOT lastReminderPeriodKey — that dedup
+      // marker is server-written only.
       allow update: if isActive() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['activeEntryId', 'displayName', 'photoURL', 'approverUid'])
+             .hasOnly(['activeEntryId', 'displayName', 'photoURL', 'approverUid',
+                       'notifPrefs', 'timeZone'])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approverUid'])
-            || approverOk(request.resource.data.approverUid));
+            || approverOk(request.resource.data.approverUid))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['notifPrefs'])
+            || request.resource.data.notifPrefs is map)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['timeZone'])
+            || request.resource.data.timeZone is string);
       // Cross-user: managers assign any non-admin's approver; admins anyone's.
       // Nothing else — status/role/admin changes only via setUserAccess.
       allow update: if isActive() && request.auth.uid != uid
@@ -100,9 +107,18 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approverUid'])
         && approverOk(request.resource.data.approverUid);
       allow delete: if false;
+
+      // Push registration tokens: strictly the owner's business. The server
+      // (admin SDK) reads them to send and prunes dead ones.
+      match /pushTokens/{tokenId} {
+        allow read, delete: if isSignedIn() && request.auth.uid == uid;
+        allow create, update: if isSignedIn() && request.auth.uid == uid
+          && request.resource.data.token is string
+          && request.resource.data.platform in ['web', 'android'];
+      }
     }
 
-    // Projects/programs/events hours are assigned to. Any active user picks from
+    // Activities hours are assigned to. Any active user picks from
     // them; only managers shape the list. Never deleted — archived (status flip),
     // so historical entries keep a valid reference.
     match /activities/{activityId} {
@@ -110,10 +126,8 @@ service cloud.firestore {
       allow create: if isManager()
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
-        && request.resource.data.type in ['project', 'event']
         && request.resource.data.status in ['active', 'archived'];
       allow update: if isManager()
-        && request.resource.data.type in ['project', 'event']
         && request.resource.data.status in ['active', 'archived'];
       allow delete: if false;
     }

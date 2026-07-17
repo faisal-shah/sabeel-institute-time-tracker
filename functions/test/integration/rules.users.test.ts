@@ -205,3 +205,52 @@ describe('firestore.rules — approver assignment', () => {
     );
   });
 });
+
+describe('firestore.rules — notification prefs & push tokens', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/alice'), { ...pendingProfile, status: 'active' });
+      await setDoc(doc(db, 'users/bob'), { ...pendingProfile, status: 'active' });
+    });
+  });
+
+  const alice = () => testEnv.authenticatedContext('alice', activeClaims);
+  const bob = () => testEnv.authenticatedContext('bob', activeClaims);
+
+  it('self-updates notifPrefs and timeZone', async () => {
+    const me = doc(alice().firestore(), 'users/alice');
+    await assertSucceeds(updateDoc(me, { notifPrefs: { reminder: false } }));
+    await assertSucceeds(updateDoc(me, { timeZone: 'Asia/Singapore' }));
+  });
+
+  it('cannot write lastReminderPeriodKey (server-only) or others’ prefs', async () => {
+    await assertFails(
+      updateDoc(doc(alice().firestore(), 'users/alice'), { lastReminderPeriodKey: '2026-07-05' }),
+    );
+    await assertFails(
+      updateDoc(doc(bob().firestore(), 'users/alice'), { notifPrefs: { reminder: false } }),
+    );
+  });
+
+  it('push tokens: owner full control, others locked out, shape validated', async () => {
+    const mine = doc(alice().firestore(), 'users/alice/pushTokens/tok1');
+    await assertSucceeds(setDoc(mine, { token: 'tok1', platform: 'web', updatedAt: 1 }));
+    await assertSucceeds(getDoc(mine));
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'users/alice/pushTokens/tok2'), {
+        token: 'tok2',
+        platform: 'ios',
+        updatedAt: 1,
+      }),
+    );
+    await assertFails(getDoc(doc(bob().firestore(), 'users/alice/pushTokens/tok1')));
+    await assertFails(
+      setDoc(doc(bob().firestore(), 'users/alice/pushTokens/evil'), {
+        token: 'evil',
+        platform: 'web',
+        updatedAt: 1,
+      }),
+    );
+  });
+});

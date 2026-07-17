@@ -12,6 +12,25 @@ export interface TokenClaims {
   admin?: boolean;
 }
 
+/**
+ * Per-event push-notification opt-outs. A missing key means ON — everyone gets
+ * everything relevant to their role until they turn something off. `reminder`
+ * exists separately so the weekly nudge can be silenced without losing the
+ * decision notifications.
+ */
+export interface NotifPrefs {
+  /** My timesheet was rejected. */
+  rejected?: boolean;
+  /** My timesheet was approved. */
+  approved?: boolean;
+  /** (Approvers) a timesheet was submitted/resubmitted to me. */
+  submitted?: boolean;
+  /** (Admins) a new account is waiting for approval. */
+  newUser?: boolean;
+  /** Weekly "submit last week" nudge. */
+  reminder?: boolean;
+}
+
 export interface UserDoc {
   displayName: string;
   email: string;
@@ -20,6 +39,12 @@ export interface UserDoc {
   role: UserRole;
   admin: boolean;
   activeEntryId: string | null;
+  /** Absent = all notifications on. */
+  notifPrefs?: NotifPrefs;
+  /** Last-seen device IANA timezone; the weekly reminder fires at local Tuesday 10:00. */
+  timeZone?: string;
+  /** Server-only dedup marker: the last period the weekly reminder covered. */
+  lastReminderPeriodKey?: string;
   /**
    * Sticky choice of who approves this user's timesheets (an active manager or
    * admin). Stamped onto each timesheet at submission — changing it affects only
@@ -32,16 +57,20 @@ export interface UserDoc {
   approvedBy?: string;
 }
 
-export type ActivityType = 'project' | 'event';
+/** users/{uid}/pushTokens/{token} — one doc per device/browser that can receive pushes. */
+export type PushPlatform = 'web' | 'android';
+export interface PushTokenDoc {
+  token: string;
+  platform: PushPlatform;
+  updatedAt: number;
+}
+
 export type ActivityStatus = 'active' | 'archived';
 
 export interface ActivityDoc {
   name: string;
   description?: string;
-  type: ActivityType;
   status: ActivityStatus;
-  /** Events only; display convenience. Epoch ms of the event date. */
-  eventDate?: number;
   createdAt: number;
   createdBy: string;
 }

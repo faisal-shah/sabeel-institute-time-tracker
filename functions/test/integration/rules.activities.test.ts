@@ -12,7 +12,6 @@ let testEnv: RulesTestEnvironment;
 
 const activity = {
   name: 'Food Drive',
-  type: 'event',
   status: 'active',
   createdAt: 1,
   createdBy: 'mgr',
@@ -83,13 +82,10 @@ describe('firestore.rules — activities', () => {
     await assertFails(deleteDoc(doc(manager().firestore(), 'activities/a1')));
   });
 
-  it('creation is validated: empty name or bad type rejected', async () => {
+  it('creation is validated: empty name rejected', async () => {
     const m = manager();
     await assertFails(
       addDoc(collection(m.firestore(), 'activities'), { ...activity, name: '' }),
-    );
-    await assertFails(
-      addDoc(collection(m.firestore(), 'activities'), { ...activity, type: 'party' }),
     );
   });
 });
