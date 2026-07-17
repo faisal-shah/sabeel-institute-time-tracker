@@ -83,6 +83,26 @@ certificate generated once:
   `app/.env.local` as `EXPO_PUBLIC_FCM_VAPID_KEY` and redeploys the website.
   Until then, web sign-ins simply skip push registration — nothing breaks.
 
+## Fix web sign-in inside in-app/partitioned browsers (missing-initial-state error)
+
+Seen 2026-07-17: sign-in from a chat app's in-app browser dies on the
+firebaseapp.com auth helper ("missing initial state"). Fix = serve the auth
+helper same-origin. One console step, then Claude flips `authDomain` and
+redeploys:
+
+- [ ] GCP console → **APIs & Services → Credentials** →
+  https://console.cloud.google.com/apis/credentials?project=sabeel-institute-time-tracker
+  → under **OAuth 2.0 Client IDs** open the **Web client** (the one Firebase
+  auto-created) and add:
+  - to **Authorized JavaScript origins**:
+    `https://sabeel-institute-time-tracker.web.app`
+  - to **Authorized redirect URIs**:
+    `https://sabeel-institute-time-tracker.web.app/__/auth/handler`
+  Save. (Additive — existing sign-ins keep working.)
+- [ ] Tell Claude "redirect URI added" → authDomain flips to
+  `sabeel-institute-time-tracker.web.app` in `firebase-config.ts`, website
+  redeploys, and chat-app/in-app-browser sign-ins start working.
+
 ## Sentry
 
 - [x] Done 2026-07-16: both projects created, DSNs wired (web + functions),
