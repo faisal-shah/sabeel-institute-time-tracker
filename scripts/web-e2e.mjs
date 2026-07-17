@@ -360,7 +360,7 @@ async function main() {
   await mgr.getByText('Total: 3h 00m', { exact: false }).waitFor({ timeout: 15000 });
   await mgr.getByText('Approve timesheet', { exact: true }).click();
   await mgr.getByText('Nothing waiting for approval', { exact: false }).waitFor();
-  await mgr.screenshot({ path: join(shots, '13-approved-queue-empty.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  await mgr.screenshot({ path: join(shots, '13-approved-queue-empty.png'), timeout: 8000 }).catch(() => {});
 
   console.log('▸ Phase 7: approved week is locked for the volunteer…');
   await vol.goto(baseUrl + '/');
@@ -381,7 +381,10 @@ async function main() {
   // 'all' period, everyone, official view → the volunteer's approved 3h.
   await mgr.getByText('all', { exact: true }).click();
   await mgr.getByText('3h 00m', { exact: true }).first().waitFor({ timeout: 15000 });
-  await mgr.screenshot({ path: join(shots, '15-reports.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+  await mgr.screenshot({ path: join(shots, '15-reports.png'), timeout: 8000 }).catch(async (e) => {
+    console.log('  (shot15 page-shot failed: ' + e.message.split('\n')[0] + ' — trying element shot)');
+    await mgr.locator('body').screenshot({ path: join(shots, '15-reports.png'), timeout: 8000 }).catch((e2) => console.log('  (shot15 element shot failed too: ' + e2.message.split('\n')[0] + ')'));
+  });
 
   // CSV download: capture the browser download and assert its contents.
   const [dl] = await Promise.all([
