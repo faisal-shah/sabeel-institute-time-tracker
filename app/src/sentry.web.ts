@@ -15,3 +15,12 @@ export function captureError(e: unknown, tags?: Record<string, string>): void {
   if (!dsn) return;
   Sentry.captureException(e, { tags });
 }
+
+/**
+ * Attach the signed-in user's uid to events (null on sign-out). Uid only — it
+ * correlates with the users collection without putting email/PII in Sentry.
+ */
+export function setSentryUser(uid: string | null): void {
+  if (!dsn) return;
+  Sentry.setUser(uid ? { id: uid } : null);
+}

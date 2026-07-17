@@ -4,6 +4,7 @@ import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { COLLECTIONS, type TokenClaims, type UserDoc } from '@sabeel/shared';
 import { googleSignOut } from './auth/google';
 import { auth, db } from './firebase';
+import { setSentryUser } from './sentry';
 
 export type Session =
   | { phase: 'loading' }
@@ -66,6 +67,8 @@ export function useSession(): Session {
       unsubDoc = null;
       stopPoll();
       latest.current = { profile: null };
+      // Sentry events carry the uid so "who hit this?" is never a guess.
+      setSentryUser(user?.uid ?? null);
 
       if (!user) {
         setSession({ phase: 'signedOut' });

@@ -12,3 +12,8 @@ export function initSentry(): void {
 export function captureError(_e: unknown, _tags?: Record<string, string>): void {
   // no-op until @sentry/react-native is wired (see initSentry above)
 }
+
+/** Attach the signed-in user's uid to events (null on sign-out). */
+export function setSentryUser(_uid: string | null): void {
+  // no-op until @sentry/react-native is wired (see initSentry above)
+}
