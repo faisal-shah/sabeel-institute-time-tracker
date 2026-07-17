@@ -151,7 +151,8 @@ service cloud.firestore {
       // the clock-in listener attaches optimistically before the server ack,
       // and IDs are unguessable so existence probing is moot.
       allow read: if isActive()
-        && (resource == null || resource.data.uid == request.auth.uid || isManager());
+        && (resource == null || resource.data.uid == request.auth.uid
+            || isManager() || isAdmin());
 
       // Owner creates their own entries (a running clock-in must, in the same
       // batch, point users/{uid}.activeEntryId at itself, and only when no other

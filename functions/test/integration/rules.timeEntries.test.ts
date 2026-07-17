@@ -189,9 +189,13 @@ describe('timeEntries — reads, corrections, deletes', () => {
     });
   });
 
-  it('owner and manager read; other members cannot', async () => {
+  it('owner, manager, and admin (even non-manager) read; other members cannot', async () => {
     await assertSucceeds(getDoc(doc(alice().firestore(), 'timeEntries/e1')));
     await assertSucceeds(getDoc(doc(manager().firestore(), 'timeEntries/e1')));
+    // Admins may decide any submitted sheet, so they must be able to read the
+    // entries under review — caught in prod by Sentry (permission-denied on
+    // useEntriesRange for an admin-without-manager-role).
+    await assertSucceeds(getDoc(doc(admin().firestore(), 'timeEntries/e1')));
     await assertFails(getDoc(doc(bob().firestore(), 'timeEntries/e1')));
   });
 
