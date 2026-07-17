@@ -1,14 +1,6 @@
 import { type ReactNode, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useListenerError } from '../liveQuery';
 import { colors, spacing } from '../theme';
 
@@ -16,6 +8,12 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
   // Live-data failures surface on every screen — a silently broken listener
   // must never look like "there's just no data" (see the 2026-07-16 postmortem).
   const listenerError = useListenerError();
+
+  // KeyboardAwareScrollView (react-native-keyboard-controller) tracks the IME
+  // via WindowInsets, which is the ONLY thing that works under edge-to-edge
+  // (edgeToEdgeEnabled=true) — the legacy Keyboard events don't fire there, so a
+  // bottom input like the reject reason stayed hidden behind the keyboard.
+  // bottomOffset keeps the focused field clear of the keyboard.
   return (
     <View style={styles.screen}>
       {title ? (
@@ -24,16 +22,13 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
         </View>
       ) : null}
       {listenerError ? <Text style={styles.listenerError}>{listenerError}</Text> : null}
-      {/* Keyboard must never cover a bottom-of-screen input (e.g. the reject
-          reason): pad the scroll area by the keyboard height. Inert on web. */}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={spacing(6)}
       >
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {children}
+      </KeyboardAwareScrollView>
     </View>
   );
 }
@@ -89,7 +84,6 @@ export function ErrorText({ error }: { error: string | null }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  flex: { flex: 1 },
   header: {
     backgroundColor: colors.primary,
     paddingTop: spacing(12),

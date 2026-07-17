@@ -46,7 +46,6 @@ export function SignInScreen() {
         resizeMode="contain"
         accessibilityLabel="Sabeel Institute"
       />
-      <Text style={styles.tagline}>Track your hours. All of it counts.</Text>
       <View style={styles.card}>
         <Text style={styles.title}>Time Tracker</Text>
         {(REAL_GOOGLE_AVAILABLE || !USE_EMULATORS) && (
@@ -88,7 +87,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing(2),
   },
-  tagline: { color: colors.accent, fontSize: 15, marginBottom: spacing(6) },
   card: {
     backgroundColor: colors.onPrimary,
     borderRadius: 14,

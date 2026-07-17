@@ -1,6 +1,7 @@
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { StatusBar } from 'expo-status-bar';
 import { useSession } from './src/session';
 import { SignInScreen } from './src/screens/SignInScreen';
@@ -195,9 +196,9 @@ export default function App() {
   }
 
   return (
-    <>
+    <KeyboardProvider>
       {content}
       <StatusBar style="light" />
-    </>
+    </KeyboardProvider>
   );
 }

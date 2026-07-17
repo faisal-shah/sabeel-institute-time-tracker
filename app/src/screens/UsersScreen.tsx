@@ -119,32 +119,32 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
                   onValueChange={async (next) => {
                     if (
                       await confirmAction(
-                        next ? 'Grant admin?' : 'Remove admin?',
+                        next ? 'Grant admin access?' : 'Remove admin?',
                         next
-                          ? `${u.displayName} will manage users and reopen approved timesheets.`
-                          : `${u.displayName} will no longer manage users.`,
+                          ? `This is full control. ${u.displayName} will be able to approve, disable, and delete ANY user (including you), grant admin to others, change roles, and reopen approved timesheets. Only grant this to people you fully trust.`
+                          : `${u.displayName} will no longer manage users or timesheets.`,
                       )
                     )
                       change({ uid: u.uid, admin: next });
                   }}
                 />
               </StateRow>
-              <StateRow label="Account">
-                <Segmented
-                  options={['active', 'disabled'] as const}
-                  value={u.status}
+              <StateRow label={u.status === 'active' ? 'Active' : 'Disabled'}>
+                <Switch
+                  value={u.status === 'active'}
                   disabled={u.uid === selfUid}
-                  danger="disabled"
-                  onChange={async (status) => {
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                  onValueChange={async (active) => {
                     if (
                       await confirmAction(
-                        status === 'disabled' ? 'Disable account?' : 'Re-activate account?',
-                        status === 'disabled'
-                          ? `${u.displayName} will be signed out of the app and unable to log hours.`
-                          : `${u.displayName} will regain access.`,
+                        active ? 'Re-activate account?' : 'Disable account?',
+                        active
+                          ? `${u.displayName} will regain access to the app.`
+                          : `${u.displayName} will be signed out and unable to log hours.`,
                       )
                     )
-                      change({ uid: u.uid, status: status as UserStatus });
+                      change({ uid: u.uid, status: active ? 'active' : 'disabled' });
                   }}
                 />
               </StateRow>
