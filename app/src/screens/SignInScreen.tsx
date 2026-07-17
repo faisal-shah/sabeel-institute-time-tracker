@@ -4,6 +4,7 @@ import { signInWithGoogle, REAL_GOOGLE_AVAILABLE } from '../auth/google';
 import { devSignInAsGoogle } from '../auth/devSignIn';
 import { USE_EMULATORS } from '../env';
 import { Button, ErrorText } from '../components/ui';
+import { captureError } from '../sentry';
 import { colors, spacing } from '../theme';
 
 // Static asset import (Metro resolves images; lint forbids inline require()).
@@ -21,6 +22,12 @@ export function SignInScreen() {
     try {
       await signInWithGoogle();
     } catch (e) {
+      const code = (e as { code?: string }).code ?? '';
+      // User-initiated aborts are not incidents; everything else should be
+      // visible in Sentry, not just on this one person's screen.
+      if (!/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(code)) {
+        captureError(e, { source: 'signInWithGoogle' });
+      }
       setError((e as Error).message);
     }
   };
