@@ -1,6 +1,6 @@
 # Sabeel Institute Time Tracker — User Manual
 
-*For app version 1.0.0-beta.8 · July 2026*
+*For app version 1.0.0-beta.9 · July 2026*
 
 Welcome! This guide explains everything you can do in the Sabeel Institute Time
 Tracker — from logging your first hour to approving your team's timesheets. It is
@@ -214,6 +214,9 @@ device where you want them. Home → **Notification settings** lets you switch
 each kind off individually; the **weekly reminder has its own switch**, so
 people who don't submit every week can silence the nagging while keeping the
 important notifications on.
+
+Notifications follow the account signed in on the device: signing out stops
+this phone or browser from receiving that account's notifications.
 
 ## 1.10 Switching accounts / signing out
 

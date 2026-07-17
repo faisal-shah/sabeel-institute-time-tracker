@@ -465,7 +465,7 @@ async function main() {
   await vol.getByText('Notification settings', { exact: true }).click();
   await vol.getByText('Weekly submit reminder').waitFor();
   await vol.waitForFunction(
-    // eslint-disable-next-line no-undef
+     
     () => {
       // eslint-disable-next-line no-undef
       const sws = document.querySelectorAll('[role="switch"]');

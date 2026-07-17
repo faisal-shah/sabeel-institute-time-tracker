@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut as fbSignOut, type User } from 'firebase/au
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { COLLECTIONS, type TokenClaims, type UserDoc } from '@sabeel/shared';
 import { googleSignOut } from './auth/google';
+import { unregisterPush } from './notify';
 import { auth, db } from './firebase';
 import { setSentryUser } from './sentry';
 
@@ -12,6 +13,11 @@ export type Session =
   | { phase: 'signedIn'; user: User; profile: UserDoc | null; claims: TokenClaims };
 
 export async function signOut(): Promise<void> {
+  // Notifications target the device, not the session — deregister this device
+  // first (while still authenticated) so the next account on this phone/browser
+  // doesn't receive the previous account's notifications.
+  const uid = auth.currentUser?.uid;
+  if (uid) await unregisterPush(uid).catch(() => undefined);
   // Also clear the native Google session, or the next sign-in silently reuses
   // the same account with no way to switch users.
   await googleSignOut().catch(() => undefined);

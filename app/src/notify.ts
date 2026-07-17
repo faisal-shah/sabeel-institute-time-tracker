@@ -3,7 +3,7 @@
 // so Cloud Functions can reach this device. Never throws — notifications are
 // best-effort and must not disturb sign-in.
 import * as Notifications from 'expo-notifications';
-import { doc, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { COLLECTIONS, type PushTokenDoc } from '@sabeel/shared';
 import { db } from './firebase';
 import { USE_EMULATORS } from './env';
@@ -34,5 +34,20 @@ export async function registerPush(uid: string): Promise<void> {
     await setDoc(doc(db, COLLECTIONS.users, uid, 'pushTokens', token), body);
   } catch (e) {
     captureError(e, { source: 'registerPush' });
+  }
+}
+
+/**
+ * Called on sign-out: pushes target the DEVICE, not the session, so without
+ * this a shared phone keeps getting the previous account's notifications.
+ */
+export async function unregisterPush(uid: string): Promise<void> {
+  if (USE_EMULATORS) return;
+  try {
+    const { data: token } = await Notifications.getDevicePushTokenAsync();
+    if (typeof token !== 'string' || !token) return;
+    await deleteDoc(doc(db, COLLECTIONS.users, uid, 'pushTokens', token));
+  } catch {
+    // Permission never granted / no token — nothing registered, nothing to do.
   }
 }
