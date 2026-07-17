@@ -177,18 +177,22 @@ export function useApprovalQueue(approverUid: string, opts?: { all?: boolean }):
   );
 }
 
-/** Live count of my rejected timesheets (the "needs your attention" badge). */
-export function useRejectedCount(uid: string): number {
+/** Live list of my rejected timesheets, oldest first (the resolution backlog). */
+export function useRejectedSheets(uid: string): Timesheet[] {
   return useLiveQuery(
-    'useRejectedCount',
+    'useRejectedSheets',
     () =>
       query(
         collection(db, COLLECTIONS.timesheets),
         where('uid', '==', uid),
         where('status', '==', 'rejected'),
       ),
-    (snap) => snap.size,
-    0,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimesheetDoc) }));
+      list.sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+      return list;
+    },
+    [],
     [uid],
   );
 }

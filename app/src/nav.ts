@@ -4,7 +4,10 @@ export type RootStackParamList = {
   Activities: undefined;
   /** forUid/forName: log hours on someone else's behalf (manager/approver flow). */
   ManualEntry: { forUid?: string; forName?: string } | undefined;
-  Timesheet: undefined;
+  /** initialPeriodKey: open anchored at a specific week (rejection resolution). */
+  Timesheet: { initialPeriodKey?: string } | undefined;
+  /** Rejected timesheets awaiting the owner's fix — any month, one list. */
+  NeedsAttention: undefined;
   EntryEdit: { entryId: string };
   Reports: undefined;
   PersonDetail: { uid: string; displayName: string };

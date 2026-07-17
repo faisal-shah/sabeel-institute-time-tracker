@@ -333,8 +333,11 @@ async function main() {
   // Volunteer home shows the rejection banner live; the reason shows on the sheet.
   await vol.goto(baseUrl + '/');
   await vol.getByText('A timesheet was rejected', { exact: false }).waitFor({ timeout: 30000 });
+  // Banner → Needs-attention list (reason inline) → tap the row → the week view.
   await vol.getByText('A timesheet was rejected', { exact: false }).click();
-  await vol.getByText('Tuesday hours belong to Food Drive.').waitFor();
+  await vol.getByText('to fix and resubmit', { exact: false }).waitFor();
+  await vol.getByText('Tuesday hours belong to Food Drive.', { exact: false }).click();
+  await vol.getByText('Fix the entries below', { exact: false }).waitFor();
   await vol.screenshot({ path: join(shots, '12-rejected.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ Phase 7: volunteer resubmits; approver adds hours on behalf + approves…');

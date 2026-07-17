@@ -18,7 +18,7 @@ import type { RootStackParamList } from '../nav';
 import { signOut } from '../session';
 import { useActivities } from '../activities';
 import { clockIn, clockOut, useEntry, useDayMinutes, explainEntryWriteError } from '../entries';
-import { useTimesheet, useRejectedCount, useApprovalQueue } from '../timesheets';
+import { useTimesheet, useRejectedSheets, useApprovalQueue } from '../timesheets';
 import { setApprover, useApproverChoices } from '../users';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { SearchablePicker } from '../components/SearchablePicker';
@@ -64,7 +64,7 @@ export function HomeScreen({
   const currentSheet = useTimesheet(uid, periodKeyFor(todayKey));
   const periodLocked =
     currentSheet != null && (currentSheet.status === 'submitted' || currentSheet.status === 'approved');
-  const rejectedCount = useRejectedCount(uid);
+  const rejectedCount = useRejectedSheets(uid).length;
 
   // Approver self-service (sticky; stamped at submission).
   const approvers = useApproverChoices();
@@ -98,7 +98,7 @@ export function HomeScreen({
       <Text style={styles.today}>Today: {formatDuration(todayMinutes)}</Text>
 
       {rejectedCount > 0 ? (
-        <Pressable style={styles.rejectedBanner} onPress={() => nav.navigate('Timesheet')}>
+        <Pressable style={styles.rejectedBanner} onPress={() => nav.navigate('NeedsAttention')}>
           <Text style={styles.rejectedText}>
             {rejectedCount === 1
               ? 'A timesheet was rejected — tap to review and resubmit.'

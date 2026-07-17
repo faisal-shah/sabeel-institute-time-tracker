@@ -16,6 +16,7 @@ import { ReportsScreen } from './src/screens/ReportsScreen';
 import { PersonDetailScreen } from './src/screens/PersonDetailScreen';
 import { ApprovalsScreen } from './src/screens/ApprovalsScreen';
 import { TimesheetReviewScreen } from './src/screens/TimesheetReviewScreen';
+import { NeedsAttentionScreen } from './src/screens/NeedsAttentionScreen';
 import type { RootStackParamList } from './src/nav';
 import { colors } from './src/theme';
 import { initSentry } from './src/sentry';
@@ -77,7 +78,27 @@ export default function App() {
               headerTintColor: '#FBF3E4',
             }}
           >
-            {() => <TimesheetScreen uid={user.uid} profile={profile} claims={claims} />}
+            {({ route }) => (
+              <TimesheetScreen
+                uid={user.uid}
+                profile={profile}
+                claims={claims}
+                initialPeriodKey={
+                  (route.params as { initialPeriodKey?: string } | undefined)?.initialPeriodKey
+                }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen
+            name="NeedsAttention"
+            options={{
+              headerShown: true,
+              title: 'Needs attention',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: '#FBF3E4',
+            }}
+          >
+            {() => <NeedsAttentionScreen uid={user.uid} />}
           </Stack.Screen>
           <Stack.Screen
             name="EntryEdit"

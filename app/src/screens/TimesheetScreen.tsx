@@ -72,15 +72,18 @@ export function TimesheetScreen({
   uid,
   profile,
   claims,
+  initialPeriodKey,
 }: {
   uid: string;
   profile: UserDoc;
   claims: TokenClaims;
+  /** Open anchored at this week (rejection resolution jumps straight there). */
+  initialPeriodKey?: string;
 }) {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const tz = deviceTimeZone();
   const todayKey = dayKeyFor(Date.now(), tz);
-  const [anchor, setAnchor] = useState(todayKey);
+  const [anchor, setAnchor] = useState(initialPeriodKey ?? todayKey);
   const [error, setError] = useState<string | null>(null);
 
   const period = periodRangeFor(anchor);
