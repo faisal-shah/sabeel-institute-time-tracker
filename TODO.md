@@ -31,18 +31,44 @@ Firebase emulators until deploy time (Phase 6).
   re-download `google-services.json`. (The committed debug keystore is only for
   sideloading your own builds.)
 
-## Google Drive sync (Phase 5b/6)
+## Google Drive sync — click-by-click (no new service account needed)
 
-- [ ] Enable **Google Sheets API** and **Google Drive API** in the GCP project.
-- [ ] Create a **service account** (no roles needed) and note its email.
-- [ ] In Workspace Drive, create the folder that will hold the hours Sheet + CSV
-  snapshots; **share it (Editor) with the service-account email**.
-- [ ] Create the Google Sheet inside that folder (any name); note its spreadsheet
-  ID from the URL.
-- [ ] Put `DRIVE_SPREADSHEET_ID=<id>` and `DRIVE_FOLDER_ID=<id>` in
-  `functions/.env` (gitignored; see `functions/.env.example`). Empty = the sync
-  is a safe no-op, so nothing breaks until you fill these in. The deployed
-  function's runtime service account must be the one you shared the folder with.
+The deployed functions authenticate as their built-in runtime service account:
+
+    858585609550-compute@developer.gserviceaccount.com
+
+Do NOT create a new service account — just share the folder with that email.
+
+- [ ] **Enable the two APIs** on the `sabeel-institute-time-tracker` project
+  (click each link → Enable):
+  - Sheets: https://console.cloud.google.com/apis/library/sheets.googleapis.com?project=sabeel-institute-time-tracker
+  - Drive: https://console.cloud.google.com/apis/library/drive.googleapis.com?project=sabeel-institute-time-tracker
+- [ ] **Create the folder** in the org's Google Drive (e.g. "Sabeel Hours").
+  Right-click → Share → add
+  `858585609550-compute@developer.gserviceaccount.com` as **Editor** → Share.
+  (Ignore the "outside your organization" warning — that's expected; if
+  Workspace *blocks* the share entirely, an admin must allow external sharing
+  for this folder/drive.)
+- [ ] **Create a Google Sheet inside that folder** (any name, e.g. "Sabeel
+  Hours — live"). Leave it empty; the sync writes its own tabs.
+- [ ] **Copy the two IDs from the browser URLs:**
+  - Sheet open → URL looks like
+    `https://docs.google.com/spreadsheets/d/`**`SPREADSHEET_ID`**`/edit` —
+    copy the long id between `/d/` and `/edit`.
+  - Folder open → URL looks like
+    `https://drive.google.com/drive/folders/`**`FOLDER_ID`** — copy the id
+    after `/folders/`.
+- [ ] **Hand the IDs to Claude** (they're document identifiers, not secrets —
+  chat is fine), or put them in gitignored `functions/.env` yourself as:
+
+      DRIVE_SPREADSHEET_ID=<spreadsheet id>
+      DRIVE_FOLDER_ID=<folder id>
+
+- [ ] Claude then **redeploys functions** and verifies with the in-app
+  **"Sync to Google Drive now"** button (Reports screen): the Sheet gains
+  "Entries" / "By person" / "By activity & month" tabs. Nightly sync runs at
+  02:15 UTC; on the 1st of each month a `hours-YYYY-MM.csv` snapshot is
+  dropped into the folder. Until the IDs are set, the sync is a safe no-op.
 
 ## Sentry (do soon — the 2026-07-16 index incident would have been one Sentry event)
 
