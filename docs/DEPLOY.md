@@ -67,6 +67,13 @@ Verify: an unauthenticated `curl -X POST .../reportTotals -d '{"data":{}}'` shou
 return a Firebase JSON `{"error":{... "UNAUTHENTICATED"}}` (code ran), NOT a plain
 Run "request was not authenticated" 403.
 
+**First deploy of a Firestore-trigger function fails with "Permission denied
+while using the Eventarc Service Agent".** Seen on 2026-07-17 deploying
+`notifyNewUser`/`notifyTimesheet`: the deploy auto-enables Eventarc, but the
+service agent's permissions take a few minutes to propagate. Not a config
+error — wait 2–5 minutes and redeploy just the failed functions
+(`firebase deploy --only functions:<name>,functions:<name>`).
+
 ## Verify after deploy
 - **Query/index probe** (REQUIRED after any change to `firestore.indexes.json`
   or to a query shape — the emulator does NOT enforce composite indexes, so
