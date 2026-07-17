@@ -58,9 +58,10 @@ phase boundary.
   ignored). Admins/managers encode whatever taxonomy they want in the name.
 - 2026-07-17 — **Notifications (Phase 8)**: FCM push on Android + web; events =
   rejected/approved (owner), submitted/resubmitted (stamped approver), new
-  pending account (admins), plus a weekly reminder at Tuesday 10:00 local time
-  covering the previous period — sent only when the period has unsubmitted
-  hours or a rejected sheet. Per-event opt-outs (`notifPrefs`, missing = on)
+  pending account (admins), plus a submit reminder covering the previous
+  period — first at Tuesday 10:00 local time, then daily until submitted
+  (2026-07-17 refinement) — sent only when the period has unsubmitted hours or
+  a rejected sheet. Per-event opt-outs (`notifPrefs`, missing = on)
   with the reminder separately silenceable. Same-day overlapping entries are
   flagged in the UI and block submission (back-to-back is fine) — client-side
   only; approvers see the same highlight.

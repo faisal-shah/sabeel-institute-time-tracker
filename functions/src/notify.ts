@@ -120,9 +120,10 @@ export const notifyTimesheet = onDocumentWritten(
 );
 
 /**
- * Weekly nudge: Tuesday 10:00 in each user's last-seen timezone, about the
- * previous period — only when there is actually something to submit (see
- * reminderEligible), deduped via lastReminderPeriodKey.
+ * Submit-your-week nudge: first fires Tuesday 10:00 in each user's last-seen
+ * timezone (about the previous period), then repeats DAILY at 10:00 until that
+ * period is submitted — only when there is actually something to submit (see
+ * reminderEligible). Once-a-day dedup via lastReminderDayKey.
  */
 export const weeklyReminder = onSchedule(
   { schedule: 'every 60 minutes', secrets: [sentryDsn] },
@@ -135,8 +136,9 @@ export const weeklyReminder = onSchedule(
         const user = snap.data() as UserDoc;
         if (!user.timeZone || !prefOn(user.notifPrefs, 'reminder')) continue;
         if (!inReminderWindow(now, user.timeZone)) continue;
-        const prev = reminderPeriod(dayKeyFor(now, user.timeZone));
-        if (user.lastReminderPeriodKey === prev.fromKey) continue;
+        const todayKey = dayKeyFor(now, user.timeZone);
+        const prev = reminderPeriod(todayKey);
+        if (user.lastReminderDayKey === todayKey) continue;
 
         const sheet = await db.collection('timesheets').doc(`${snap.id}_${prev.fromKey}`).get();
         const status = sheet.exists ? (sheet.data() as TimesheetDoc).status : null;
@@ -154,7 +156,7 @@ export const weeklyReminder = onSchedule(
         if (!reminderEligible(status, hasEntries)) continue;
 
         await sendToUser(snap.id, texts.reminder(prev));
-        await snap.ref.update({ lastReminderPeriodKey: prev.fromKey });
+        await snap.ref.update({ lastReminderDayKey: todayKey });
       }
     } catch (e) {
       await reportError(e);

@@ -205,9 +205,10 @@ The app sends push notifications so nothing sits unnoticed:
 - **Your timesheet was rejected** (with the reason) or **approved**.
 - *Approvers:* someone **submitted or resubmitted** a timesheet to you.
 - *Admins:* a **new account** is waiting for approval.
-- A **weekly reminder** — if last week has logged hours that were never
+- A **submit reminder** — if last week has logged hours that were never
   submitted (or a rejected sheet), you get a nudge on **Tuesday morning** in
-  your local timezone. Weeks with nothing to submit don't nag.
+  your local timezone, and then **daily** until you submit it. Weeks with
+  nothing to submit don't nag.
 
 The app asks for notification permission when you sign in — allow it on each
 device where you want them. Home → **Notification settings** lets you switch

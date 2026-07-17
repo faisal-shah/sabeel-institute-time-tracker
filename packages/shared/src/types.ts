@@ -43,8 +43,9 @@ export interface UserDoc {
   notifPrefs?: NotifPrefs;
   /** Last-seen device IANA timezone; the weekly reminder fires at local Tuesday 10:00. */
   timeZone?: string;
-  /** Server-only dedup marker: the last period the weekly reminder covered. */
-  lastReminderPeriodKey?: string;
+  /** Server-only dedup marker: local dayKey of the last reminder sent (the
+   *  nudge is daily-until-submitted, starting Tuesday). */
+  lastReminderDayKey?: string;
   /**
    * Sticky choice of who approves this user's timesheets (an active manager or
    * admin). Stamped onto each timesheet at submission — changing it affects only

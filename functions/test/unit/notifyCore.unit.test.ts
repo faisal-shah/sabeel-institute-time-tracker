@@ -17,14 +17,23 @@ describe('prefOn', () => {
   });
 });
 
-describe('reminder window (Tuesday 10:00 local)', () => {
+describe('reminder window (10:00 local, Tuesday through Saturday)', () => {
   // 2026-07-14 is a Tuesday. 14:30 UTC = 10:30 in New York (EDT, UTC-4).
   const tueUtc = Date.UTC(2026, 6, 14, 14, 30);
   it('hits in the timezone where it is Tuesday 10am', () => {
     expect(localClock(tueUtc, 'America/New_York')).toEqual({ weekday: 2, hour: 10 });
     expect(inReminderWindow(tueUtc, 'America/New_York')).toBe(true);
   });
-  it('misses elsewhere at the same instant', () => {
+  it('repeats daily: Wednesday through Saturday 10am also hit', () => {
+    for (const day of [15, 16, 17, 18]) {
+      expect(inReminderWindow(Date.UTC(2026, 6, day, 14, 30), 'America/New_York')).toBe(true);
+    }
+  });
+  it('Sunday and Monday are grace days', () => {
+    expect(inReminderWindow(Date.UTC(2026, 6, 19, 14, 30), 'America/New_York')).toBe(false);
+    expect(inReminderWindow(Date.UTC(2026, 6, 20, 14, 30), 'America/New_York')).toBe(false);
+  });
+  it('misses outside the 10:00 hour at the same instant elsewhere', () => {
     expect(inReminderWindow(tueUtc, 'Asia/Singapore')).toBe(false); // 22:30 Tue
     expect(inReminderWindow(tueUtc, 'UTC')).toBe(false); // 14:30 Tue
   });

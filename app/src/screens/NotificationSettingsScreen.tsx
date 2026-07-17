@@ -15,7 +15,7 @@ const ROWS: { key: PrefKey; label: string; hint?: string; who?: 'approver' | 'ad
   {
     key: 'reminder',
     label: 'Weekly submit reminder',
-    hint: 'A Tuesday nudge when last week has hours that were never submitted. Turn this off if you don’t submit every week.',
+    hint: 'Starts Tuesday when last week has unsubmitted hours, then repeats daily until you submit. Turn this off if you don’t submit every week.',
   },
 ];
 

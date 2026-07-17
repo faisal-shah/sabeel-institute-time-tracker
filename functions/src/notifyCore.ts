@@ -27,10 +27,16 @@ export function localClock(nowMs: number, timeZone: string): { weekday: number; 
   return { weekday, hour };
 }
 
-/** The reminder window: Tuesday 10:00–10:59 in the user's local time. */
+/**
+ * The reminder window: 10:00–10:59 local, Tuesday through Saturday. The first
+ * nudge about last week lands on Tuesday (Sunday/Monday are grace days), then
+ * it repeats DAILY until the week is submitted. Sunday rolls "last week"
+ * forward, so a still-unsubmitted week simply starts nagging again the next
+ * Tuesday. Daily dedup is the caller's job (lastReminderDayKey).
+ */
 export function inReminderWindow(nowMs: number, timeZone: string): boolean {
   const { weekday, hour } = localClock(nowMs, timeZone);
-  return weekday === 2 && hour === 10;
+  return weekday >= 2 && weekday <= 6 && hour === 10;
 }
 
 /** The period the reminder is about: the one before the user's current period. */

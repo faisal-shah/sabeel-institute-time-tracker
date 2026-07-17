@@ -224,9 +224,9 @@ describe('firestore.rules — notification prefs & push tokens', () => {
     await assertSucceeds(updateDoc(me, { timeZone: 'Asia/Singapore' }));
   });
 
-  it('cannot write lastReminderPeriodKey (server-only) or others’ prefs', async () => {
+  it('cannot write lastReminderDayKey (server-only) or others’ prefs', async () => {
     await assertFails(
-      updateDoc(doc(alice().firestore(), 'users/alice'), { lastReminderPeriodKey: '2026-07-05' }),
+      updateDoc(doc(alice().firestore(), 'users/alice'), { lastReminderDayKey: '2026-07-14' }),
     );
     await assertFails(
       updateDoc(doc(bob().firestore(), 'users/alice'), { notifPrefs: { reminder: false } }),
