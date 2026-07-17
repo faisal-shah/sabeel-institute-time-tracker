@@ -264,19 +264,19 @@ async function main() {
 
   console.log('▸ Phase 4: period timesheet — edit an entry, delete an entry…');
   await vol.getByText('My timesheet', { exact: true }).click();
-  await vol.getByText('1h 31m', { exact: true }).first().waitFor();
+  await vol.getByText('Week total: 1h 31m', { exact: true }).waitFor();
   await vol.screenshot({ path: join(shots, '9-timesheet.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   // Edit the manual entry (found by its note) to end at 11:00 → total 2h 01m.
   await vol.getByText('Math tutoring with the kids').click();
   await vol.locator('input').nth(2).fill('11:00');
   await vol.getByText('Save changes', { exact: true }).click();
-  await vol.getByText('2h 01m', { exact: true }).first().waitFor();
+  await vol.getByText('Week total: 2h 01m', { exact: true }).waitFor();
 
   // Delete the 1-minute clock entry → total 2h 00m.
   await vol.getByText('1m', { exact: true }).last().click();
   await vol.getByText('Delete entry', { exact: true }).click();
-  await vol.getByText('2h 00m', { exact: true }).first().waitFor();
+  await vol.getByText('Week total: 2h 00m', { exact: true }).waitFor();
   await vol.screenshot({ path: join(shots, '10-timesheet-period.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ stale-listener guard: switching weeks must clear rows even on a slow network…');
@@ -302,7 +302,7 @@ async function main() {
   if ((await vol.getByText('Math tutoring with the kids').count()) !== 0)
     throw new Error("stale entries visible under a different week's timesheet");
   await vol.context().unroute('http://127.0.0.1:8080/**');
-  await vol.getByText('Jump to this week', { exact: true }).click();
+  await vol.getByText('Jump to current week', { exact: true }).click();
   await vol.getByText('Math tutoring with the kids').waitFor({ timeout: 15000 });
 
   console.log('▸ Phase 7: volunteer picks an approver and submits the week…');

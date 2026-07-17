@@ -41,6 +41,24 @@ export function useApproverChoices(): UserRow[] {
   );
 }
 
+/**
+ * Live count of accounts awaiting approval — badges the "Manage users" button.
+ * Only managers/admins may query non-manager profiles, so pass `enabled` from
+ * the caller's role to skip the query (and its permission error) for members.
+ */
+export function usePendingCount(enabled: boolean): number {
+  return useLiveQuery(
+    'usePendingCount',
+    () =>
+      enabled
+        ? query(collection(db, COLLECTIONS.users), where('status', '==', 'pending'))
+        : null,
+    (snap) => snap.size,
+    0,
+    [enabled],
+  );
+}
+
 /** Live list of all users — managers use it for report filters and person detail. */
 export function useUsers(): UserRow[] {
   return useLiveQuery(

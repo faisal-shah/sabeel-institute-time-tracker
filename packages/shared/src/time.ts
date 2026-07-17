@@ -125,6 +125,15 @@ export function periodHasStarted(periodKey: string, todayKey: string): boolean {
 }
 
 /** Human label for a period: 'Jul 5 – Jul 11' (or 'Dec 28 – Jan 3' across years). */
+export function monthLabel(dayKey: string): string {
+  const { y, m } = parseDayKey(dayKey);
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(Date.UTC(y, m - 1, 1)));
+}
+
 export function periodLabel(range: { fromKey: string; toKey: string }): string {
   const fmt = (dayKey: string) => {
     const { y, m, d } = parseDayKey(dayKey);

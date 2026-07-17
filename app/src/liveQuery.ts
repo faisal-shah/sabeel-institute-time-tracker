@@ -55,10 +55,11 @@ export function useListenerError(): string | null {
 }
 // ---------------------------------------------------------------------------
 
-/** Live query results. `make`/`map` are called fresh per (re)subscription. */
+/** Live query results. `make`/`map` are called fresh per (re)subscription;
+ *  a null query means "not subscribed" (e.g. role-gated queries) → `empty`. */
 export function useLiveQuery<T>(
   label: string,
-  make: () => Query,
+  make: () => Query | null,
   map: (snap: QuerySnapshot) => T,
   empty: T,
   deps: readonly unknown[],
@@ -66,8 +67,10 @@ export function useLiveQuery<T>(
   const [value, setValue] = useState<T>(empty);
   useEffect(() => {
     setValue(empty);
+    const q = make();
+    if (!q) return;
     return onSnapshot(
-      make(),
+      q,
       (snap) => {
         setValue(map(snap));
         reportListenerSuccess(label);

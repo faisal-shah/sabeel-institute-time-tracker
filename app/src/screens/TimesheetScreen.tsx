@@ -7,6 +7,7 @@ import {
   dayKeyFor,
   deviceTimeZone,
   formatDuration,
+  monthLabel,
   periodHasStarted,
   periodLabel,
   periodRangeFor,
@@ -119,8 +120,12 @@ export function TimesheetScreen({
     return [...groups.entries()];
   }, [entries]);
 
-  const stepPeriod = (dir: 1 | -1) =>
-    setAnchor(dir === -1 ? addDays(period.fromKey, -1) : addDays(period.toKey, 1));
+  // Arrows step MONTHS (weeks are picked via the chips): back lands on the last
+  // week of the previous month, forward on the first week of the next.
+  const stepMonth = (dir: 1 | -1) =>
+    setAnchor(
+      dir === -1 ? addDays(month[0].fromKey, -1) : addDays(month[month.length - 1].toKey, 1),
+    );
 
   // Submission preconditions (rules enforce them too; these make the UI honest).
   const approverUid = profile.approverUid ?? (claims.admin ? uid : null);
@@ -138,10 +143,14 @@ export function TimesheetScreen({
 
   return (
     <Screen>
-      {/* Week navigator for the month — a chip per week. Dots tell the story:
-          sage = hours logged but not submitted, gold = submitted, raspberry =
-          approved, red = rejected; no dot = empty week. Future weeks are dim. */}
-      <View style={styles.monthStrip}>
+      <Text style={styles.monthTitle}>{monthLabel(period.fromKey)}</Text>
+      {/* Week navigator for the month — a chip per week, flanked by month
+          arrows. Dots tell the story: sage = hours logged but not submitted,
+          gold = submitted, raspberry = approved, red = rejected; no dot =
+          empty week. Future weeks are dim. */}
+      <View style={styles.stripRow}>
+        <Button label="‹" kind="secondary" onPress={() => stepMonth(-1)} />
+        <View style={styles.monthStrip}>
         {month.map((p) => {
           const st = p.fromKey === period.fromKey && sheet !== undefined
             ? (sheet?.status ?? 'draft')
@@ -167,6 +176,8 @@ export function TimesheetScreen({
             </Pressable>
           );
         })}
+        </View>
+        <Button label="›" kind="secondary" onPress={() => stepMonth(1)} />
       </View>
       <View style={styles.legend}>
         {(
@@ -184,21 +195,16 @@ export function TimesheetScreen({
         ))}
       </View>
 
-      <View style={styles.navRow}>
-        <Button label="‹" kind="secondary" onPress={() => stepPeriod(-1)} />
-        <View style={styles.navCenter}>
-          <Text style={styles.navLabel}>{periodLabel(period)}</Text>
-          <Text style={styles.navTotal}>{formatDuration(total)}</Text>
-          {status && status !== 'draft' ? (
-            <Text style={[styles.statusChip, { color: STATUS_CHIP[status].color }]}>
-              {STATUS_CHIP[status].label}
-            </Text>
-          ) : null}
-        </View>
-        <Button label="›" kind="secondary" onPress={() => stepPeriod(1)} />
+      <View style={styles.summaryRow}>
+        <Text style={styles.navTotal}>Week total: {formatDuration(total)}</Text>
+        {status && status !== 'draft' ? (
+          <Text style={[styles.statusChip, { color: STATUS_CHIP[status].color }]}>
+            {STATUS_CHIP[status].label}
+          </Text>
+        ) : null}
       </View>
       {periodRangeFor(todayKey).fromKey !== period.fromKey ? (
-        <Button label="Jump to this week" kind="secondary" onPress={() => setAnchor(todayKey)} />
+        <Button label="Jump to current week" kind="secondary" onPress={() => setAnchor(todayKey)} />
       ) : null}
 
       {sheet?.status === 'rejected' ? (
@@ -307,7 +313,14 @@ export function TimesheetScreen({
 }
 
 const styles = StyleSheet.create({
-  monthStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
+  monthTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  stripRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
+  monthStrip: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
   monthChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -326,9 +339,12 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(3), marginTop: spacing(1) },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing(1) },
   legendLabel: { fontSize: 11, color: colors.textMuted },
-  navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
-  navCenter: { flex: 1, alignItems: 'center' },
-  navLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing(3),
+  },
   navTotal: { fontSize: 13, color: colors.textMuted },
   statusChip: { fontSize: 13, fontWeight: '700' },
   rejectCard: {

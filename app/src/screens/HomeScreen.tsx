@@ -19,7 +19,7 @@ import { signOut } from '../session';
 import { useActivities } from '../activities';
 import { clockIn, clockOut, useEntry, useDayMinutes, explainEntryWriteError } from '../entries';
 import { useTimesheet, useRejectedSheets, useApprovalQueue } from '../timesheets';
-import { setApprover, useApproverChoices } from '../users';
+import { setApprover, useApproverChoices, usePendingCount } from '../users';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
@@ -70,6 +70,7 @@ export function HomeScreen({
   const approvers = useApproverChoices();
   const isApprover = claims.role === 'manager' || claims.admin === true;
   const queue = useApprovalQueue(uid);
+  const pendingCount = usePendingCount(isApprover);
 
   const selected = activities.find((a) => a.id === selectedId) ?? null;
 
@@ -202,7 +203,10 @@ export function HomeScreen({
           </>
         ) : null}
         {claims.admin || claims.role === 'manager' ? (
-          <Button label="Manage users" onPress={() => nav.navigate('Users')} />
+          <Button
+            label={pendingCount > 0 ? `Manage users (${pendingCount})` : 'Manage users'}
+            onPress={() => nav.navigate('Users')}
+          />
         ) : null}
         <Button label="Sign out" kind="secondary" onPress={() => signOut()} />
       </View>
