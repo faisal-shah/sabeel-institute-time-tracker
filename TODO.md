@@ -75,10 +75,10 @@ Do NOT create a new service account — just share the folder with that email.
 Android push works out of the box. The **website** needs the Web Push
 certificate generated once:
 
-- [ ] Firebase console → **Project settings** (gear) → **Cloud Messaging** tab →
+- [x] Firebase console → **Project settings** (gear) → **Cloud Messaging** tab →
   scroll to **Web configuration** → **Web Push certificates** → **Generate key
   pair**.
-- [ ] Copy the key that appears (starts with `B…`, ~90 characters — it's a
+- [x] Copy the key that appears (starts with `B…`, ~90 characters — it's a
   *public* key, chat is fine) and give it to Claude, who puts it in
   `app/.env.local` as `EXPO_PUBLIC_FCM_VAPID_KEY` and redeploys the website.
   Until then, web sign-ins simply skip push registration — nothing breaks.
