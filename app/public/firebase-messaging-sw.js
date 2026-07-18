@@ -7,7 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-comp
 
 firebase.initializeApp({
   apiKey: 'AIzaSyBw-htGUNKD_wIY5p6d_HTTJMzES5axWMI',
-  authDomain: 'sabeel-institute-time-tracker.firebaseapp.com',
+  authDomain: 'sabeel-institute-time-tracker.web.app',
   projectId: 'sabeel-institute-time-tracker',
   storageBucket: 'sabeel-institute-time-tracker.firebasestorage.app',
   messagingSenderId: '858585609550',

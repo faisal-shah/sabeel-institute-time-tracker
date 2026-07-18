@@ -90,7 +90,7 @@ firebaseapp.com auth helper ("missing initial state"). Fix = serve the auth
 helper same-origin. One console step, then Claude flips `authDomain` and
 redeploys:
 
-- [ ] GCP console → **APIs & Services → Credentials** →
+- [x] GCP console → **APIs & Services → Credentials** →
   https://console.cloud.google.com/apis/credentials?project=sabeel-institute-time-tracker
   → under **OAuth 2.0 Client IDs** open the **Web client** (the one Firebase
   auto-created) and add:
@@ -99,7 +99,7 @@ redeploys:
   - to **Authorized redirect URIs**:
     `https://sabeel-institute-time-tracker.web.app/__/auth/handler`
   Save. (Additive — existing sign-ins keep working.)
-- [ ] Tell Claude "redirect URI added" → authDomain flips to
+- [x] Tell Claude "redirect URI added" → authDomain flips to
   `sabeel-institute-time-tracker.web.app` in `firebase-config.ts`, website
   redeploys, and chat-app/in-app-browser sign-ins start working.
 

@@ -4,7 +4,12 @@
 // the emulator's demo project, so this real config is only used against production.
 export const firebaseConfig = {
   apiKey: 'AIzaSyBw-htGUNKD_wIY5p6d_HTTJMzES5axWMI',
-  authDomain: 'sabeel-institute-time-tracker.firebaseapp.com',
+  // The hosting domain, NOT firebaseapp.com: hosting serves /__/auth/* itself,
+  // keeping the whole sign-in redirect same-origin — required for storage-
+  // partitioned browsers (in-app webviews) where the cross-domain helper dies
+  // with "missing initial state". Redirect URI registered on the OAuth client
+  // 2026-07-17.
+  authDomain: 'sabeel-institute-time-tracker.web.app',
   projectId: 'sabeel-institute-time-tracker',
   storageBucket: 'sabeel-institute-time-tracker.firebasestorage.app',
   messagingSenderId: '858585609550',
