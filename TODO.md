@@ -15,9 +15,7 @@ Firebase emulators until deploy time (Phase 6).
   `app/google-services.json` and set in `WEB_CLIENT_ID`
   (`packages/shared/src/constants.ts`).
 - [x] **google-services.json committed** — done (Android app registered).
-- [ ] **Confirm the Firestore location is `nam5`** (US multi-region) if you
-  haven't already — it's immutable. Firebase Console → Firestore Database → the
-  region shown at the top. (Skip if already created; just note what it is.)
+- [x] **Firestore location confirmed `nam5`** (2026-07-17, Faisal).
 - [x] **OAuth consent screen — published** (2026-07-16, confirmed by Faisal). Any
   Google account can now sign in; access is gated by the app's own admin-approval
   flow. App uses only basic non-sensitive scopes (email/profile/openid) so no

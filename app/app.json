@@ -22,7 +22,8 @@
     },
     "plugins": [
       "@react-native-google-signin/google-signin",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@sentry/react-native"
     ],
     "icon": "./assets/icon.png"
   }
