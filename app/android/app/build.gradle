@@ -4,8 +4,9 @@ apply plugin: "com.facebook.react"
 
 // Sentry source-map/symbol upload during release builds — only when the
 // (gitignored) sentry.properties with the auth token exists, so builds
-// without it stay exactly as before. See sentry.properties.example.
-if (file("${projectDir}/sentry.properties").exists()) {
+// without it stay exactly as before. sentry.gradle reads sentry.properties
+// from the android/ dir (one up from here). See android/sentry.properties.example.
+if (file("${rootProject.projectDir}/sentry.properties").exists()) {
     apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute(null, rootDir).text.trim(), "../sentry.gradle")
 }
 

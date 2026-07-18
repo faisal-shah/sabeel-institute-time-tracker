@@ -110,7 +110,7 @@ redeploys:
 - [ ] **Readable release stack traces** (optional, one-time): create an auth
   token at sentry.io → **Settings → Auth Tokens → Create New Token** (scope:
   `project:releases`), then on this machine copy
-  `app/android/app/sentry.properties.example` to `sentry.properties` (same
+  `app/android/sentry.properties.example` to `sentry.properties` (same
   folder, gitignored) and fill in `auth.token=` and your org slug
   (`defaults.org=` — it's in your sentry.io URL). NEVER paste the token in
   chat or commit it. Tell Claude it's in place → the next release build

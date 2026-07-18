@@ -27,4 +27,4 @@ app/dist-web/
 *.log
 .DS_Store
 e2e-shots/
-app/android/app/sentry.properties
+app/android/sentry.properties
