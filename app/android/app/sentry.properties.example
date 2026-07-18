@@ -1,0 +1,7 @@
+# Copy to sentry.properties (same directory; gitignored) and fill in the token.
+# The token comes from sentry.io -> Settings -> Auth Tokens -> Create New Token
+# (needs the project:releases scope). NEVER commit or paste the real token.
+defaults.url=https://sentry.io/
+defaults.org=YOUR_ORG_SLUG
+defaults.project=sabeel-app
+auth.token=YOUR_AUTH_TOKEN

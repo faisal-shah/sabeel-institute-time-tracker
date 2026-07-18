@@ -104,8 +104,17 @@ redeploys:
 ## Sentry
 
 - [x] Done 2026-07-16: both projects created, DSNs wired (web + functions),
-  events flowing with user ids. Remaining: native @sentry/react-native init is
-  a no-op stub — wire it on a future Android build cycle.
+  events flowing with user ids.
+- [x] Native @sentry/react-native wired 2026-07-17 (v1.0.0-beta.11) — Android
+  crashes/ANRs/errors report with user ids.
+- [ ] **Readable release stack traces** (optional, one-time): create an auth
+  token at sentry.io → **Settings → Auth Tokens → Create New Token** (scope:
+  `project:releases`), then on this machine copy
+  `app/android/app/sentry.properties.example` to `sentry.properties` (same
+  folder, gitignored) and fill in `auth.token=` and your org slug
+  (`defaults.org=` — it's in your sentry.io URL). NEVER paste the token in
+  chat or commit it. Tell Claude it's in place → the next release build
+  uploads source maps automatically and stacks become readable.
 
 ## First admin (after first deploy)
 
