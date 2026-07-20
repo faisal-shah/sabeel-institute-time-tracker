@@ -136,9 +136,21 @@ The four rules that are easy to get wrong:
   ever pointed at the link.
 - **The binary goes in its own commit**, never mixed with page edits. Each is
   ~38 MB and git keeps every version forever — overwriting does not reclaim the
-  blob. Isolated binary commits can be dropped later with `git rebase -i` +
-  `git push --force-with-lease`; mixed ones cannot without losing real history.
+  blob. Isolation is what makes the old blob **droppable**, so the steady-state
+  cost of a release is swapping a blob, not adding one; mixed commits cannot be
+  dropped without losing real history.
+- **Drop the superseded binary commits as part of the release.** Not "someday":
+  `git rebase -i <parent-of-oldest-binary-commit>`, delete the `pick` lines for
+  the old `APK … (binary)` commits (keep the newest per app), then
+  `git push --force-with-lease`. Done 2026-07-20: 5 blobs → 2, `.git` 103 MB →
+  37 MB. Replaying a binary commit whose "add" was dropped raises a
+  `modify/delete` conflict — git leaves the correct newest version in the tree,
+  so `git add <file>` and `git rebase --continue`. **Confirm
+  `git diff <pre-rewrite-sha> HEAD` is empty before force-pushing**: the tree
+  must be byte-identical, only history changed.
 - **`--force-with-lease`, never `--force`** — it refuses if someone else pushed.
+  Not hypothetical: on 2026-07-20 a concurrent Kanban release landed in that repo
+  mid-task.
 
 Pages lags a push by ~1 minute, so verify with a cache-buster before concluding
 something broke. Only arm64 is published (covers phones from ~2016 on); a 32-bit

@@ -199,8 +199,15 @@ NEXT: point the public download page at ${tag}
      what was tested. Verify: sha256sum both.
    • Keep the filename UNVERSIONED; the page carries the version. Re-versioning
      it breaks every existing bookmark and link.
-   • Binary in its OWN commit, never mixed with page edits — that is what makes
-     old blobs droppable later (rebase -i + push --force-with-lease).
+   • Binary in its OWN commit, never mixed with page edits — that isolation is
+     what makes the SUPERSEDED blob droppable, so a release swaps a blob rather
+     than adding one.
+   • Then drop the old binary commit (do it now, not "someday"):
+       git rebase -i <parent-of-oldest-APK-commit>   # delete old "APK … (binary)" picks
+       # modify/delete conflicts: git leaves the newest version in the tree →
+       #   git add <file> && git rebase --continue
+       git diff <pre-rewrite-sha> HEAD               # MUST be empty before pushing
+       git push --force-with-lease origin master
    • Pages lags ~1 min; verify with a cache-buster before assuming a problem:
      curl -s "https://faisal-shah.github.io/sabeel-time-tracker/?cb=$RANDOM" \\
        -H 'Cache-Control: no-cache' | grep -o 'v[0-9][^<]*'
