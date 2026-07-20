@@ -21,7 +21,7 @@
  *  - The version lives in FOUR places that drifted apart before this existed
  *    (app.json was stranded at beta.7 while builds said beta.11).
  */
-import { execFileSync, execSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 

@@ -28,3 +28,4 @@ app/dist-web/
 .DS_Store
 e2e-shots/
 app/android/sentry.properties
+build-artifacts

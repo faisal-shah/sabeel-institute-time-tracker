@@ -2,7 +2,7 @@
   "name": "sabeel-institute-time-tracker",
   "version": "0.0.0",
   "private": true,
-  "description": "Sabeel Institute Time Tracker — hours tracking for a small nonprofit (Android + web from one Expo codebase, Firebase backend)",
+  "description": "Sabeel Institute Time Tracker \u2014 hours tracking for a small nonprofit (Android + web from one Expo codebase, Firebase backend)",
   "workspaces": [
     "packages/*",
     "functions",
@@ -13,13 +13,18 @@
   },
   "scripts": {
     "prepare": "npm run build -w @sabeel/shared",
-    "lint": "eslint .",
+    "lint": "eslint . && npm run check:text",
     "pretypecheck": "npm run build -w @sabeel/shared",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "pretest": "npm run build -w @sabeel/shared",
     "test": "npm run test --workspaces --if-present",
     "test:emulator": "bash scripts/test-emulator.sh",
-    "build": "npm run build -w @sabeel/shared && npm run build -w functions"
+    "build": "npm run build -w @sabeel/shared && npm run build -w functions",
+    "knip": "knip",
+    "check:text": "node scripts/check-text-sources.mjs",
+    "test:e2e": "node scripts/web-e2e.mjs",
+    "emulators:free": "bash scripts/free-emulator-ports.sh",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
@@ -28,6 +33,7 @@
     "globals": "^16.5.0",
     "playwright": "^1.61.1",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.53.0"
+    "typescript-eslint": "^8.53.0",
+    "knip": "^5.88.1"
   }
 }

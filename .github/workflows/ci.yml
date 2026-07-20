@@ -33,6 +33,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Keeps the 2026-07-20 dead-code audit from rotting. knip.json teaches it
+      # this stack's shapes (platform seams and scripts are entry points) — read
+      # the comments there before "fixing" anything it reports.
+      - name: Dead-code audit (knip)
+        run: npm run knip
+
       - name: Unit tests
         run: npm test
 

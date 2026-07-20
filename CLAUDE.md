@@ -28,12 +28,22 @@ Key product invariants (do not silently change):
 - Config-as-code: rules/indexes deploy from the repo, never console-edited.
 
 ## Dev & test loops
+**Read `docs/DEV-TOOLING.md` before debugging the harness or cutting a release** —
+it records which failures are environmental and what each script guards against.
 - Unit: `npm test` (Vitest: functions + shared).
 - Rules/integration: `npm run test:emulator` (needs JDK 21; wraps
   `firebase emulators:exec --project demo-sabeel`).
 - Android: `scripts/emulator.sh headless` (AVD `tb_emu`, Google-APIs image), then
   `npx expo run:android` in `app/`. Firebase emulators from the AVD = `10.0.2.2`.
   There are NO physical devices — emulator only; verify UI by adb screenshot.
+- Releases: `npm run release -- <version> --notes FILE` (bumps all four version
+  files, rebuilds the manual PDF, builds both APK variants, verifies the
+  production bundle on the AVD, publishes to GitHub). Never hand-bump versions.
+- If a suite fails, first ask whether it fails on **stashed changes too** — a
+  clean-HEAD repro means the cause is environmental (usually a leftover
+  emulator: `npm run emulators:free`), not your diff.
+- Dead code: `npm run knip` (CI-enforced). Its false positives in this stack are
+  documented in `docs/DEV-TOOLING.md` — check there before deleting anything.
 - Web: `npx expo start --web` in `app/` (emulator-backed via env flag).
 - CI (GitHub Actions): lint + typecheck + unit + emulator tests on every push. Keep
   it green. No deploys from CI.
