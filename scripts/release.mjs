@@ -165,6 +165,48 @@ function publish(v, built, notesFile) {
   sh(`gh release create v${v} --title "v${v}" --notes-file ${notesPath} ${assets}`);
 }
 
+/**
+ * The public download page (GitHub Pages) is how the TEAM actually installs the
+ * app — this repo is private, so its releases are not publicly downloadable.
+ * A release is not finished until that page points at it.
+ *
+ * Deliberately printed rather than automated: it force-pushes another repo and
+ * commits a ~38MB binary, where the ordering rules matter (see below and
+ * sabeel-time-tracker/README.md in faisal-shah.github.io).
+ */
+function printDownloadPageSteps(v) {
+  const tag = `v${v}`;
+  console.log(`
+─────────────────────────────────────────────────────────────────────
+NEXT: point the public download page at ${tag}
+      https://faisal-shah.github.io/sabeel-time-tracker/
+      (repo faisal-shah.github.io, branch master — the team installs from
+       here because THIS repo is private)
+
+  cd ${root}
+  gh release download ${tag} --pattern 'arm64.apk' --pattern 'USER-MANUAL.pdf' \\
+    --dir ../faisal-shah.github.io/sabeel-time-tracker --clobber
+  cd ../faisal-shah.github.io
+  mv sabeel-time-tracker/sabeel-time-tracker-*arm64.apk \\
+     sabeel-time-tracker/sabeel-time-tracker-arm64-v8a.apk
+  # edit the "Current build:" line in sabeel-time-tracker/index.html → ${tag}
+  git commit -m "Point the download page at ${tag}" -- sabeel-time-tracker/index.html
+  git commit -m "APK ${tag} (binary)" -- sabeel-time-tracker/sabeel-time-tracker-arm64-v8a.apk
+  git push origin master
+
+  Rules that are easy to get wrong:
+   • Take the APK from the RELEASE, not app/android/.../outputs — the release is
+     what was tested. Verify: sha256sum both.
+   • Keep the filename UNVERSIONED; the page carries the version. Re-versioning
+     it breaks every existing bookmark and link.
+   • Binary in its OWN commit, never mixed with page edits — that is what makes
+     old blobs droppable later (rebase -i + push --force-with-lease).
+   • Pages lags ~1 min; verify with a cache-buster before assuming a problem:
+     curl -s "https://faisal-shah.github.io/sabeel-time-tracker/?cb=$RANDOM" \\
+       -H 'Cache-Control: no-cache' | grep -o 'v[0-9][^<]*'
+─────────────────────────────────────────────────────────────────────`);
+}
+
 // ---------------------------------------------------------------------------
 if (VERIFY_ONLY) {
   const v = currentVersion();
@@ -203,3 +245,4 @@ if (!existsSync(notesFile ?? '')) {
 }
 publish(version, built, notesFile);
 console.log(`\n✔ v${version} released. Commit the version bump.`);
+printDownloadPageSteps(version);

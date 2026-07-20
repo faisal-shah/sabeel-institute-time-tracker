@@ -109,6 +109,41 @@ Guards worth keeping:
 `--dry-run` stops after the bump; `--verify-only` re-runs the AVD check against
 already-built APKs.
 
+### A release is not finished until the download page points at it
+
+This repo is **private**, so its GitHub releases are not publicly downloadable —
+the team would need repo access just to install the APK. They install from a
+public GitHub Pages site instead:
+
+**https://faisal-shah.github.io/sabeel-time-tracker/** — served from the
+`faisal-shah.github.io` repo, branch **`master`** (not main). It links the web
+app, the Android APK and USER-MANUAL.pdf.
+
+`release.mjs` prints the exact commands with the tag filled in. The steps are
+deliberately **not automated**: they force-push another repo and commit a ~38 MB
+binary, where ordering matters. Full instructions also live in
+`sabeel-time-tracker/README.md` in that repo, next to the files.
+
+The four rules that are easy to get wrong:
+
+- **Take the APK from the release, not the local build tree.** The release is the
+  artifact that was tested and published; `outputs/` is whatever was built last.
+  When the page was created the working copy was three commits past the tag —
+  a local build would have shipped something nobody had verified. Confirm with
+  `sha256sum` on both.
+- **The filename stays unversioned** (`sabeel-time-tracker-arm64-v8a.apk`); the
+  page carries the version. Re-versioning breaks every bookmark and message that
+  ever pointed at the link.
+- **The binary goes in its own commit**, never mixed with page edits. Each is
+  ~38 MB and git keeps every version forever — overwriting does not reclaim the
+  blob. Isolated binary commits can be dropped later with `git rebase -i` +
+  `git push --force-with-lease`; mixed ones cannot without losing real history.
+- **`--force-with-lease`, never `--force`** — it refuses if someone else pushed.
+
+Pages lags a push by ~1 minute, so verify with a cache-buster before concluding
+something broke. Only arm64 is published (covers phones from ~2016 on); a 32-bit
+build is not worth permanent extra history for a case that may never arise.
+
 ## Working with the Firebase emulators generally
 
 - **The emulator enforces no composite indexes.** A query that passes every
