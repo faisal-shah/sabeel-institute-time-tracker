@@ -15,6 +15,8 @@ if [ -n "${JAVA_HOME:-}" ]; then
   export PATH="$JAVA_HOME/bin:$PATH"
 fi
 
+bash "$(dirname "$0")/free-emulator-ports.sh"
+
 exec firebase emulators:exec \
   --project demo-sabeel \
   --only firestore,auth \

@@ -11,7 +11,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import http from 'node:http';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -112,16 +112,26 @@ async function main() {
     env.JAVA_HOME = jdk;
     env.PATH = `${jdk}/bin:${env.PATH}`;
   }
+  // A previous run that was killed leaves emulators squatting on these ports;
+  // the next run then talks to a half-dead one (see free-emulator-ports.sh).
+  execFileSync('bash', [join(root, 'scripts/free-emulator-ports.sh')], { stdio: 'inherit' });
+
   console.log('▸ starting Firebase emulators…');
   const emu = bg(
     'firebase',
     ['emulators:start', '--project', 'demo-sabeel', '--only', 'auth,firestore,functions'],
     { env, detached: true },
   );
+  // Full emulator output goes to a log TRUNCATED PER RUN. It used to be
+  // appended/left behind, so debugging a failure meant reading a log from days
+  // earlier and drawing confident conclusions from it.
+  const emuLogPath = join(shots, 'emulator.log');
+  const emuLog = createWriteStream(emuLogPath, { flags: 'w' });
   // Surface emulator trouble (e.g. a function param prompt that would hang a
   // headless run) instead of silently timing out later.
   const emuWatch = (d) => {
     const s = d.toString();
+    emuLog.write(s);
     if (/error|Error|Enter a string value|throw|internal/i.test(s)) process.stderr.write(s);
   };
   emu.stderr.on('data', emuWatch);
@@ -156,6 +166,12 @@ async function main() {
   });
 
   const consoleErrors = [];
+  // Every non-2xx response from the functions emulator, WITH ITS BODY. A
+  // callable failure reaches the UI as a bare "internal" and, if the function
+  // is missing entirely, as a browser CORS complaint — neither says what
+  // happened server-side. Capturing the raw response here is the difference
+  // between reading the answer and hand-writing a repro script to find it.
+  const callableFailures = [];
   const pages = new Map();
   async function newPage(label) {
     const ctx = await browser.newContext({
@@ -169,11 +185,40 @@ async function main() {
       if (m.type() === 'warning' && /listener|session poll/.test(m.text()))
         console.log(`  (warn) [${label}] ${m.text()}`);
     });
+    page.on('response', async (resp) => {
+      if (!/:5001\//.test(resp.url()) || resp.status() < 400) return;
+      let body = '';
+      try {
+        body = (await resp.text()).slice(0, 400);
+      } catch {
+        /* body already discarded */
+      }
+      callableFailures.push(`[${label}] ${resp.status()} ${resp.url()}\n    ${body}`);
+    });
+    page.on('requestfailed', (req) => {
+      if (!/:5001\//.test(req.url())) return;
+      callableFailures.push(
+        `[${label}] REQUEST FAILED ${req.url()}\n    ${req.failure()?.errorText ?? ''}` +
+          '\n    (a 404 from the functions emulator carries no CORS headers, so the' +
+          '\n     browser reports this as a CORS error — check function registration)',
+      );
+    });
     await page.goto(baseUrl + '/');
     return page;
   }
-  // On any failure, dump what every page was showing.
+  // On any failure, dump what every page was showing AND why the server said no.
   process.on('unhandledRejection', () => {});
+  globalThis.dumpDiagnostics = () => {
+    if (callableFailures.length) {
+      console.error('\n--- failed calls to the functions emulator ---');
+      console.error(callableFailures.join('\n'));
+    }
+    if (consoleErrors.length) {
+      console.error('\n--- browser console errors ---');
+      console.error(consoleErrors.slice(-15).join('\n'));
+    }
+    console.error(`\n--- emulator log: ${join(shots, 'emulator.log')} (this run) ---`);
+  };
   globalThis.dumpPages = async () => {
     for (const [label, p] of pages) {
       await p
@@ -522,6 +567,7 @@ async function main() {
 
 main().catch(async (e) => {
   console.error(e);
+  globalThis.dumpDiagnostics?.();
   await globalThis.dumpPages?.();
   cleanup(1);
 });
