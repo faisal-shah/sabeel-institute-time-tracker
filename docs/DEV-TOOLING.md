@@ -4,6 +4,11 @@ Every entry here exists because something cost hours. The scripts encode the
 fix; this file keeps the reasoning, so nobody "simplifies" a guard back into a
 bug.
 
+**Scope:** this file covers *our* scripts and conventions. The underlying
+stack behaviour they guard against is documented once, in the shared
+`expo-firebase-stack` skill — see `docs/STACK-GOTCHAS.md`. Facts about Expo,
+Firebase or the emulators belong there; what we built in response belongs here.
+
 ## Commands
 
 | Command | What it does |

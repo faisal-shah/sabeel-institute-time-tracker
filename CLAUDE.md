@@ -1,5 +1,34 @@
 # Sabeel Institute Time Tracker — Working Rules for Claude
 
+## Stack knowledge lives in a shared skill, not in this repo
+Recurring traps of this stack (Expo, Metro, react-native-web, Firebase JS SDK,
+Cloud Functions, FCM, emulator behaviour, build/export mechanics) live in the
+**`expo-firebase-stack` skill** — source: `faisal-shah/agent-skills`,
+`skills/expo-firebase-stack/SKILL.md`; installed at
+`~/.claude/skills/expo-firebase-stack/`. Read its closing section, **"How this
+stack fools you"**, *before* a debugging session, not during one.
+
+**Boundary rule — one question: would this be true for a different company
+building on the same stack?**
+- **Yes → the skill.** Stack behaviour, SDK quirks, tooling, emulator and build
+  mechanics.
+- **No → this file.** Product invariants, brand, ports/AVD conventions, phase
+  process, division of labour, anything naming this project.
+
+The test is not "is it secret", it is "is it about the stack or about us".
+
+**The skill repo is PUBLIC.** Nothing naming this project goes into it — no
+project ids, internal domains, email addresses, AVD names, secrets, or product
+decisions. Generalise first, then grep the file for identifiers before pushing.
+
+**Contribute back in the same batch as the fix.** When a stack problem costs real
+time, write the entry into the skill alongside the code change — not only into a
+commit message. The knowledge only compounds if it lands where both projects read.
+
+**Never copy the skill's content into this repo.** A second copy drifts and the
+sync is manual; `docs/STACK-GOTCHAS.md` is a stub for that reason. A stub cannot
+drift.
+
 ## What this project is
 Hours tracking for Sabeel Institute (small nonprofit): clock in/out + manual entries
 against projects/events, admin-approved Google sign-in, honor-system hours, reports,
