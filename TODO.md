@@ -24,10 +24,6 @@ Firebase emulators until deploy time (Phase 6).
   (now has the `client_type: 1` Android OAuth client). Native Google Sign-In is
   wired and the app builds; complete a real sign-in on a device/emulator with a
   Google account to confirm end to end.
-- [ ] **Release SHA-1** — before shipping a signed release APK, generate a real
-  keystore, register ITS SHA-1 on the Firebase Android app the same way, and
-  re-download `google-services.json`. (The committed debug keystore is only for
-  sideloading your own builds.)
 
 ## Google Drive sync — click-by-click (no new service account needed)
 
@@ -125,3 +121,16 @@ redeploys:
 
 - [x] Done 2026-07-16: wipe confirmed and executed, admin kept (approver=self),
   live smoke passed.
+
+## Play Store phase (not now — deferred 2026-07-20)
+
+Nothing here blocks sideloaded testing. The APKs already ARE release builds
+(minified, production bundle); only the signing key is the debug one, which is
+valid to 2052 and functionally identical for testing.
+
+- [ ] **Release keystore + SHA-1** — generate a real keystore, wire the signing
+  config, register its SHA-1 on the Firebase Android app, re-download
+  `google-services.json`. Play Store will not accept a debug-signed APK.
+  Note: switching keys forces a one-time uninstall/reinstall for everyone who
+  already has the app (Android refuses an update signed by a different key), so
+  the cost scales with install count. Nothing is lost — all data is in Firestore.
