@@ -64,6 +64,35 @@ function waitFor(url, label, timeoutMs = 60000) {
   });
 }
 
+/**
+ * The functions emulator ACCEPTS CONNECTIONS on 5001 well before it has
+ * registered any function: until then every call 404s with "Function ... does
+ * not exist". A 404 carries no CORS headers, so in the browser that surfaces as
+ * a misleading "blocked by CORS policy" error and the app shows a bare
+ * "internal" — which looks like a broken callable rather than a race.
+ * Wait for a known callable to actually EXIST, not merely for the port to answer.
+ */
+function waitForFunctionRegistered(name, timeoutMs = 180000) {
+  const url = `http://127.0.0.1:5001/demo-sabeel/us-central1/${name}`;
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs;
+    const tick = () => {
+      const req = http.request(url, { method: 'OPTIONS' }, (res) => {
+        res.resume();
+        if (res.statusCode !== 404) resolve();
+        else if (Date.now() > deadline) reject(new Error(`timeout: ${name} never registered`));
+        else setTimeout(tick, 1000);
+      });
+      req.on('error', () => {
+        if (Date.now() > deadline) reject(new Error(`timeout: ${name} never registered`));
+        else setTimeout(tick, 1000);
+      });
+      req.end();
+    };
+    tick();
+  });
+}
+
 async function main() {
   // 1. Build functions + export the web bundle in emulator mode.
   console.log('▸ building functions and web bundle (emulator mode)…');
@@ -100,6 +129,9 @@ async function main() {
   await waitFor('http://127.0.0.1:9099', 'auth emulator');
   await waitFor('http://127.0.0.1:8080', 'firestore emulator');
   await waitFor('http://127.0.0.1:5001', 'functions emulator', 120000);
+  // Port-open is not function-ready; see waitForFunctionRegistered.
+  await waitForFunctionRegistered('setUserAccess');
+  console.log('  (functions registered)');
 
   // 3. Static server for the exported bundle (SPA fallback to index.html).
   const dist = join(root, 'app', 'dist-web');

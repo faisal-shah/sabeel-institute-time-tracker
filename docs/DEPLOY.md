@@ -74,6 +74,13 @@ service agent's permissions take a few minutes to propagate. Not a config
 error — wait 2–5 minutes and redeploy just the failed functions
 (`firebase deploy --only functions:<name>,functions:<name>`).
 
+**e2e: "internal" from a callable / "blocked by CORS policy" in the browser.**
+The functions emulator accepts connections on 5001 *before* it registers any
+function; until then calls 404, and a 404 carries no CORS headers, so the browser
+blames CORS and the app shows a bare `internal`. It is a startup race, not a
+callable bug. `scripts/web-e2e.mjs` now waits for a known callable to exist
+(`waitForFunctionRegistered`) rather than for the port to answer.
+
 ## Verify after deploy
 - **Query/index probe** (REQUIRED after any change to `firestore.indexes.json`
   or to a query shape — the emulator does NOT enforce composite indexes, so

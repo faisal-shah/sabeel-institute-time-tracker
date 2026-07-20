@@ -22,12 +22,9 @@ export function SignInScreen() {
     try {
       await signInWithGoogle();
     } catch (e) {
-      const code = (e as { code?: string }).code ?? '';
-      // User-initiated aborts are not incidents; everything else should be
-      // visible in Sentry, not just on this one person's screen.
-      if (!/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(code)) {
-        captureError(e, { source: 'signInWithGoogle' });
-      }
+      // Cancellations never get here — both auth seams swallow them — so
+      // anything that lands is a real failure worth reporting and showing.
+      captureError(e, { source: 'signInWithGoogle' });
       setError((e as Error).message);
     }
   };

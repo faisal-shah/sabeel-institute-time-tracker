@@ -11,7 +11,7 @@ let initialized = false;
  * Initialize Sentry once, lazily, from a DSN provided at call time (Secret Manager).
  * Returns true if Sentry is ready to receive events.
  */
-export function ensureSentry(dsn: string | undefined): boolean {
+function ensureSentry(dsn: string | undefined): boolean {
   if (initialized) {
     return true;
   }
@@ -26,8 +26,6 @@ export function ensureSentry(dsn: string | undefined): boolean {
   initialized = true;
   return true;
 }
-
-export { Sentry };
 
 /**
  * Report an UNEXPECTED error. HttpsErrors are expected domain outcomes

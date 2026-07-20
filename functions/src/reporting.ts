@@ -2,7 +2,6 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Query } from 'firebase-admin/firestore';
 import {
   addDays,
-  formatDuration,
   timeOfDayFor,
   type TimeEntryDoc,
   type TimesheetDoc,
@@ -61,7 +60,7 @@ function approvedOnly(rows: TimeEntryDoc[], approved: Set<string>): TimeEntryDoc
 }
 
 /** Build the filtered, dayKey-ordered query shared by CSV export and Drive sync. */
-export function entriesQuery(input: ExportInput): Query {
+function entriesQuery(input: ExportInput): Query {
   let q: Query = getFirestore().collection('timeEntries');
   if (input.uid) q = q.where('uid', '==', input.uid);
   if (input.activityId) q = q.where('activityId', '==', input.activityId);
@@ -204,5 +203,3 @@ export const reportTotals = onCall(
   }),
 );
 
-// Re-exported so callers importing from one module get a stable surface.
-export { formatDuration };

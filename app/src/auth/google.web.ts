@@ -21,6 +21,20 @@ getRedirectResult(auth).catch((e) => captureError(e, { source: 'redirectSignIn' 
 /** Web keeps no Google session of its own — Firebase sign-out is enough. */
 export async function googleSignOut(): Promise<void> {}
 
+/**
+ * Codes that mean "the person changed their mind", not "sign-in failed".
+ * Swallowed here at the seam rather than in each caller, so every caller
+ * inherits it and this stays symmetric with google.ts, which has always
+ * treated SIGN_IN_CANCELLED / IN_PROGRESS as non-errors. An expected user
+ * action must not reach the error reporter, or the issue stream fills with
+ * benign events and the real report gets scrolled past.
+ */
+const CANCELLED = new Set([
+  'auth/popup-closed-by-user',
+  'auth/cancelled-popup-request',
+  'auth/user-cancelled',
+]);
+
 export async function signInWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
   // Always show Google's account chooser (with its own "Use another account")
@@ -29,11 +43,18 @@ export async function signInWithGoogle(): Promise<void> {
   try {
     await signInWithPopup(auth, provider);
   } catch (e) {
-    // Popup blocked → full-page redirect fallback.
-    if ((e as { code?: string }).code === 'auth/popup-blocked') {
+    const code = (e as { code?: string }).code ?? '';
+    // Popup unavailable (blocked, or an in-app webview that can't open one)
+    // → full-page redirect fallback. Failures of THAT surface only via
+    // getRedirectResult above.
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/operation-not-supported-in-this-environment'
+    ) {
       await signInWithRedirect(auth, provider);
       return;
     }
+    if (CANCELLED.has(code)) return; // user closed the chooser — not a failure
     throw e;
   }
 }

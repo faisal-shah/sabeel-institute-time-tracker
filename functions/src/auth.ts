@@ -1,6 +1,6 @@
 import { CallableRequest, HttpsError } from 'firebase-functions/v2/https';
 
-export interface Claims {
+interface Claims {
   role?: 'member' | 'manager';
   status?: 'pending' | 'active' | 'disabled';
   admin?: boolean;

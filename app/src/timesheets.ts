@@ -20,7 +20,7 @@ import type { TimeEntry } from './entries';
 
 export type Timesheet = TimesheetDoc & { id: string };
 
-export const tsId = (uid: string, periodKey: string) => `${uid}_${periodKey}`;
+const tsId = (uid: string, periodKey: string) => `${uid}_${periodKey}`;
 
 /** Snapshot totals over a period's entries (closed only — a running one has no duration). */
 function snapshotOf(entries: TimeEntry[]): { totalMinutes: number; entryCount: number } {

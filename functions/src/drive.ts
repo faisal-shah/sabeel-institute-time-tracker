@@ -88,7 +88,7 @@ export async function runSync(
 /** Real Google target from the service-account ADC (set on the deployed function).
  *  googleapis is a heavy module, so it's require()d lazily here — importing this
  *  file must NOT drag googleapis into every function's cold start. */
-export function makeGoogleTarget(spreadsheetId: string, folderId: string): DriveTarget | null {
+function makeGoogleTarget(spreadsheetId: string, folderId: string): DriveTarget | null {
   if (!spreadsheetId || !folderId) return null;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { google } = require('googleapis') as typeof import('googleapis');
