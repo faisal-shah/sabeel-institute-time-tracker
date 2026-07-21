@@ -10,7 +10,9 @@ import { fetchTotals, fetchCsv, syncDriveNow, type Totals } from '../reporting';
 import { saveCsv } from '../saveCsv';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 type Window = 'week' | 'month' | 'year' | 'all';
 
@@ -203,37 +205,37 @@ function Row({
 }
 
 const styles = StyleSheet.create({
-  section: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: spacing(2) },
+  section: { fontSize: 13, fontWeight: '700', color: t.text.secondary, marginTop: spacing(2) },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
   chip: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 18,
     paddingHorizontal: spacing(3.5),
     paddingVertical: spacing(1.5),
   },
-  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipLabel: { color: colors.textMuted, fontSize: 13 },
-  chipLabelOn: { color: colors.onPrimary },
+  chipOn: { backgroundColor: t.accent.base, borderColor: t.accent.base },
+  chipLabel: { color: t.text.secondary, fontSize: 13 },
+  chipLabelOn: { color: t.text.inverse },
   totalCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent.base,
     borderRadius: 14,
     padding: spacing(5),
     alignItems: 'center',
     marginTop: spacing(3),
   },
-  totalLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  totalValue: { color: colors.onPrimary, fontSize: 32, fontWeight: '700' },
+  totalLabel: { color: t.accent.goldText, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  totalValue: { color: t.text.inverse, fontSize: 32, fontWeight: '700' },
   breakdown: { gap: spacing(1) },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing(2),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: t.border.subtle,
   },
-  rowLabel: { fontSize: 15, color: colors.text },
-  rowValue: { fontSize: 15, fontWeight: '600', color: colors.primary },
-  status: { color: colors.primary, fontSize: 13 },
-  unofficial: { color: colors.danger, fontSize: 12 },
+  rowLabel: { fontSize: 15, color: t.text.primary },
+  rowValue: { fontSize: 15, fontWeight: '600', color: t.accent.base },
+  status: { color: t.accent.base, fontSize: 13 },
+  unofficial: { color: t.feedback.danger, fontSize: 12 },
 });

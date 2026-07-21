@@ -3,7 +3,9 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { COLLECTIONS, type NotifPrefs, type TokenClaims, type UserDoc } from '@sabeel/shared';
 import { db } from '../firebase';
 import { Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 type PrefKey = keyof NotifPrefs;
 
@@ -57,8 +59,8 @@ export function NotificationSettingsScreen({
           <Switch
             value={prefs[r.key] !== false}
             onValueChange={(on) => void setPref(r.key, on)}
-            trackColor={{ true: colors.primary, false: colors.border }}
-            thumbColor={colors.onPrimary}
+            trackColor={{ true: t.accent.base, false: t.border.subtle }}
+            thumbColor={t.text.inverse}
           />
         </View>
       ))}
@@ -67,18 +69,18 @@ export function NotificationSettingsScreen({
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: 13, color: colors.textMuted, marginBottom: spacing(2) },
+  intro: { fontSize: 13, color: t.text.secondary, marginBottom: spacing(2) },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing(3),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 12,
     padding: spacing(3.5),
   },
   rowText: { flex: 1 },
-  label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  hint: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  label: { fontSize: 15, fontWeight: '600', color: t.text.primary },
+  hint: { fontSize: 12, color: t.text.muted, marginTop: 2 },
 });

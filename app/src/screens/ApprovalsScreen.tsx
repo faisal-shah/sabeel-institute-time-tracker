@@ -7,7 +7,9 @@ import type { RootStackParamList } from '../nav';
 import { useApprovalQueue } from '../timesheets';
 import { useUsers } from '../users';
 import { Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 /** The approver's queue: timesheets submitted to me (admins may view all). */
 export function ApprovalsScreen({ uid, claims }: { uid: string; claims: TokenClaims }) {
@@ -71,26 +73,26 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', gap: spacing(2) },
   toggle: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 20,
     paddingHorizontal: spacing(4),
     paddingVertical: spacing(1.5),
   },
-  toggleOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  toggleLabel: { color: colors.textMuted, fontSize: 13 },
-  toggleLabelOn: { color: colors.onPrimary },
+  toggleOn: { backgroundColor: t.accent.base, borderColor: t.accent.base },
+  toggleLabel: { color: t.text.secondary, fontSize: 13 },
+  toggleLabelOn: { color: t.text.inverse },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 12,
     padding: spacing(3.5),
     gap: spacing(3),
   },
   rowMain: { flex: 1 },
-  rowName: { fontSize: 15, fontWeight: '600', color: colors.text },
-  rowPeriod: { fontSize: 13, color: colors.textMuted },
-  rowTotal: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  empty: { color: colors.textMuted, fontSize: 14 },
+  rowName: { fontSize: 15, fontWeight: '600', color: t.text.primary },
+  rowPeriod: { fontSize: 13, color: t.text.secondary },
+  rowTotal: { fontSize: 15, fontWeight: '700', color: t.accent.base },
+  empty: { color: t.text.secondary, fontSize: 14 },
 });

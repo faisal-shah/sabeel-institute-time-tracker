@@ -2,7 +2,9 @@ import { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useListenerError } from '../liveQuery';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 export function Screen({ children, title }: { children: ReactNode; title?: string }) {
   // Live-data failures surface on every screen — a silently broken listener
@@ -67,7 +69,7 @@ export function Button({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color={kind === 'secondary' ? colors.primary : colors.onPrimary} />
+        <ActivityIndicator color={kind === 'secondary' ? t.accent.base : t.text.inverse} />
       ) : (
         <Text style={[styles.btnLabel, kind === 'secondary' && styles.btnLabelSecondary]}>
           {label}
@@ -83,14 +85,14 @@ export function ErrorText({ error }: { error: string | null }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: t.bg.canvas },
   header: {
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent.base,
     paddingTop: spacing(12),
     paddingBottom: spacing(4),
     paddingHorizontal: spacing(5),
   },
-  headerTitle: { color: colors.onPrimary, fontSize: 22, fontWeight: '700' },
+  headerTitle: { color: t.text.inverse, fontSize: 22, fontWeight: '700' },
   body: { padding: spacing(5), gap: spacing(3) },
   btn: {
     borderRadius: 10,
@@ -100,20 +102,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 48,
   },
-  btnPrimary: { backgroundColor: colors.primary },
+  btnPrimary: { backgroundColor: t.accent.base },
   btnSecondary: {
-    backgroundColor: colors.bgMuted,
+    backgroundColor: t.bg.sage,
     borderWidth: 1,
-    borderColor: colors.sage,
+    borderColor: t.accent.sage,
   },
-  btnDanger: { backgroundColor: colors.danger },
+  btnDanger: { backgroundColor: t.feedback.danger },
   btnDim: { opacity: 0.6 },
-  btnLabel: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
-  btnLabelSecondary: { color: colors.primary },
-  error: { color: colors.danger, fontSize: 14 },
+  btnLabel: { color: t.text.inverse, fontSize: 16, fontWeight: '600' },
+  btnLabelSecondary: { color: t.accent.base },
+  error: { color: t.feedback.danger, fontSize: 14 },
   listenerError: {
-    backgroundColor: colors.danger,
-    color: colors.onPrimary,
+    backgroundColor: t.feedback.danger,
+    color: t.text.inverse,
     fontSize: 13,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(5),

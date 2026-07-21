@@ -7,7 +7,9 @@ import { confirmAction } from '../confirm';
 import { approverChoices, setApprover, useUsers } from '../users';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 const setUserAccess = httpsCallable<
   { uid: string; status?: UserStatus; role?: UserRole; admin?: boolean },
@@ -114,8 +116,8 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
                 <Switch
                   value={u.admin}
                   disabled={u.status !== 'active' || u.uid === selfUid}
-                  trackColor={{ true: colors.primary, false: colors.border }}
-                  thumbColor={colors.onPrimary}
+                  trackColor={{ true: t.accent.base, false: t.border.subtle }}
+                  thumbColor={t.text.inverse}
                   onValueChange={async (next) => {
                     if (
                       await confirmAction(
@@ -133,8 +135,8 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
                 <Switch
                   value={u.status === 'active'}
                   disabled={u.uid === selfUid}
-                  trackColor={{ true: colors.primary, false: colors.border }}
-                  thumbColor={colors.onPrimary}
+                  trackColor={{ true: t.accent.base, false: t.border.subtle }}
+                  thumbColor={t.text.inverse}
                   onValueChange={async (active) => {
                     if (
                       await confirmAction(
@@ -203,27 +205,27 @@ function Segmented<T extends string>({
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 12,
     padding: spacing(4),
     gap: spacing(1.5),
   },
-  cardPending: { borderColor: colors.accent, backgroundColor: '#F8EEDA' },
-  name: { fontSize: 16, fontWeight: '600', color: colors.text },
-  email: { fontSize: 14, color: colors.textMuted },
+  cardPending: { borderColor: t.accent.gold, backgroundColor: t.bg.goldSoft },
+  name: { fontSize: 16, fontWeight: '600', color: t.text.primary },
+  email: { fontSize: 14, color: t.text.secondary },
   badges: { flexDirection: 'row', gap: spacing(2), marginTop: spacing(1) },
   badge: {
-    backgroundColor: colors.bgMuted,
-    color: colors.textMuted,
+    backgroundColor: t.bg.sage,
+    color: t.text.secondary,
     borderRadius: 6,
     paddingHorizontal: spacing(2),
     paddingVertical: spacing(0.5),
     fontSize: 12,
     overflow: 'hidden',
   },
-  badgeAdmin: { backgroundColor: colors.accent, color: '#43300D' },
+  badgeAdmin: { backgroundColor: t.accent.gold, color: t.text.primary },
   approverRow: { gap: spacing(1), marginTop: spacing(1) },
-  approverLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  approverLabel: { fontSize: 12, fontWeight: '700', color: t.text.secondary },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(2) },
   stateRow: {
     flexDirection: 'row',
@@ -232,19 +234,19 @@ const styles = StyleSheet.create({
     marginTop: spacing(2),
     gap: spacing(3),
   },
-  stateLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  stateLabel: { fontSize: 13, fontWeight: '700', color: t.text.secondary },
   seg: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: colors.sage,
+    borderColor: t.accent.sage,
     borderRadius: 8,
     overflow: 'hidden',
   },
   segDisabled: { opacity: 0.5 },
   segOpt: { paddingHorizontal: spacing(3.5), paddingVertical: spacing(1.5) },
-  segOn: { backgroundColor: colors.primary },
-  segOnDanger: { backgroundColor: colors.danger },
-  segLabel: { fontSize: 13, color: colors.textMuted },
-  segLabelOn: { color: colors.onPrimary, fontWeight: '700' },
-  empty: { color: colors.textMuted },
+  segOn: { backgroundColor: t.accent.base },
+  segOnDanger: { backgroundColor: t.feedback.danger },
+  segLabel: { fontSize: 13, color: t.text.secondary },
+  segLabelOn: { color: t.text.inverse, fontWeight: '700' },
+  empty: { color: t.text.secondary },
 });

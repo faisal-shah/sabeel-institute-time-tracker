@@ -30,7 +30,9 @@ import {
   useMyTimesheetsRange,
 } from '../timesheets';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 export function EntryRow({
   entry,
@@ -74,10 +76,10 @@ export function EntryRow({
 }
 
 const STATUS_CHIP = {
-  draft: { label: 'Not submitted', color: colors.textMuted },
-  submitted: { label: 'Submitted', color: colors.accentDeep },
-  approved: { label: 'Approved', color: colors.primary },
-  rejected: { label: 'Rejected', color: colors.danger },
+  draft: { label: 'Not submitted', color: t.text.secondary },
+  submitted: { label: 'Submitted', color: t.accent.goldText },
+  approved: { label: 'Approved', color: t.accent.base },
+  rejected: { label: 'Rejected', color: t.feedback.danger },
 } as const;
 
 export function TimesheetScreen({
@@ -175,7 +177,7 @@ export function TimesheetScreen({
             st !== 'draft'
               ? STATUS_CHIP[st].color
               : periodsWithHours.has(p.fromKey)
-                ? colors.sage
+                ? t.accent.sage
                 : null;
           return (
             <Pressable
@@ -194,7 +196,7 @@ export function TimesheetScreen({
       <View style={styles.legend}>
         {(
           [
-            [colors.sage, 'in progress'],
+            [t.accent.sage, 'in progress'],
             [STATUS_CHIP.submitted.color, 'submitted'],
             [STATUS_CHIP.approved.color, 'approved'],
             [STATUS_CHIP.rejected.color, 'rejected'],
@@ -343,7 +345,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     fontWeight: '700',
-    color: colors.text,
+    color: t.text.primary,
     textAlign: 'center',
   },
   monthStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
@@ -352,56 +354,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing(1.5),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 14,
     paddingHorizontal: spacing(2.5),
     paddingVertical: spacing(1.5),
   },
-  monthChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  monthChipOn: { backgroundColor: t.accent.base, borderColor: t.accent.base },
   monthChipFuture: { opacity: 0.45 },
-  monthChipLabel: { fontSize: 12, color: colors.textMuted },
-  monthChipLabelOn: { color: colors.onPrimary },
+  monthChipLabel: { fontSize: 12, color: t.text.secondary },
+  monthChipLabelOn: { color: t.text.inverse },
   dot: { width: 8, height: 8, borderRadius: 4 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(3), marginTop: spacing(1) },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing(1) },
-  legendLabel: { fontSize: 11, color: colors.textMuted },
+  legendLabel: { fontSize: 11, color: t.text.muted },
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing(3),
   },
-  navTotal: { fontSize: 13, color: colors.textMuted },
+  navTotal: { fontSize: 13, color: t.text.secondary },
   statusChip: { fontSize: 13, fontWeight: '700' },
   rejectCard: {
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: t.feedback.danger,
     borderRadius: 10,
     padding: spacing(3),
     gap: spacing(1),
   },
-  rejectTitle: { color: colors.danger, fontWeight: '700', fontSize: 13 },
-  rejectReason: { color: colors.text, fontSize: 14 },
-  rejectHint: { color: colors.textMuted, fontSize: 12 },
+  rejectTitle: { color: t.feedback.danger, fontWeight: '700', fontSize: 13 },
+  rejectReason: { color: t.text.primary, fontSize: 14 },
+  rejectHint: { color: t.text.muted, fontSize: 12 },
   dayGroup: { gap: spacing(2) },
-  dayHeader: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: spacing(2) },
+  dayHeader: { fontSize: 13, fontWeight: '700', color: t.text.secondary, marginTop: spacing(2) },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 12,
     padding: spacing(3.5),
     gap: spacing(3),
   },
-  rowConflict: { borderColor: colors.danger, borderWidth: 2, backgroundColor: '#FBEDEC' },
-  rowConflictLabel: { fontSize: 12, fontWeight: '700', color: colors.danger },
+  rowConflict: { borderColor: t.feedback.danger, borderWidth: 2, backgroundColor: t.bg.dangerSoft },
+  rowConflictLabel: { fontSize: 12, fontWeight: '700', color: t.feedback.danger },
   rowMain: { flex: 1 },
-  rowActivity: { fontSize: 15, fontWeight: '600', color: colors.text },
-  rowTimes: { fontSize: 13, color: colors.textMuted },
-  rowNote: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
-  rowDuration: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  empty: { color: colors.textMuted },
-  hint: { fontSize: 12, color: colors.textMuted },
-  conflictHint: { fontSize: 12, fontWeight: '600', color: colors.danger },
+  rowActivity: { fontSize: 15, fontWeight: '600', color: t.text.primary },
+  rowTimes: { fontSize: 13, color: t.text.secondary },
+  rowNote: { fontSize: 13, color: t.text.secondary, fontStyle: 'italic' },
+  rowDuration: { fontSize: 15, fontWeight: '700', color: t.accent.base },
+  empty: { color: t.text.secondary },
+  hint: { fontSize: 12, color: t.text.muted },
+  conflictHint: { fontSize: 12, fontWeight: '600', color: t.feedback.danger },
 });

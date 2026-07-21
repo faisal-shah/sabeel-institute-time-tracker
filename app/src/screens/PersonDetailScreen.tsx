@@ -7,7 +7,9 @@ import type { RootStackParamList } from '../nav';
 import { fetchTotals, type Totals } from '../reporting';
 import { printStatement, CAN_PRINT } from '../printStatement';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 const LIFETIME = { fromKey: '2000-01-01', toKey: '2999-12-31' };
 
@@ -85,24 +87,24 @@ export function PersonDetailScreen({ uid, displayName }: { uid: string; displayN
 }
 
 const styles = StyleSheet.create({
-  name: { fontSize: 22, fontWeight: '700', color: colors.text },
+  name: { fontSize: 22, fontWeight: '700', color: t.text.primary },
   totalCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent.base,
     borderRadius: 14,
     padding: spacing(5),
     alignItems: 'center',
   },
-  totalLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  totalValue: { color: colors.onPrimary, fontSize: 32, fontWeight: '700' },
+  totalLabel: { color: t.accent.goldText, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  totalValue: { color: t.text.inverse, fontSize: 32, fontWeight: '700' },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing(2),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: t.border.subtle,
   },
-  rowLabel: { fontSize: 15, color: colors.text },
-  rowValue: { fontSize: 15, fontWeight: '600', color: colors.primary },
-  empty: { color: colors.textMuted },
-  status: { color: colors.primary, fontSize: 13 },
+  rowLabel: { fontSize: 15, color: t.text.primary },
+  rowValue: { fontSize: 15, fontWeight: '600', color: t.accent.base },
+  empty: { color: t.text.secondary },
+  status: { color: t.accent.base, fontSize: 13 },
 });

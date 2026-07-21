@@ -15,7 +15,9 @@ import { createManualEntry, explainEntryWriteError } from '../entries';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { DateTimeField } from '../components/DateTimeField';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 // Device-local wall time → epoch ms. Manual entries are always in the device's
 // timezone — the same timezone stored on the entry.
@@ -126,12 +128,12 @@ export function ManualEntryScreen({
 }
 
 const styles = StyleSheet.create({
-  onBehalf: { fontSize: 14, fontWeight: '700', color: colors.primary },
-  durationPreview: { fontSize: 15, fontWeight: '700', color: colors.primary, textAlign: 'right' },
-  label: { fontSize: 13, color: colors.textMuted, marginTop: spacing(2) },
+  onBehalf: { fontSize: 14, fontWeight: '700', color: t.accent.base },
+  durationPreview: { fontSize: 15, fontWeight: '700', color: t.accent.base, textAlign: 'right' },
+  label: { fontSize: 13, color: t.text.secondary, marginTop: spacing(2) },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
     fontSize: 15,
@@ -140,5 +142,5 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', gap: spacing(2), alignItems: 'center' },
   timesRow: { flexDirection: 'row', gap: spacing(3) },
   grow: { flex: 1 },
-  hint: { fontSize: 12, color: colors.textMuted },
+  hint: { fontSize: 12, color: t.text.muted },
 });

@@ -15,7 +15,9 @@ import { useEntry, updateEntry, deleteEntry, explainEntryWriteError } from '../e
 import { ActivityPicker } from '../components/ActivityPicker';
 import { DateTimeField } from '../components/DateTimeField';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 export function EntryEditScreen({ entryId, editorUid }: { entryId: string; editorUid: string }) {
   const nav = useNavigation();
@@ -126,12 +128,12 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
 }
 
 const styles = StyleSheet.create({
-  meta: { fontSize: 13, color: colors.textMuted },
-  durationPreview: { fontSize: 15, fontWeight: '700', color: colors.primary, textAlign: 'right' },
-  label: { fontSize: 13, color: colors.textMuted, marginTop: spacing(2) },
+  meta: { fontSize: 13, color: t.text.secondary },
+  durationPreview: { fontSize: 15, fontWeight: '700', color: t.accent.base, textAlign: 'right' },
+  label: { fontSize: 13, color: t.text.secondary, marginTop: spacing(2) },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
     fontSize: 15,
@@ -139,5 +141,5 @@ const styles = StyleSheet.create({
   noteInput: { minHeight: 72, textAlignVertical: 'top' },
   timesRow: { flexDirection: 'row', gap: spacing(3) },
   grow: { flex: 1 },
-  hint: { fontSize: 12, color: colors.textMuted },
+  hint: { fontSize: 12, color: t.text.muted },
 });

@@ -23,7 +23,9 @@ import { setApprover, useApproverChoices, usePendingCount } from '../users';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 // Short labels — this strip shares a row with the week dates on narrow phones.
 const STATUS_LABEL = {
@@ -220,53 +222,55 @@ export function HomeScreen({
 }
 
 const styles = StyleSheet.create({
-  greeting: { fontSize: 20, fontWeight: '600', color: colors.text },
-  today: { fontSize: 14, color: colors.textMuted },
+  greeting: { fontSize: 20, fontWeight: '600', color: t.text.primary },
+  today: { fontSize: 14, color: t.text.secondary },
   rejectedBanner: {
-    backgroundColor: colors.danger,
+    backgroundColor: t.feedback.danger,
     borderRadius: 10,
     padding: spacing(3),
   },
-  rejectedText: { color: colors.onPrimary, fontSize: 14, fontWeight: '600' },
+  rejectedText: { color: t.text.inverse, fontSize: 14, fontWeight: '600' },
   periodStrip: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 10,
     padding: spacing(3),
     gap: spacing(2),
   },
-  periodLabel: { fontSize: 13, color: colors.textMuted, flexShrink: 1 },
-  periodStatus: { fontSize: 13, fontWeight: '700', color: colors.text },
-  statusApproved: { color: colors.primary },
-  statusRejected: { color: colors.danger },
+  periodLabel: { fontSize: 13, color: t.text.secondary, flexShrink: 1 },
+  periodStatus: { fontSize: 13, fontWeight: '700', color: t.text.primary },
+  statusApproved: { color: t.accent.base },
+  statusRejected: { color: t.feedback.danger },
   clockCard: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 14,
     padding: spacing(4),
     gap: spacing(3),
   },
-  pickLabel: { fontSize: 14, color: colors.textMuted },
+  pickLabel: { fontSize: 14, color: t.text.secondary },
   runningCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent.base,
     borderRadius: 14,
     padding: spacing(5),
     gap: spacing(2),
   },
-  runningLabel: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  runningActivity: { color: colors.onPrimary, fontSize: 22, fontWeight: '700' },
-  runningSince: { color: '#EBCAD5', fontSize: 14, marginBottom: spacing(2) },
+  // Gold on the raspberry card: true gold reads on plum (deepened gold would read
+  // WORSE there — the ivory-contrast cut is for gold on ivory, not on plum).
+  runningLabel: { color: t.accent.gold, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  runningActivity: { color: t.text.inverse, fontSize: 22, fontWeight: '700' },
+  runningSince: { color: t.accent.onAccentMuted, fontSize: 14, marginBottom: spacing(2) },
   longWarning: {
-    color: colors.accent,
+    color: t.accent.gold,
     fontSize: 13,
     marginBottom: spacing(2),
     lineHeight: 18,
   },
   approverRow: { gap: spacing(2), marginTop: spacing(2) },
-  approverLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  approverLabel: { fontSize: 13, fontWeight: '700', color: t.text.secondary },
   footer: { gap: spacing(3), marginTop: spacing(4) },
 });

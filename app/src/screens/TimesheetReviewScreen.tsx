@@ -14,13 +14,15 @@ import { useEntriesRange, type TimeEntry } from '../entries';
 import { approveTimesheet, rejectTimesheet, useTimesheet } from '../timesheets';
 import { EntryRow } from './TimesheetScreen';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 const STATUS_LINE = {
-  draft: { label: 'Not submitted', color: colors.textMuted },
-  submitted: { label: 'Submitted — awaiting your decision', color: colors.accentDeep },
-  approved: { label: 'Approved', color: colors.primary },
-  rejected: { label: 'Rejected — back with the owner', color: colors.danger },
+  draft: { label: 'Not submitted', color: t.text.secondary },
+  submitted: { label: 'Submitted — awaiting your decision', color: t.accent.goldText },
+  approved: { label: 'Approved', color: t.accent.base },
+  rejected: { label: 'Rejected — back with the owner', color: t.feedback.danger },
 } as const;
 
 /**
@@ -160,20 +162,20 @@ export function TimesheetReviewScreen({
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  title: { fontSize: 18, fontWeight: '700', color: t.text.primary },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
   navCenter: { flex: 1, alignItems: 'center' },
-  navLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+  navLabel: { fontSize: 15, fontWeight: '600', color: t.text.primary },
   statusLine: { fontSize: 13, fontWeight: '700' },
-  total: { fontSize: 14, color: colors.textMuted },
-  gone: { color: colors.danger, fontSize: 14 },
+  total: { fontSize: 14, color: t.text.secondary },
+  gone: { color: t.feedback.danger, fontSize: 14 },
   dayGroup: { gap: spacing(2) },
-  dayHeader: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: spacing(2) },
-  noHours: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
-  rejectLabel: { fontSize: 13, color: colors.textMuted, marginTop: spacing(2) },
+  dayHeader: { fontSize: 13, fontWeight: '700', color: t.text.secondary, marginTop: spacing(2) },
+  noHours: { fontSize: 13, color: t.text.secondary, fontStyle: 'italic' },
+  rejectLabel: { fontSize: 13, color: t.text.secondary, marginTop: spacing(2) },
   reasonInput: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
     fontSize: 15,

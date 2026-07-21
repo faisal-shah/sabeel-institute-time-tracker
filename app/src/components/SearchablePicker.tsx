@@ -8,7 +8,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 export interface PickerItem {
   id: string;
@@ -111,38 +113,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
     gap: spacing(2),
   },
   fieldDisabled: { opacity: 0.5 },
-  value: { flex: 1, fontSize: 15, color: colors.text },
-  placeholder: { flex: 1, fontSize: 15, color: colors.textMuted },
-  chevron: { color: colors.textMuted, fontSize: 13 },
+  value: { flex: 1, fontSize: 15, color: t.text.primary },
+  placeholder: { flex: 1, fontSize: 15, color: t.text.muted },
+  chevron: { color: t.text.muted, fontSize: 13 },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: t.effect.overlay,
     justifyContent: 'center',
     padding: spacing(5),
   },
   sheet: {
-    backgroundColor: colors.bg,
+    backgroundColor: t.bg.canvas,
     borderRadius: 14,
     padding: spacing(4),
     maxHeight: '75%',
     gap: spacing(3),
   },
-  title: { fontSize: 16, fontWeight: '700', color: colors.text },
+  title: { fontSize: 16, fontWeight: '700', color: t.text.primary },
   search: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(2.5),
     fontSize: 15,
   },
   list: { flexGrow: 0 },
-  empty: { color: colors.textMuted, fontSize: 14, padding: spacing(2) },
+  empty: { color: t.text.secondary, fontSize: 14, padding: spacing(2) },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -151,11 +153,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: spacing(2),
   },
-  rowOn: { backgroundColor: colors.primary },
+  rowOn: { backgroundColor: t.accent.base },
   rowMain: { flex: 1 },
-  rowLabel: { fontSize: 15, color: colors.text, fontWeight: '600' },
-  rowLabelOn: { color: colors.onPrimary },
-  rowSub: { fontSize: 12, color: colors.textMuted },
-  rowSubOn: { color: colors.accent },
-  check: { color: colors.onPrimary, fontWeight: '700' },
+  rowLabel: { fontSize: 15, color: t.text.primary, fontWeight: '600' },
+  rowLabelOn: { color: t.text.inverse },
+  rowSub: { fontSize: 12, color: t.text.secondary },
+  rowSubOn: { color: t.accent.goldText },
+  check: { color: t.text.inverse, fontWeight: '700' },
 });

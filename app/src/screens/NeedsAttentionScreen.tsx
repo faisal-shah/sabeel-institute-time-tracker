@@ -7,7 +7,9 @@ import type { RootStackParamList } from '../nav';
 import { useRejectedSheets } from '../timesheets';
 import { useApproverChoices } from '../users';
 import { Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 /**
  * The owner's rejection backlog: every rejected week — any month — in one flat
@@ -67,18 +69,18 @@ export function NeedsAttentionScreen({ uid }: { uid: string }) {
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: 14, color: colors.textMuted },
-  empty: { fontSize: 15, color: colors.textMuted },
+  intro: { fontSize: 14, color: t.text.secondary },
+  empty: { fontSize: 15, color: t.text.secondary },
   row: {
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: t.feedback.danger,
     borderRadius: 12,
     padding: spacing(3.5),
     gap: spacing(1.5),
   },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing(2) },
-  rowPeriod: { fontSize: 15, fontWeight: '700', color: colors.text },
-  rowTotal: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  rowReason: { fontSize: 14, color: colors.text },
-  rowMeta: { fontSize: 12, color: colors.textMuted },
+  rowPeriod: { fontSize: 15, fontWeight: '700', color: t.text.primary },
+  rowTotal: { fontSize: 15, fontWeight: '700', color: t.accent.base },
+  rowReason: { fontSize: 14, color: t.text.primary },
+  rowMeta: { fontSize: 12, color: t.text.secondary },
 });

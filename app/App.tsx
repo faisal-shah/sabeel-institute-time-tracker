@@ -24,8 +24,10 @@ import { TimesheetReviewScreen } from './src/screens/TimesheetReviewScreen';
 import { NeedsAttentionScreen } from './src/screens/NeedsAttentionScreen';
 import { NotificationSettingsScreen } from './src/screens/NotificationSettingsScreen';
 import type { RootStackParamList } from './src/nav';
-import { colors } from './src/theme';
+import { getTheme } from './src/theme';
 import { initSentry } from './src/sentry';
+
+const t = getTheme();
 
 initSentry();
 
@@ -55,7 +57,7 @@ export default function App() {
   if (session.phase === 'loading') {
     content = (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={t.accent.base} />
       </View>
     );
   } else if (session.phase === 'signedOut') {
@@ -83,8 +85,8 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Add hours',
-              headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#FBF3E4',
+              headerStyle: { backgroundColor: t.accent.base },
+              headerTintColor: t.text.inverse,
             }}
           >
             {({ route }) => {
@@ -97,8 +99,8 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'My timesheet',
-              headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#FBF3E4',
+              headerStyle: { backgroundColor: t.accent.base },
+              headerTintColor: t.text.inverse,
             }}
           >
             {({ route }) => (
@@ -117,8 +119,8 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Needs attention',
-              headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#FBF3E4',
+              headerStyle: { backgroundColor: t.accent.base },
+              headerTintColor: t.text.inverse,
             }}
           >
             {() => <NeedsAttentionScreen uid={user.uid} />}
@@ -128,8 +130,8 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Notifications',
-              headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#FBF3E4',
+              headerStyle: { backgroundColor: t.accent.base },
+              headerTintColor: t.text.inverse,
             }}
           >
             {() => (
@@ -141,8 +143,8 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Edit entry',
-              headerStyle: { backgroundColor: colors.primary },
-              headerTintColor: '#FBF3E4',
+              headerStyle: { backgroundColor: t.accent.base },
+              headerTintColor: t.text.inverse,
             }}
           >
             {({ route }) => (
@@ -158,8 +160,8 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Reports',
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#FBF3E4',
+                headerStyle: { backgroundColor: t.accent.base },
+                headerTintColor: t.text.inverse,
               }}
             >
               {() => <ReportsScreen />}
@@ -171,8 +173,8 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Lifetime hours',
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#FBF3E4',
+                headerStyle: { backgroundColor: t.accent.base },
+                headerTintColor: t.text.inverse,
               }}
             >
               {({ route }) => {
@@ -187,8 +189,8 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Activities',
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#FBF3E4',
+                headerStyle: { backgroundColor: t.accent.base },
+                headerTintColor: t.text.inverse,
               }}
             >
               {() => <ActivitiesScreen selfUid={user.uid} />}
@@ -200,8 +202,8 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Approvals',
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#FBF3E4',
+                headerStyle: { backgroundColor: t.accent.base },
+                headerTintColor: t.text.inverse,
               }}
             >
               {() => <ApprovalsScreen uid={user.uid} claims={claims} />}
@@ -213,8 +215,8 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Review timesheet',
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#FBF3E4',
+                headerStyle: { backgroundColor: t.accent.base },
+                headerTintColor: t.text.inverse,
               }}
             >
               {({ route }) => {
@@ -240,8 +242,8 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Users',
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#FBF3E4',
+                headerStyle: { backgroundColor: t.accent.base },
+                headerTintColor: t.text.inverse,
               }}
             >
               {() => <UsersScreen selfUid={user.uid} claims={claims} />}

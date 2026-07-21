@@ -1,7 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { signOut } from '../session';
 import { Button } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 function Gate({ title, message, email }: { title: string; message: string; email: string }) {
   return (
@@ -42,14 +44,14 @@ export function DisabledScreen({ email }: { email: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: t.bg.canvas,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing(8),
     gap: spacing(3),
   },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
-  message: { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
-  email: { fontSize: 14, color: colors.primary, fontWeight: '600' },
+  title: { fontSize: 24, fontWeight: '700', color: t.text.primary },
+  message: { fontSize: 15, color: t.text.secondary, textAlign: 'center', lineHeight: 22 },
+  email: { fontSize: 14, color: t.accent.base, fontWeight: '600' },
   actions: { marginTop: spacing(4), width: '100%', maxWidth: 240 },
 });

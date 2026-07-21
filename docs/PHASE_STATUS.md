@@ -37,6 +37,16 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-21 — **Brand palette → "Option 1"** and theme restructured to match the
+  kanban app. Raspberry #82163A→#83114F (brick red→plum), gold #D09749→#C6A15B.
+  Flat `app/src/theme.ts` replaced by `app/src/theme/{palette,index}.ts` (raw
+  values + semantic tokens + `useTheme()`/`getTheme()`); ~19 import sites and the
+  print stylesheet + manual-PDF generator migrated. No dark mode (light-only,
+  pinned). Hardcoded colors now ESLint-banned under `app/**` (theme + print
+  exempt). Authority: `docs/BRAND.md` and the shared `sabeel-color-scheme` skill.
+
+## Decision log
+
 - 2026-07-15 — Approval is **admin-only** (Faisal): no org-domain auto-approval;
   every new sign-in is pending; admins see name+email when approving. Managers are
   operational only (activities, reports, entry corrections).

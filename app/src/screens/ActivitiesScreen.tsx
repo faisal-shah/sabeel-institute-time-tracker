@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useActivities, createActivity, setActivityStatus } from '../activities';
 import { Button, ErrorText, Screen } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 export function ActivitiesScreen({ selfUid }: { selfUid: string }) {
   const rows = useActivities({ includeArchived: true });
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
   form: { gap: spacing(2), marginBottom: spacing(2) },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
     fontSize: 15,
@@ -74,14 +76,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 12,
     padding: spacing(3.5),
     gap: spacing(3),
   },
   cardArchived: { opacity: 0.55 },
   cardText: { flexShrink: 1 },
-  name: { fontSize: 16, fontWeight: '600', color: colors.text },
-  meta: { fontSize: 13, color: colors.textMuted },
-  empty: { color: colors.textMuted },
+  name: { fontSize: 16, fontWeight: '600', color: t.text.primary },
+  meta: { fontSize: 13, color: t.text.secondary },
+  empty: { color: t.text.secondary },
 });

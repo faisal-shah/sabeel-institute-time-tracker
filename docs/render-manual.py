@@ -33,7 +33,7 @@ cover = f"""
 html = f"""<!doctype html><html><head><meta charset="utf-8"><style>
   @page {{ size: A4; margin: 17mm 15mm; }}
   html {{ -webkit-print-color-adjust: exact; }}
-  body {{ font-family: Georgia, 'Times New Roman', serif; color: #2B2320;
+  body {{ font-family: Georgia, 'Times New Roman', serif; color: #3A2F28;
          font-size: 13pt; line-height: 1.65; margin: 0; }}
 
   /* ---- Cover ---- */
@@ -41,17 +41,17 @@ html = f"""<!doctype html><html><head><meta charset="utf-8"><style>
             align-items: center; justify-content: center; text-align: center;
             page-break-after: always; }}
   .cover-logo {{ width: 110mm; border: none; }}
-  .cover-title {{ font-size: 34pt; font-weight: bold; color: #82163A; margin-top: 14mm; }}
-  .cover-sub {{ font-size: 20pt; color: #96661F; margin-top: 4mm; }}
-  .cover-meta {{ font-size: 12pt; color: #7C6A5A; margin-top: 18mm; }}
+  .cover-title {{ font-size: 34pt; font-weight: bold; color: #83114F; margin-top: 14mm; }}
+  .cover-sub {{ font-size: 20pt; color: #795E2A; margin-top: 4mm; }}
+  .cover-meta {{ font-size: 12pt; color: #6A5748; margin-top: 18mm; }}
 
   /* ---- Headings: parts on fresh pages, never stranded above their content ---- */
-  h1 {{ color: #82163A; font-size: 23pt; line-height: 1.25;
-        border-bottom: 2.5px solid #D09749; padding-bottom: 8px;
+  h1 {{ color: #83114F; font-size: 23pt; line-height: 1.25;
+        border-bottom: 2.5px solid #C6A15B; padding-bottom: 8px;
         page-break-before: always; page-break-after: avoid; margin: 0 0 14px; }}
-  h2 {{ color: #82163A; font-size: 16.5pt; margin: 26px 0 8px;
+  h2 {{ color: #83114F; font-size: 16.5pt; margin: 26px 0 8px;
         page-break-after: avoid; }}
-  h3 {{ color: #5C0F29; font-size: 13.5pt; margin: 20px 0 6px;
+  h3 {{ color: #660D3E; font-size: 13.5pt; margin: 20px 0 6px;
         page-break-after: avoid; }}
 
   p, li {{ orphans: 3; widows: 3; }}
@@ -59,21 +59,21 @@ html = f"""<!doctype html><html><head><meta charset="utf-8"><style>
   li {{ margin-bottom: 5px; }}
 
   img {{ display: block; width: 74mm; margin: 12px auto;
-         border: 1px solid #DFD5C4; border-radius: 8px;
+         border: 1px solid #DFD1C1; border-radius: 8px;
          page-break-inside: avoid; }}
 
   table {{ border-collapse: collapse; width: 100%; font-size: 11pt;
            page-break-inside: avoid; }}
-  th, td {{ border: 1px solid #DFD5C4; padding: 7px 9px; text-align: left;
+  th, td {{ border: 1px solid #DFD1C1; padding: 7px 9px; text-align: left;
             vertical-align: top; }}
-  th {{ background: #F3EBDD; color: #5C0F29; }}
+  th {{ background: #F6EBDD; color: #660D3E; }}
 
   code {{ font-family: 'DejaVu Sans Mono', monospace; font-size: 11pt;
-          background: #F3EBDD; padding: 1px 5px; border-radius: 3px; }}
-  strong {{ color: #5C0F29; }}
-  em {{ color: #7C6A5A; }}
-  hr {{ border: none; border-top: 1px solid #D09749; margin: 24px 0; }}
-  a {{ color: #82163A; }}
+          background: #F6EBDD; padding: 1px 5px; border-radius: 3px; }}
+  strong {{ color: #660D3E; }}
+  em {{ color: #6A5748; }}
+  hr {{ border: none; border-top: 1px solid #C6A15B; margin: 24px 0; }}
+  a {{ color: #83114F; }}
 </style></head><body>{cover}{body}</body></html>"""
 
 out = HERE / 'USER-MANUAL.html'

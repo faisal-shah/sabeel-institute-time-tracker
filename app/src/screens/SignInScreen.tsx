@@ -5,7 +5,9 @@ import { devSignInAsGoogle } from '../auth/devSignIn';
 import { USE_EMULATORS } from '../env';
 import { Button, ErrorText } from '../components/ui';
 import { captureError } from '../sentry';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 // Static asset import (Metro resolves images; lint forbids inline require()).
 // Reverse variant (ivory+gold) — the only form of the mark allowed on the
@@ -78,21 +80,21 @@ export function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent.base,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing(6),
     gap: spacing(2),
   },
   title: {
-    color: colors.primary,
+    color: t.accent.base,
     fontSize: 26,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: spacing(2),
   },
   card: {
-    backgroundColor: colors.onPrimary,
+    backgroundColor: t.text.inverse,
     borderRadius: 14,
     padding: spacing(5),
     gap: spacing(3),
@@ -100,10 +102,10 @@ const styles = StyleSheet.create({
     maxWidth: 380,
   },
   logo: { width: '82%', height: 150, marginBottom: spacing(2) },
-  devLabel: { color: colors.textMuted, fontSize: 12, marginTop: spacing(2) },
+  devLabel: { color: t.text.muted, fontSize: 12, marginTop: spacing(2) },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
     fontSize: 15,

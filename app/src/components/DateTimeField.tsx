@@ -5,7 +5,9 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { parseDayKey } from '@sabeel/shared';
-import { colors, spacing } from '../theme';
+import { getTheme, spacing } from '../theme';
+
+const t = getTheme();
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : String(n);
@@ -59,9 +61,9 @@ export function DateTimeField({
 const styles = StyleSheet.create({
   field: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border.subtle,
     borderRadius: 8,
     padding: spacing(3),
   },
-  value: { fontSize: 15, color: colors.text },
+  value: { fontSize: 15, color: t.text.primary },
 });

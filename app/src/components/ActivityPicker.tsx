@@ -1,7 +1,9 @@
 import { StyleSheet, Text } from 'react-native';
 import type { Activity } from '../activities';
 import { SearchablePicker } from './SearchablePicker';
-import { colors } from '../theme';
+import { getTheme } from '../theme';
+
+const t = getTheme();
 
 /** Activity selection — searchable list so 30 activities stay usable on a phone. */
 export function ActivityPicker({
@@ -30,5 +32,5 @@ export function ActivityPicker({
 }
 
 const styles = StyleSheet.create({
-  empty: { color: colors.textMuted, fontSize: 14 },
+  empty: { color: t.text.secondary, fontSize: 14 },
 });
