@@ -76,7 +76,17 @@ export default function App() {
     const isApprover = claims.role === 'manager' || claims.admin === true;
     content = (
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            // Ivory chrome: a nav header is a dark title on the ivory canvas,
+            // not a raspberry bar (brand chrome-vs-content rule).
+            headerStyle: { backgroundColor: t.bg.canvas },
+            headerTintColor: t.text.primary,
+            headerTitleStyle: { color: t.text.primary },
+            headerShadowVisible: false,
+          }}
+        >
           <Stack.Screen name="Home">
             {() => <HomeScreen uid={user.uid} profile={profile} claims={claims} />}
           </Stack.Screen>
@@ -85,8 +95,6 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Add hours',
-              headerStyle: { backgroundColor: t.accent.base },
-              headerTintColor: t.text.inverse,
             }}
           >
             {({ route }) => {
@@ -99,8 +107,6 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'My timesheet',
-              headerStyle: { backgroundColor: t.accent.base },
-              headerTintColor: t.text.inverse,
             }}
           >
             {({ route }) => (
@@ -119,8 +125,6 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Needs attention',
-              headerStyle: { backgroundColor: t.accent.base },
-              headerTintColor: t.text.inverse,
             }}
           >
             {() => <NeedsAttentionScreen uid={user.uid} />}
@@ -130,8 +134,6 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Notifications',
-              headerStyle: { backgroundColor: t.accent.base },
-              headerTintColor: t.text.inverse,
             }}
           >
             {() => (
@@ -143,8 +145,6 @@ export default function App() {
             options={{
               headerShown: true,
               title: 'Edit entry',
-              headerStyle: { backgroundColor: t.accent.base },
-              headerTintColor: t.text.inverse,
             }}
           >
             {({ route }) => (
@@ -160,9 +160,7 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Reports',
-                headerStyle: { backgroundColor: t.accent.base },
-                headerTintColor: t.text.inverse,
-              }}
+                  }}
             >
               {() => <ReportsScreen />}
             </Stack.Screen>
@@ -173,9 +171,7 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Lifetime hours',
-                headerStyle: { backgroundColor: t.accent.base },
-                headerTintColor: t.text.inverse,
-              }}
+                  }}
             >
               {({ route }) => {
                 const p = route.params as { uid: string; displayName: string };
@@ -189,9 +185,7 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Activities',
-                headerStyle: { backgroundColor: t.accent.base },
-                headerTintColor: t.text.inverse,
-              }}
+                  }}
             >
               {() => <ActivitiesScreen selfUid={user.uid} />}
             </Stack.Screen>
@@ -202,9 +196,7 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Approvals',
-                headerStyle: { backgroundColor: t.accent.base },
-                headerTintColor: t.text.inverse,
-              }}
+                  }}
             >
               {() => <ApprovalsScreen uid={user.uid} claims={claims} />}
             </Stack.Screen>
@@ -215,9 +207,7 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Review timesheet',
-                headerStyle: { backgroundColor: t.accent.base },
-                headerTintColor: t.text.inverse,
-              }}
+                  }}
             >
               {({ route }) => {
                 const p = route.params as {
@@ -242,9 +232,7 @@ export default function App() {
               options={{
                 headerShown: true,
                 title: 'Users',
-                headerStyle: { backgroundColor: t.accent.base },
-                headerTintColor: t.text.inverse,
-              }}
+                  }}
             >
               {() => <UsersScreen selfUid={user.uid} claims={claims} />}
             </Stack.Screen>
@@ -257,7 +245,8 @@ export default function App() {
   return (
     <KeyboardProvider>
       {content}
-      <StatusBar style="light" />
+      {/* Dark icons — the app is ivory-topped everywhere (ivory chrome). */}
+      <StatusBar style="dark" />
     </KeyboardProvider>
   );
 }

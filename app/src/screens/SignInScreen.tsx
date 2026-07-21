@@ -10,10 +10,11 @@ import { getTheme, spacing } from '../theme';
 const t = getTheme();
 
 // Static asset import (Metro resolves images; lint forbids inline require()).
-// Reverse variant (ivory+gold) — the only form of the mark allowed on the
-// raspberry field; the black+gold original lives on ivory surfaces.
+// The black-and-gold original on the ivory canvas — no plate, no tint (a flat
+// tintColor throws the gold away). Sign-in is an ivory screen per the brand's
+// chrome-vs-content rule; the reverse ivory+gold mark is not used here.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const logoReverse = require('../../assets/logo-reverse.png');
+const logo = require('../../assets/logo.png');
 
 export function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function SignInScreen() {
   return (
     <View style={styles.container}>
       <Image
-        source={logoReverse}
+        source={logo}
         style={styles.logo}
         resizeMode="contain"
         accessibilityLabel="Sabeel Institute"
@@ -80,7 +81,7 @@ export function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: t.accent.base,
+    backgroundColor: t.bg.canvas,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing(6),
@@ -94,7 +95,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
   },
   card: {
-    backgroundColor: t.text.inverse,
+    backgroundColor: t.bg.surface,
+    borderWidth: 1,
+    borderColor: t.border.subtle,
     borderRadius: 14,
     padding: spacing(5),
     gap: spacing(3),

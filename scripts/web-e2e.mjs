@@ -233,6 +233,10 @@ async function main() {
 
   console.log('▸ admin signs in → must land on the pending gate…');
   const admin = await newPage('admin');
+  // Capture the sign-in screen itself (ivory chrome) before signing in — the
+  // screen that once diverged from the sibling app on brand chrome.
+  await admin.getByText('Time Tracker', { exact: true }).waitFor();
+  await admin.screenshot({ path: join(shots, '0-signin.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
   await devSignIn(admin, 'admin@example.com');
   await admin.getByText('waiting for an administrator', { exact: false }).waitFor();
   await admin.screenshot({ path: join(shots, '1-admin-pending.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});

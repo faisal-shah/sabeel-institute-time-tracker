@@ -87,12 +87,14 @@ export function ErrorText({ error }: { error: string | null }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: t.bg.canvas },
   header: {
-    backgroundColor: t.accent.base,
+    // Ivory chrome: the title sits on the canvas, not on a raspberry bar
+    // (brand chrome-vs-content rule).
+    backgroundColor: t.bg.canvas,
     paddingTop: spacing(12),
     paddingBottom: spacing(4),
     paddingHorizontal: spacing(5),
   },
-  headerTitle: { color: t.text.inverse, fontSize: 22, fontWeight: '700' },
+  headerTitle: { color: t.text.primary, fontSize: 22, fontWeight: '700' },
   body: { padding: spacing(5), gap: spacing(3) },
   btn: {
     borderRadius: 10,
