@@ -124,42 +124,33 @@ public GitHub Pages site instead:
 `faisal-shah.github.io` repo, branch **`master`** (not main). It links the web
 app, the Android APK and USER-MANUAL.pdf.
 
-`release.mjs` prints the exact commands with the tag filled in. The steps are
-deliberately **not automated**: they force-push another repo and commit a ~38 MB
-binary, where ordering matters. Full instructions also live in
-`sabeel-time-tracker/README.md` in that repo, next to the files.
+**The APK is a GitHub Release ASSET, never a committed blob** (revised
+2026-07-21). It uploads to the pages repo's fixed rolling tag
+`timetracker-latest`, so the download URL is permanent:
+`…/releases/download/timetracker-latest/sabeel-time-tracker-arm64-v8a.apk`.
+Only the version *label* on the page is committed. `release.mjs` runs
+`scripts/publish-apk.sh` for this automatically; it can also be run by hand.
 
-The four rules that are easy to get wrong:
+Why this replaced committing the binary: per-release APKs (~31–38 MB each) were
+committed to the pages repo and git keeps every version forever. The history
+bloated to ~100 MB and had to be rewritten out (force-push) — twice, once with a
+concurrent Kanban release landing mid-rewrite. Assets sidestep all of it: no
+blob in history, nothing to drop, no force-push.
 
-- **Take the APK from the release, not the local build tree.** The release is the
-  artifact that was tested and published; `outputs/` is whatever was built last.
-  When the page was created the working copy was three commits past the tag —
-  a local build would have shipped something nobody had verified. Confirm with
-  `sha256sum` on both.
-- **The filename stays unversioned** (`sabeel-time-tracker-arm64-v8a.apk`); the
-  page carries the version. Re-versioning breaks every bookmark and message that
-  ever pointed at the link.
-- **The binary goes in its own commit**, never mixed with page edits. Each is
-  ~38 MB and git keeps every version forever — overwriting does not reclaim the
-  blob. Isolation is what makes the old blob **droppable**, so the steady-state
-  cost of a release is swapping a blob, not adding one; mixed commits cannot be
-  dropped without losing real history.
-- **Drop the superseded binary commits as part of the release.** Not "someday":
-  `git rebase -i <parent-of-oldest-binary-commit>`, delete the `pick` lines for
-  the old `APK … (binary)` commits (keep the newest per app), then
-  `git push --force-with-lease`. Done 2026-07-20: 5 blobs → 2, `.git` 103 MB →
-  37 MB. Replaying a binary commit whose "add" was dropped raises a
-  `modify/delete` conflict — git leaves the correct newest version in the tree,
-  so `git add <file>` and `git rebase --continue`. **Confirm
-  `git diff <pre-rewrite-sha> HEAD` is empty before force-pushing**: the tree
-  must be byte-identical, only history changed.
-- **`--force-with-lease`, never `--force`** — it refuses if someone else pushed.
-  Not hypothetical: on 2026-07-20 a concurrent Kanban release landed in that repo
-  mid-task.
+The rules that survive into the asset model:
+
+- **Take the APK from the tested build, not a stale tree.** `release.mjs` passes
+  the arm64 APK it just built and verified on the AVD, in the same run — so it is
+  the artifact that was tested, not whatever `outputs/` happens to hold later.
+- **The asset filename stays unversioned** (`sabeel-time-tracker-arm64-v8a.apk`);
+  the page carries the version. `--clobber` re-uploads it to the same URL.
+  Re-versioning would break every bookmark and message pointing at the link.
+- **Never `git add` a binary to any repo.** `*.apk` is gitignored in the pages
+  repo as the backstop, and `publish-apk.sh` asserts the pages history holds
+  **zero** `.apk` blobs — the release fails if one ever reappears.
 
 Pages lags a push by ~1 minute, so verify with a cache-buster before concluding
-something broke. Only arm64 is published (covers phones from ~2016 on); a 32-bit
-build is not worth permanent extra history for a case that may never arise.
+something broke. Only arm64 is published (covers phones from ~2016 on).
 
 ## Working with the Firebase emulators generally
 

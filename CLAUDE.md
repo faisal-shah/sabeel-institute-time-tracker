@@ -103,3 +103,11 @@ it records which failures are environmental and what each script guards against.
   (`app/src/liveQuery.ts`) — never hand-roll `onSnapshot` state (lint-enforced;
   see docs/POSTMORTEM-2026-07-16-stale-week.md). Async UI must be e2e-tested at
   least once under injected latency, not just localhost speed.
+- **Publishing the APK: Release asset, NEVER committed.** The public download
+  is a GitHub Release asset on the pages repo (faisal-shah.github.io), fixed
+  rolling tag `timetracker-latest` — the URL never changes. Publish with
+  `scripts/publish-apk.sh`, which uploads the asset, bumps only the version
+  label on the page, and asserts the pages repo holds ZERO .apk blobs. Never
+  `git add` a binary to any repo — committing per-release APKs bloated the
+  pages history and had to be rewritten out. `*.apk` is gitignored in the pages
+  repo as the backstop.
