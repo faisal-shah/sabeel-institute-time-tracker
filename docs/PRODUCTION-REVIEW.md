@@ -17,7 +17,10 @@ tests (read, not re-run this session). See "Not verified" at the end.
 
 ## High
 
-### H1 — No React error boundary ⬜
+### H1 — No React error boundary ✅ done (v1.0.0-beta.15, 2026-07-22)
+Shipped `app/src/components/ErrorBoundary.tsx` wrapping the whole app tree.
+Verified by injecting a throw: the themed "Try again" fallback rendered AND the
+error reached Sentry tagged `source: ErrorBoundary`, `handled: yes`.
 A thrown error during render tears down the whole RN tree with no recovery — the
 user is stuck on a blank screen until they force-quit. Most likely real-world
 outage for a phone app fed live Firestore data of varying shape.
@@ -29,7 +32,10 @@ outage for a phone app fed live Firestore data of varying shape.
 
 ## Medium
 
-### M2 — `durationMinutes` not tied to `start`/`end`; reporting sums it ⬜
+### M2 — `durationMinutes` not tied to `start`/`end`; reporting sums it ✅ done (2026-07-22)
+Rule bound added; emulator-verified (inflation rejected, 90s→2 accepted).
+**Pre-flight ran against prod before the rules deploy: 0 violators / 32 entries**,
+so no live document was locked out.
 Rules validate `durationMinutes` only as `1..1440`, independent of the times, and
 reporting sums it. A modified client could write times 1 min apart with
 `durationMinutes: 1440` and, if an approver isn't careful, inflate official
@@ -42,7 +48,10 @@ row's times contradict its duration).
 - **Verify in emulator:** legitimate rounded durations still pass across boundary
   cases (e.g. 30-second rounding).
 
-### M3 — Admins who aren't managers can't run reports / manage activities ⬜
+### M3 — Admins who aren't managers can't run reports / manage activities ✅ done (2026-07-22)
+Broadened to `manager || admin`: `requireManager`→`requireManagerOrAdmin` (3 call
+sites), activities rules, and the UI gates (reuse the existing `isApprover`). All
+deployed; unit + rules tests added.
 `exportCsv`/`reportTotals`/`syncDriveNow` all `requireManager`, and the UI gates
 Reports/Activities/PersonDetail on `role === 'manager'`. The org's admins
 (`sameera@`, `faisal.shah@oursabeel.com`) are `member` + `admin`, so they can
@@ -53,7 +62,8 @@ list.** Likely a surprise for people who expect "admin sees everything."
 - **Fix (policy call — Faisal):** either grant those accounts `manager` too, or
   broaden the gate to `manager || admin`.
 
-### M4 — CSV formula injection in exported/synced CSVs ⬜
+### M4 — CSV formula injection in exported/synced CSVs ✅ done (2026-07-22)
+`csvCell` prefixes leading `=+-@`/tab/CR with `'`. Unit-tested; deployed.
 `csvCell` only quotes cells containing `" , \n`. A user-controlled `note`,
 `activityName`, `displayName`, or `email` starting with `= + - @` is written raw
 and executes as a formula when the monthly `hours-YYYY-MM.csv` (Drive) or a
@@ -62,7 +72,9 @@ input); CSV files only.
 - **Where:** `functions/src/reporting.ts:74-77` (`csvCell`).
 - **Fix:** prefix at-risk cells (leading `=+-@`, tab, CR) with `'`.
 
-### M5 — A manager can be their own approver and self-approve ⬜
+### M5 — A manager can be their own approver and self-approve ❎ won't-fix (Faisal, 2026-07-21)
+Acceptable for a very small org. **Revisit trigger:** if managers/admins grow
+beyond Faisal's immediate circle, or volume makes self-review non-obvious.
 `approverOk` permits any active manager/admin as an approver, including self, so a
 manager can set `approverUid` to themselves, submit, and approve their own
 timesheet — bypassing review. The brief said only *admins* self-approve.
@@ -74,14 +86,22 @@ timesheet — bypassing review. The brief said only *admins* self-approve.
 - **Verify in emulator:** manager can no longer self-stamp; admin self-approve
   still works; sheets already stamped to a manager still decide.
 
-### M6 — No web security headers ⬜
+### M6 — No web security headers ✅ done (2026-07-22)
+Added `X-Frame-Options: SAMEORIGIN` (**not `DENY`** — DENY blocks Firebase Auth's
+same-origin iframe and would break redirect sign-in), `X-Content-Type-Options:
+nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`. Live-verified the
+sign-in page loads with no framing/CSP/console errors. (Full CSP left as a
+separate, carefully-tested follow-up. Real-account OAuth popup is a residual
+manual check.)
 `firebase.json` sets only `Cache-Control`. No `X-Frame-Options`/`frame-ancestors`
 (clickjacking), `X-Content-Type-Options: nosniff`, or `Referrer-Policy`.
 - **Where:** `firebase.json` hosting `headers`.
 - **Fix:** add `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin` (optionally a CSP).
 
-### M7 — Production index probe is incomplete ⬜
+### M7 — Production index probe is incomplete ✅ done (2026-07-22)
+Added approval-queue, needs-attention, and approver-choices shapes.
+`probeQueries` against prod returns OK for all 10 shapes.
 The probe that catches missing/mis-directed composite indexes (the July-16
 stale-week cause) omits live query shapes: approver-choices
 `or(role==manager, admin==true)` (`users.ts:31`), approval queue
@@ -96,22 +116,27 @@ caught.
 
 ## Low
 
-### L8 — One high-severity transitive vuln ⬜
+### L8 — One high-severity transitive vuln ✅ done (2026-07-22)
+`npm audit fix` patched `fast-xml-parser` (lockfile only); audit now shows only
+moderate.
 `fast-xml-parser` (DOCTYPE entity-expansion DoS) via `googleapis`. Only parses
 trusted Google API responses → not practically reachable; `npm audit fix` is
 non-breaking. (Other 22 are moderate Expo/RN noise.)
 - **Fix:** `npm audit fix`, then re-test.
 
-### L9 — Drive sync reads the entire `timeEntries` collection every run ⬜
+### L9 — Drive sync reads the entire `timeEntries` collection every run ⏭️ deferred (2026-07-22)
+Fine at current scale; revisit with a date-window if history grows large.
 `functions/src/drive.ts:44` (`.orderBy('dayKey').get()`, no limit) loads all
 history into memory nightly and on every "sync now." Fine now; unbounded as years
 accumulate.
 
-### L10 — Public-invoker callables have no rate limiting ⬜
+### L10 — Public-invoker callables have no rate limiting ❎ accepted (2026-07-22)
+`maxInstances: 10` caps cost; auth enforced in-code.
 `setup.ts` `invoker: 'public'` (documented workaround). Unauthenticated calls fail
 in-code but still spin instances; `maxInstances: 10` caps cost. Acceptable; noted.
 
-### L11 — `dayKey` not validated against `start`+`timeZone` in rules ⬜
+### L11 — `dayKey` not validated against `start`+`timeZone` in rules ❎ accepted (2026-07-22)
+Inherent (rules can't do IANA tz math); honor model + approver review.
 Inherent (rules can't do IANA tz math), so `dayKey`/`periodKey` are a trust
 boundary the honest client fills and the approver reviews. Document as a known
 limit of the honor model.
@@ -154,4 +179,9 @@ supply-chain/license audit. Emulator was intentionally not run (shared machine).
 ---
 
 ## Changelog
-- 2026-07-21 — Initial review; H1, M2–M7, L8–L11 opened. No changes made yet.
+- 2026-07-21 — Initial review; H1, M2–M7, L8–L11 opened.
+- 2026-07-22 — Executed the hardening plan. H1/M2/M3/M4/M6/M7/L8 fixed and
+  deployed (backend+web + APK v1.0.0-beta.15); M5 won't-fix; L9 deferred;
+  L10/L11 accepted. Full suites green (33 shared, 23 functions unit, 88
+  emulator, e2e); prod verified (probe all-OK, headers live, sign-in clean,
+  M2 pre-flight 0 violators).

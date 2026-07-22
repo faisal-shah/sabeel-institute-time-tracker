@@ -37,6 +37,14 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-22 — **Production hardening (v1.0.0-beta.15)** from the 2026-07-21
+  review (`docs/PRODUCTION-REVIEW.md`): React error boundary (H1); rules tie
+  `durationMinutes` to the logged span (M2); admin implies full manager access —
+  reports/activities (M3); CSV formula-injection guard (M4); web security headers
+  (`X-Frame-Options: SAMEORIGIN` etc., M6); completed the index probe (M7); patched
+  a high transitive vuln (L8). M5 (manager self-approve) is **won't-fix** for a
+  very small org; L9 deferred; L10/L11 accepted. No outage blockers — the app was
+  already live.
 - 2026-07-21 — **Brand palette → "Option 1"** and theme restructured to match the
   kanban app. Raspberry #82163A→#83114F (brick red→plum), gold #D09749→#C6A15B.
   Flat `app/src/theme.ts` replaced by `app/src/theme/{palette,index}.ts` (raw
