@@ -156,7 +156,7 @@ export function TimesheetScreen({
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       {/* Month bar (arrows step months) over a chip per week. Dots tell the
           story: sage = hours logged but not submitted, gold = submitted,
           raspberry = approved, red = rejected; no dot = empty week. Future

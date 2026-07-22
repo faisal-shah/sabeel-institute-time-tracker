@@ -72,7 +72,7 @@ export function ManualEntryScreen({
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       {forUid && forUid !== uid ? (
         <Text style={styles.onBehalf}>Adding hours for {forName ?? forUid}</Text>
       ) : null}

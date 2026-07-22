@@ -44,7 +44,7 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
     }
   }, [entry, loaded]);
 
-  if (!entry) return <Screen>{null}</Screen>;
+  if (!entry) return <Screen width="read">{null}</Screen>;
 
   const validFormats =
     /^\d{4}-\d{2}-\d{2}$/.test(dateKey) && /^\d{1,2}:\d{2}$/.test(from) && /^\d{1,2}:\d{2}$/.test(to);
@@ -81,7 +81,7 @@ export function EntryEditScreen({ entryId, editorUid }: { entryId: string; edito
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       <Text style={styles.meta}>
         {entry.source === 'clock' ? 'Clocked session' : 'Manual entry'} · times in{' '}
         {tzLabelFor(entry.start, entry.timeZone)}

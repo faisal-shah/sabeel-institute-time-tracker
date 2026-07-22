@@ -37,6 +37,17 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-22 — **Responsive wide/desktop layout** (client-only, not yet released).
+  The phone-first web surface no longer renders as a stretched phone on a laptop.
+  Keyed off available WIDTH, never platform (`app/src/theme/layout.ts`, `useLayout`,
+  700px breakpoint — matches the sibling kanban app). `Button` de-stretches to hug
+  its label on wide (full-width bar stays on phone); `Screen` gained a
+  `width` variant (`read` 640 / `content` 840 / `list` 1160 / `full`) that caps and
+  centres the column; `CardGrid` flows the Users/Approvals/Needs-attention cards
+  into multiple columns on desktop, one column on a phone; native date/time inputs
+  hug their value (`fieldSizing`). Verified at 1500px and 420px past auth; phone
+  layout unchanged (full e2e green). Ships in the next APK/hosting release on
+  Faisal's go.
 - 2026-07-22 — **Production hardening (v1.0.0-beta.15)** from the 2026-07-21
   review (`docs/PRODUCTION-REVIEW.md`): React error boundary (H1); rules tie
   `durationMinutes` to the logged span (M2); admin implies full manager access —

@@ -6,7 +6,7 @@ import { formatDuration, periodLabel, type TokenClaims } from '@sabeel/shared';
 import type { RootStackParamList } from '../nav';
 import { useApprovalQueue } from '../timesheets';
 import { useUsers } from '../users';
-import { Screen } from '../components/ui';
+import { CardGrid, Screen } from '../components/ui';
 import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
@@ -23,7 +23,7 @@ export function ApprovalsScreen({ uid, claims }: { uid: string; claims: TokenCla
   );
 
   return (
-    <Screen>
+    <Screen width="list">
       {claims.admin ? (
         <View style={styles.toggleRow}>
           {[false, true].map((all) => (
@@ -40,7 +40,8 @@ export function ApprovalsScreen({ uid, claims }: { uid: string; claims: TokenCla
         </View>
       ) : null}
 
-      {queue.map((ts) => (
+      <CardGrid>
+        {queue.map((ts) => (
         <Pressable
           key={ts.id}
           style={styles.row}
@@ -61,7 +62,8 @@ export function ApprovalsScreen({ uid, claims }: { uid: string; claims: TokenCla
           </View>
           <Text style={styles.rowTotal}>{formatDuration(ts.totalMinutes)}</Text>
         </Pressable>
-      ))}
+        ))}
+      </CardGrid>
       {queue.length === 0 ? (
         <Text style={styles.empty}>Nothing waiting for approval. ✅</Text>
       ) : null}

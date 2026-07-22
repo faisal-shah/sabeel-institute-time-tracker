@@ -96,7 +96,7 @@ export function HomeScreen({
   };
 
   return (
-    <Screen title="Sabeel Time Tracker">
+    <Screen title="Sabeel Time Tracker" width="content">
       <Text style={styles.greeting}>Salaam, {profile.displayName}</Text>
       <Text style={styles.today}>Today: {formatDuration(todayMinutes)}</Text>
 

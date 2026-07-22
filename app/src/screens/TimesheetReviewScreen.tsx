@@ -80,7 +80,7 @@ export function TimesheetReviewScreen({
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       <Text style={styles.title}>{displayName}</Text>
       <View style={styles.navRow}>
         <Button label="‹" kind="secondary" onPress={() => stepPeriod(-1)} />

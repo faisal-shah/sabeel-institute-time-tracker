@@ -6,7 +6,7 @@ import { formatDuration, periodLabel } from '@sabeel/shared';
 import type { RootStackParamList } from '../nav';
 import { useRejectedSheets } from '../timesheets';
 import { useApproverChoices } from '../users';
-import { Screen } from '../components/ui';
+import { CardGrid, Screen } from '../components/ui';
 import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
@@ -30,7 +30,7 @@ export function NeedsAttentionScreen({ uid }: { uid: string }) {
   );
 
   return (
-    <Screen>
+    <Screen width="list">
       {sheets.length === 0 ? (
         <Text style={styles.empty}>Nothing needs your attention. ✅</Text>
       ) : (
@@ -40,7 +40,8 @@ export function NeedsAttentionScreen({ uid }: { uid: string }) {
             : `${sheets.length} timesheets were rejected. Tap one to fix and resubmit.`}
         </Text>
       )}
-      {sheets.map((ts) => (
+      <CardGrid>
+        {sheets.map((ts) => (
         <Pressable
           key={ts.id}
           style={styles.row}
@@ -63,7 +64,8 @@ export function NeedsAttentionScreen({ uid }: { uid: string }) {
             fix ›
           </Text>
         </Pressable>
-      ))}
+        ))}
+      </CardGrid>
     </Screen>
   );
 }

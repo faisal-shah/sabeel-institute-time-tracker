@@ -51,7 +51,15 @@ const styles = StyleSheet.create({
     gap: spacing(3),
   },
   title: { fontSize: 24, fontWeight: '700', color: t.text.primary },
-  message: { fontSize: 15, color: t.text.secondary, textAlign: 'center', lineHeight: 22 },
+  // Cap the line length so this centred card stays a card on a desktop, rather
+  // than stretching the two lines of copy across the whole window.
+  message: {
+    fontSize: 15,
+    color: t.text.secondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 420,
+  },
   email: { fontSize: 14, color: t.accent.base, fontWeight: '600' },
   actions: { marginTop: spacing(4), width: '100%', maxWidth: 240 },
 });

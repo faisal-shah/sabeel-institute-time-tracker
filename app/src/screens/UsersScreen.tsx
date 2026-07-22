@@ -6,7 +6,7 @@ import { functions } from '../firebase';
 import { confirmAction } from '../confirm';
 import { approverChoices, setApprover, useUsers } from '../users';
 import { SearchablePicker } from '../components/SearchablePicker';
-import { Button, ErrorText, Screen } from '../components/ui';
+import { Button, CardGrid, ErrorText, Screen } from '../components/ui';
 import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
@@ -48,9 +48,10 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
   };
 
   return (
-    <Screen>
+    <Screen width="list">
       <ErrorText error={error} />
-      {sorted.map((u) => (
+      <CardGrid>
+        {sorted.map((u) => (
         <View key={u.uid} style={[styles.card, u.status === 'pending' && styles.cardPending]}>
           <Text style={styles.name}>
             {u.displayName}
@@ -153,7 +154,8 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
             </>
           ) : null}
         </View>
-      ))}
+        ))}
+      </CardGrid>
       {sorted.length === 0 && <Text style={styles.empty}>No users yet.</Text>}
     </Screen>
   );

@@ -1,15 +1,54 @@
-import { type ReactNode, useState } from 'react';
+import { Children, type ReactNode, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useListenerError } from '../liveQuery';
 import { getTheme, spacing } from '../theme';
+import {
+  CONTENT_MAX_WIDTH,
+  GRID_CARD_MIN_WIDTH,
+  LIST_MAX_WIDTH,
+  READ_MAX_WIDTH,
+  useLayout,
+} from '../theme/layout';
 
 const t = getTheme();
 
-export function Screen({ children, title }: { children: ReactNode; title?: string }) {
+export function Screen({
+  children,
+  title,
+  width = 'content',
+}: {
+  children: ReactNode;
+  title?: string;
+  /**
+   * How wide the content may grow on a WIDE screen (ignored on a phone, where
+   * the column IS the screen). Capping-and-centring stops the phone-first layout
+   * from looking like a phone screen stretched sideways on a desktop:
+   *  - `read`    a narrow reading column — text, forms, detail, one-person views.
+   *  - `content` the default mid column — simple pages / the dashboard.
+   *  - `list`    a wide column for card GRIDS that should fill a laptop.
+   *  - `full`    no cap.
+   */
+  width?: 'read' | 'content' | 'list' | 'full';
+}) {
   // Live-data failures surface on every screen — a silently broken listener
   // must never look like "there's just no data" (see the 2026-07-16 postmortem).
   const listenerError = useListenerError();
+  const { isWide } = useLayout();
+
+  // Cap + centre on wide only; on a phone the column is the whole screen, so a
+  // maxWidth there would just add dead margin. `capStyle` is the centring cap;
+  // the body column also carries the inter-item gap so it survives whether or
+  // not a cap is applied.
+  const maxWidth =
+    !isWide || width === 'full'
+      ? undefined
+      : width === 'read'
+        ? READ_MAX_WIDTH
+        : width === 'list'
+          ? LIST_MAX_WIDTH
+          : CONTENT_MAX_WIDTH;
+  const capStyle = maxWidth ? { maxWidth, alignSelf: 'center' as const } : null;
 
   // KeyboardAwareScrollView (react-native-keyboard-controller) tracks the IME
   // via WindowInsets, which is the ONLY thing that works under edge-to-edge
@@ -20,7 +59,11 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
     <View style={styles.screen}>
       {title ? (
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{title}</Text>
+          {/* On wide the title aligns with the centred content column, not the
+              window edge. */}
+          <View style={capStyle}>
+            <Text style={styles.headerTitle}>{title}</Text>
+          </View>
         </View>
       ) : null}
       {listenerError ? <Text style={styles.listenerError}>{listenerError}</Text> : null}
@@ -29,7 +72,7 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
         keyboardShouldPersistTaps="handled"
         bottomOffset={spacing(6)}
       >
-        {children}
+        <View style={[styles.bodyColumn, capStyle]}>{children}</View>
       </KeyboardAwareScrollView>
     </View>
   );
@@ -47,6 +90,7 @@ export function Button({
   disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const { isWide } = useLayout();
   const handle = async () => {
     setBusy(true);
     try {
@@ -62,6 +106,11 @@ export function Button({
       disabled={off}
       style={({ pressed }) => [
         styles.btn,
+        // Full-width is a good primary-action shape on a phone; on a wide screen
+        // a standalone button becomes a bar, so size it to its label and sit
+        // left. A button inside a Row is already content-width (a row doesn't
+        // stretch its children), so this only de-stretches the column-child case.
+        { alignSelf: isWide ? 'flex-start' : 'stretch' },
         kind === 'primary' && styles.btnPrimary,
         kind === 'secondary' && styles.btnSecondary,
         kind === 'danger' && styles.btnDanger,
@@ -84,6 +133,25 @@ export function ErrorText({ error }: { error: string | null }) {
   return <Text style={styles.error}>{error}</Text>;
 }
 
+/**
+ * A responsive grid for card-like list items (users, approvals, rejected sheets).
+ * On a wide screen the cards flow into as many columns as fit; on a phone they
+ * collapse to one full-width column. Each child is wrapped so callers pass their
+ * cards straight in.
+ */
+export function CardGrid({ children }: { children: ReactNode }) {
+  const { isWide } = useLayout();
+  return (
+    <View style={styles.grid}>
+      {Children.map(children, (child) =>
+        child == null || child === false ? null : (
+          <View style={isWide ? styles.gridItemWide : styles.gridItemNarrow}>{child}</View>
+        ),
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: t.bg.canvas },
   header: {
@@ -95,7 +163,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing(5),
   },
   headerTitle: { color: t.text.primary, fontSize: 22, fontWeight: '700' },
-  body: { padding: spacing(5), gap: spacing(3) },
+  body: { padding: spacing(5) },
+  // The content column: carries the inter-item gap (moved off `body` so it
+  // survives the cap wrapper) and grows to fill within the cap.
+  bodyColumn: { width: '100%', gap: spacing(3) },
+  // Responsive card grid (see CardGrid). Cards grow to fill the row but stay
+  // near the target width so a lone last card doesn't stretch the whole row.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(3) },
+  gridItemWide: { flexGrow: 1, flexBasis: GRID_CARD_MIN_WIDTH, maxWidth: 420 },
+  gridItemNarrow: { width: '100%' },
   btn: {
     borderRadius: 10,
     paddingVertical: spacing(3.5),

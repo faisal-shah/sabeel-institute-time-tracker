@@ -15,7 +15,12 @@ const inputStyle: React.CSSProperties = {
   color: t.text.primary,
   fontFamily: 'inherit',
   backgroundColor: t.bg.canvas,
-  width: '100%',
+  // Hug the current date/time rather than reserve width for the widest possible
+  // value — a native date input otherwise sits in an oversized box, stretched on
+  // a desktop. Capped at the column; progressive enhancement (no-ops on older
+  // engines, which fall back to the default sizing).
+  fieldSizing: 'content',
+  maxWidth: '100%',
   boxSizing: 'border-box',
 };
 

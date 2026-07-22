@@ -44,7 +44,7 @@ export function NotificationSettingsScreen({
   );
 
   return (
-    <Screen>
+    <Screen width="read">
       <Text style={styles.intro}>
         Notifications arrive on every device where you’ve allowed them — the app asks for
         permission when you sign in. A switch here turns that kind of notification off

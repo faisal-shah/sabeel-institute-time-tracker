@@ -45,7 +45,7 @@ export function PersonDetailScreen({ uid, displayName }: { uid: string; displayN
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       <Text style={styles.name}>{displayName}</Text>
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>LIFETIME APPROVED HOURS</Text>

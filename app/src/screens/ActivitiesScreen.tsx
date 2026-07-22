@@ -32,7 +32,7 @@ export function ActivitiesScreen({ selfUid }: { selfUid: string }) {
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       <View style={styles.form}>
         <TextInput
           value={name}

@@ -71,7 +71,7 @@ export function ReportsScreen() {
   };
 
   return (
-    <Screen>
+    <Screen width="read">
       <Text style={styles.section}>Period</Text>
       <View style={styles.chipRow}>
         {(['week', 'month', 'year', 'all'] as const).map((w) => (
