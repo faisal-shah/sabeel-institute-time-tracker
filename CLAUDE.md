@@ -91,6 +91,9 @@ it records which failures are environmental and what each script guards against.
   Everything Faisal must do himself is tracked in `TODO.md` — keep it current.
 
 ## Conventions
+- **Production hardening backlog lives in `docs/PRODUCTION-REVIEW.md`** — a tracked
+  checklist (H/M/L findings + emulator-verification list) worked across sessions;
+  update its Status + Changelog as items land.
 - Commit at phase boundaries (see docs/PHASE_STATUS.md); work autonomously within a
   phase. Before ANY significant install (global/system/major framework), ask first;
   routine project-local npm deps of the locked stack are fine.
