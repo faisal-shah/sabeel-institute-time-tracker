@@ -13,6 +13,7 @@ Firebase or the emulators belong there; what we built in response belongs here.
 
 | Command | What it does |
 |---|---|
+| `npm run verify` | the fast CI gates in one shot: lint + typecheck + knip + unit — **run before pushing** |
 | `npm run lint` | eslint + `check:text` (see below) |
 | `npm run typecheck` | tsc across all workspaces |
 | `npm test` | Vitest units (functions + shared) |
@@ -76,6 +77,13 @@ That is what `ignoreExportsUsedInFile` encodes.
 One judgement call knip cannot make: **some unused code marks a missing feature
 rather than cruft.** If deleting it would erase the only trace of a user-facing
 gap, fix the gap instead.
+
+**`npm run knip` is a SEPARATE CI step — `npm run lint` does not include it.**
+On 2026-07-22 CI sat red for many commits (since the Option-1 migration added an
+unused `useTheme` export) because local validation ran lint/typecheck/test but
+not knip, and CI status wasn't re-checked after those pushes. Guard against the
+whole class: **run `npm run verify` before pushing** (lint + typecheck + knip +
+unit), and don't assume green — check the actual CI run.
 
 ## `scripts/web-e2e.mjs`
 
