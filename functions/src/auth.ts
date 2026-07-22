@@ -22,11 +22,16 @@ export function requireActive(req: CallableRequest): string {
   return uid;
 }
 
-export function requireManager(req: CallableRequest): string {
+/**
+ * Reports, CSV export and Drive sync require an operational or administrative
+ * role. Admin implies full access (an admin who isn't also a manager still gets
+ * in), so admin-only accounts aren't locked out of reports/activities.
+ */
+export function requireManagerOrAdmin(req: CallableRequest): string {
   const uid = requireActive(req);
   const claims = (req.auth?.token ?? {}) as Claims;
-  if (claims.role !== 'manager') {
-    throw new HttpsError('permission-denied', 'Manager role required.');
+  if (claims.role !== 'manager' && claims.admin !== true) {
+    throw new HttpsError('permission-denied', 'Manager or admin role required.');
   }
   return uid;
 }

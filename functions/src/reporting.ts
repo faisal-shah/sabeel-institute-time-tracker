@@ -6,7 +6,7 @@ import {
   type TimeEntryDoc,
   type TimesheetDoc,
 } from '@sabeel/shared';
-import { requireManager } from './auth';
+import { requireManagerOrAdmin } from './auth';
 import { guarded, sentryDsn } from './sentry';
 
 export interface ExportInput {
@@ -71,8 +71,14 @@ function entriesQuery(input: ExportInput): Query {
   return q;
 }
 
-function csvCell(v: string | number): string {
-  const s = String(v);
+export function csvCell(v: string | number): string {
+  let s = String(v);
+  // CSV formula injection: a cell a spreadsheet reads as starting with = + - @
+  // (or a leading tab/CR) is executed as a formula when the file is opened in
+  // Excel. Neutralize by prefixing a single quote — the live Google Sheet is
+  // safe already (written with valueInputOption RAW); this guards the CSV file
+  // and the downloaded export. User-controlled fields: note, activity, name.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -174,7 +180,7 @@ export async function computeTotals(input: ExportInput): Promise<Totals> {
 export const exportCsv = onCall(
   { secrets: [sentryDsn] },
   guarded(async (req) => {
-    requireManager(req);
+    requireManagerOrAdmin(req);
     const input = validate(req.data);
     const csv = await buildCsv(input);
     const suffix = input.includeUnapproved ? '_unofficial' : '';
@@ -185,7 +191,7 @@ export const exportCsv = onCall(
 export const reportTotals = onCall(
   { secrets: [sentryDsn] },
   guarded(async (req) => {
-    requireManager(req);
+    requireManagerOrAdmin(req);
     const input = validate(req.data);
     const totals = await computeTotals(input);
     // Attach display names so the dashboard shows people, not uids.

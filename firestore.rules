@@ -123,11 +123,11 @@ service cloud.firestore {
     // so historical entries keep a valid reference.
     match /activities/{activityId} {
       allow read: if isActive();
-      allow create: if isManager()
+      allow create: if (isManager() || isAdmin())
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.status in ['active', 'archived'];
-      allow update: if isManager()
+      allow update: if (isManager() || isAdmin())
         && request.resource.data.status in ['active', 'archived'];
       allow delete: if false;
     }
@@ -152,7 +152,11 @@ service cloud.firestore {
               : (d.end is int && d.end > d.start
                  && d.durationMinutes is int
                  && d.durationMinutes > 0
-                 && d.durationMinutes <= 24 * 60));
+                 && d.durationMinutes <= 24 * 60
+                 // Tie the reported minutes to the actual span so a client
+                 // can't inflate hours independently of the times. Upper bound
+                 // only, +1 to absorb the client's Math.round and 1-min floor.
+                 && d.durationMinutes <= (d.end - d.start) / 60000 + 1));
       }
       function me() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;

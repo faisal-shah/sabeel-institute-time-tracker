@@ -41,6 +41,9 @@ const member = () =>
   testEnv.authenticatedContext('mem', { status: 'active', role: 'member' });
 const manager = () =>
   testEnv.authenticatedContext('mgr', { status: 'active', role: 'manager' });
+// Admin who is NOT a manager (role member) — M3 lets them manage activities too.
+const adminNonManager = () =>
+  testEnv.authenticatedContext('adm', { status: 'active', role: 'member', admin: true });
 const pendingUser = () =>
   testEnv.authenticatedContext('pen', { status: 'pending', role: 'member' });
 
@@ -53,6 +56,17 @@ describe('firestore.rules — activities', () => {
     });
     await assertSucceeds(
       updateDoc(doc(m.firestore(), 'activities/a1'), { status: 'archived' }),
+    );
+  });
+
+  it('M3: an admin who is not a manager can create and archive activities', async () => {
+    const a = adminNonManager();
+    await assertSucceeds(addDoc(collection(a.firestore(), 'activities'), activity));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'activities/a1'), activity);
+    });
+    await assertSucceeds(
+      updateDoc(doc(a.firestore(), 'activities/a1'), { status: 'archived' }),
     );
   });
 

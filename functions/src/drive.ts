@@ -2,7 +2,7 @@ import { onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore } from 'firebase-admin/firestore';
 import { monthRange, type TimeEntryDoc } from '@sabeel/shared';
-import { requireManager } from './auth';
+import { requireManagerOrAdmin } from './auth';
 import { guarded, reportError, sentryDsn } from './sentry';
 import { approvedPeriodSet, buildCsv } from './reporting';
 import {
@@ -166,7 +166,7 @@ export const syncToDrive = onSchedule(
 export const syncDriveNow = onCall(
   { secrets: [sentryDsn] },
   guarded(async (req) => {
-    requireManager(req);
+    requireManagerOrAdmin(req);
     return runSync(currentTarget());
   }),
 );

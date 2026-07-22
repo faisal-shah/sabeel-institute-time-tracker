@@ -10,7 +10,7 @@
 //   curl "https://us-central1-<project>.cloudfunctions.net/probeQueries?token=$PROBE_TOKEN"
 // Keep this file's shapes in sync with the queries in app/src and functions/src.
 import { onRequest } from 'firebase-functions/v2/https';
-import { getFirestore, type Query } from 'firebase-admin/firestore';
+import { Filter, getFirestore, type Query } from 'firebase-admin/firestore';
 
 export const probeQueries = onRequest(async (req, res) => {
   if (!process.env.PROBE_TOKEN || req.query.token !== process.env.PROBE_TOKEN) {
@@ -57,6 +57,18 @@ export const probeQueries = onRequest(async (req, res) => {
       .collection('timeEntries')
       .where('end', '==', null)
       .where('start', '<=', Date.now()),
+    'timesheets approverUid==, status==submitted (approval queue)': db
+      .collection('timesheets')
+      .where('approverUid', '==', 'probe')
+      .where('status', '==', 'submitted'),
+    'timesheets uid==, status==rejected (needs-attention)': db
+      .collection('timesheets')
+      .where('uid', '==', 'probe')
+      .where('status', '==', 'rejected'),
+    // No composite index needed (single-field OR); probed for query-shape regression.
+    'users or(role==manager, admin==true) (approver choices)': db
+      .collection('users')
+      .where(Filter.or(Filter.where('role', '==', 'manager'), Filter.where('admin', '==', true))),
   };
   const lines: string[] = [];
   for (const [label, q] of Object.entries(shapes)) {

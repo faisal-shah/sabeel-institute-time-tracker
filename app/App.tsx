@@ -26,6 +26,7 @@ import { NotificationSettingsScreen } from './src/screens/NotificationSettingsSc
 import type { RootStackParamList } from './src/nav';
 import { getTheme } from './src/theme';
 import { initSentry } from './src/sentry';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 const t = getTheme();
 
@@ -154,7 +155,7 @@ export default function App() {
               />
             )}
           </Stack.Screen>
-          {claims.role === 'manager' ? (
+          {isApprover ? (
             <Stack.Screen
               name="Reports"
               options={{
@@ -165,7 +166,7 @@ export default function App() {
               {() => <ReportsScreen />}
             </Stack.Screen>
           ) : null}
-          {claims.role === 'manager' ? (
+          {isApprover ? (
             <Stack.Screen
               name="PersonDetail"
               options={{
@@ -179,7 +180,7 @@ export default function App() {
               }}
             </Stack.Screen>
           ) : null}
-          {claims.role === 'manager' ? (
+          {isApprover ? (
             <Stack.Screen
               name="Activities"
               options={{
@@ -243,10 +244,12 @@ export default function App() {
   }
 
   return (
-    <KeyboardProvider>
-      {content}
-      {/* Dark icons — the app is ivory-topped everywhere (ivory chrome). */}
-      <StatusBar style="dark" />
-    </KeyboardProvider>
+    <ErrorBoundary>
+      <KeyboardProvider>
+        {content}
+        {/* Dark icons — the app is ivory-topped everywhere (ivory chrome). */}
+        <StatusBar style="dark" />
+      </KeyboardProvider>
+    </ErrorBoundary>
   );
 }

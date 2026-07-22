@@ -194,7 +194,7 @@ export function HomeScreen({
             onPress={() => nav.navigate('Approvals')}
           />
         ) : null}
-        {claims.role === 'manager' ? (
+        {isApprover ? (
           <>
             <Button label="Reports" onPress={() => nav.navigate('Reports')} />
             <Button

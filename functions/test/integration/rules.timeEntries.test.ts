@@ -180,6 +180,29 @@ describe('timeEntries — manual entries and validation', () => {
       setDoc(doc(db, 'timeEntries/m5'), { ...runningEntry, durationMinutes: 10 }),
     );
   });
+
+  it('M2: durationMinutes cannot exceed the span (inflation blocked)', async () => {
+    const db = alice().firestore();
+    // Times 1 minute apart but claiming 24h — the classic inflation attempt.
+    await assertFails(
+      setDoc(doc(db, 'timeEntries/inf'), {
+        ...closedEntry,
+        end: T0 + 60000,
+        durationMinutes: 24 * 60,
+      }),
+    );
+  });
+
+  it('M2: an honest rounded duration (90s → 2) is accepted (the +1 tolerance)', async () => {
+    const db = alice().firestore();
+    await assertSucceeds(
+      setDoc(doc(db, 'timeEntries/round'), {
+        ...closedEntry,
+        end: T0 + 90000,
+        durationMinutes: 2,
+      }),
+    );
+  });
 });
 
 describe('timeEntries — reads, corrections, deletes', () => {
