@@ -83,11 +83,19 @@ export function Button({
   onPress,
   kind = 'primary',
   disabled,
+  block,
 }: {
   label: string;
   onPress: () => void | Promise<void>;
   kind?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
+  /**
+   * Force full-width in the container even on a wide screen. For buttons inside
+   * a narrow, centred box (the sign-in / gate cards) where hugging the label
+   * would strand the button off to one side — there the button should fill the
+   * card like the fields around it, exactly as it does on a phone.
+   */
+  block?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const { isWide } = useLayout();
@@ -110,7 +118,8 @@ export function Button({
         // a standalone button becomes a bar, so size it to its label and sit
         // left. A button inside a Row is already content-width (a row doesn't
         // stretch its children), so this only de-stretches the column-child case.
-        { alignSelf: isWide ? 'flex-start' : 'stretch' },
+        // `block` opts back into full-width for buttons in a narrow centred card.
+        { alignSelf: block || !isWide ? 'stretch' : 'flex-start' },
         kind === 'primary' && styles.btnPrimary,
         kind === 'secondary' && styles.btnSecondary,
         kind === 'danger' && styles.btnDanger,

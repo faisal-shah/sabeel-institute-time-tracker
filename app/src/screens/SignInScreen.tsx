@@ -56,7 +56,7 @@ export function SignInScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Time Tracker</Text>
         {(REAL_GOOGLE_AVAILABLE || !USE_EMULATORS) && (
-          <Button label="Sign in with Google" onPress={google} />
+          <Button label="Sign in with Google" onPress={google} block />
         )}
         {USE_EMULATORS && (
           <>
@@ -69,7 +69,7 @@ export function SignInScreen() {
               style={styles.input}
               placeholder="email"
             />
-            <Button label="Dev: sign in" kind="secondary" onPress={dev} />
+            <Button label="Dev: sign in" kind="secondary" onPress={dev} block />
           </>
         )}
         <ErrorText error={error} />

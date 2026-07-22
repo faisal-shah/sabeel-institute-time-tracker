@@ -12,7 +12,7 @@ function Gate({ title, message, email }: { title: string; message: string; email
       <Text style={styles.message}>{message}</Text>
       <Text style={styles.email}>{email}</Text>
       <View style={styles.actions}>
-        <Button label="Sign out" kind="secondary" onPress={() => signOut()} />
+        <Button label="Sign out" kind="secondary" onPress={() => signOut()} block />
       </View>
     </View>
   );
