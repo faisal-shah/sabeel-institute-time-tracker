@@ -2,19 +2,15 @@
  * Semantic theme tokens. Every color in the app comes from here.
  *
  * SINGLE LIGHT THEME — no dark mode (decided 2026-07-21; see docs/BRAND.md).
- * `useTheme()` returns the one theme; it is a hook so a stored preference or a
- * second theme could be layered in here later without any screen changing.
+ * `getTheme()` returns the one static theme. Every consumer reads it at module
+ * scope, which is all a light-only app needs.
  *
- * Usage inside a component:
- *   const t = useTheme();
- *   <View style={{ backgroundColor: t.bg.surface }}>
- *
- * Module-scope StyleSheet.create (which cannot call a hook) uses getTheme():
+ * Usage:
  *   const t = getTheme();
  *   const styles = StyleSheet.create({ card: { backgroundColor: t.bg.surface } });
- * This is safe precisely because the theme is static (single light theme) — the
- * value is fixed at module load. If a second theme is ever added, those static
- * styles are where it would need revisiting; screens using useTheme() would not.
+ * Safe precisely because the theme is static (single light theme) — the value is
+ * fixed at module load. If a second theme or runtime override is ever added,
+ * this file is where it layers in (re-adding a reactive `useTheme()` hook then).
  *
  * Names describe ROLE, not appearance — `text.muted`, never `text.grey`.
  *
@@ -91,14 +87,11 @@ export type Theme = ReturnType<typeof build>;
 const theme: Theme = build();
 
 /**
- * The app theme. A hook by design: if a manual override or a second theme is
- * ever added, this is the single place it layers in and no screen needs touching.
+ * The single app theme. Every consumer reads it at module scope
+ * (`const t = getTheme()`), which is all this light-only app needs. If a second
+ * theme or a runtime override is ever added, this is the one place it layers in;
+ * a reactive `useTheme()` hook would be re-added here at that point.
  */
-export function useTheme(): Theme {
-  return theme;
-}
-
-/** Non-hook access, for module-scope styles and `.web` seams that cannot use hooks. */
 export function getTheme(): Theme {
   return theme;
 }
