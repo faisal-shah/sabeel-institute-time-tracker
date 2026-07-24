@@ -38,7 +38,9 @@ nonprofit's staff are the admins/managers in the app.
 
 Key product invariants (do not silently change):
 - **General-purpose time tracker** — nothing volunteer-specific in the data model.
-- **Google sign-in only**; every new account (org domain included) lands `pending`;
+- **Google sign-in only, restricted to @oursabeel.com** (server-enforced: the
+  `onUserCreate` function deletes non-org accounts + rules block non-org
+  self-register; client `hd` hint is UX only). Every new org account lands `pending`;
   **only admins** approve/disable users or change roles.
 - **Honor system** — entries count immediately; managers may edit/correct.
 - **Work-local timezones** — entries bucket/display in the timezone where the work

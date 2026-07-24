@@ -237,12 +237,12 @@ async function main() {
   // screen that once diverged from the sibling app on brand chrome.
   await admin.getByText('Time Tracker', { exact: true }).waitFor();
   await admin.screenshot({ path: join(shots, '0-signin.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
-  await devSignIn(admin, 'admin@example.com');
+  await devSignIn(admin, 'admin@oursabeel.com');
   await admin.getByText('waiting for an administrator', { exact: false }).waitFor();
   await admin.screenshot({ path: join(shots, '1-admin-pending.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ grant-admin bootstrap → page must un-gate LIVE (claims refresh)…');
-  execFileSync('node', ['scripts/grant-admin.mjs', 'admin@example.com'], {
+  execFileSync('node', ['scripts/grant-admin.mjs', 'admin@oursabeel.com'], {
     cwd: root,
     stdio: 'inherit',
     env: {
@@ -256,12 +256,12 @@ async function main() {
 
   console.log('▸ a volunteer signs in on their own device → pending gate…');
   const vol = await newPage('volunteer');
-  await devSignIn(vol, 'volunteer@example.com');
+  await devSignIn(vol, 'volunteer@oursabeel.com');
   await vol.getByText('waiting for an administrator', { exact: false }).waitFor();
 
   console.log('▸ admin opens Manage users and sees the volunteer name+email…');
   await admin.getByText('Manage users').click();
-  await admin.getByText('volunteer@example.com').waitFor();
+  await admin.getByText('volunteer@oursabeel.com').waitFor();
   await admin.screenshot({ path: join(shots, '3-users-pending.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
 
   console.log('▸ admin taps Approve → volunteer page must flip to Home live…');
@@ -509,7 +509,7 @@ async function main() {
   if (!/Person,Email,Activity,Date,Start,End/.test(csv))
     throw new Error('CSV missing header: ' + csv.slice(0, 80));
   if (!/Volunteer/.test(csv)) throw new Error('CSV missing the volunteer row');
-  if (!/volunteer@example\.com/.test(csv)) throw new Error('CSV missing the volunteer email');
+  if (!/volunteer@oursabeel\.com/.test(csv)) throw new Error('CSV missing the volunteer email');
 
   console.log('▸ Phase 5b: Drive sync button degrades gracefully when unconfigured…');
   // Still on Reports here — test the sync button before navigating away.

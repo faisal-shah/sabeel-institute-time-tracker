@@ -23,6 +23,15 @@ service cloud.firestore {
     function isAdmin() {
       return isActive() && request.auth.token.get('admin', false) == true;
     }
+    // Sign-in is restricted to the org Workspace domain. The onUserCreate auth
+    // trigger deletes non-org accounts, and this gate stops a non-org account
+    // from self-registering a profile in the window before the trigger fires.
+    // Exact domain match (a naive suffix would admit `evil-oursabeel.com`).
+    function isOrgEmail() {
+      return request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.lower().matches('.*@oursabeel[.]com');
+    }
 
     // ---- Timesheet periods (Sun–Sat weeks clipped to month boundaries) ----
     // Mirrors periodKeyFor in @sabeel/shared/src/time.ts — recomputed here so a
@@ -74,7 +83,10 @@ service cloud.firestore {
     match /users/{uid} {
       // Self-registration: a new sign-in creates its own profile, forced pending
       // with no privileges. role/status/admin changes only via setUserAccess.
+      // Gated to the org domain (see isOrgEmail) so only Workspace accounts land
+      // in the approval queue.
       allow create: if isSignedIn() && request.auth.uid == uid
+        && isOrgEmail()
         && request.resource.data.status == 'pending'
         && request.resource.data.role == 'member'
         && request.resource.data.admin == false

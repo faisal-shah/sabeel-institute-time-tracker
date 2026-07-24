@@ -18,7 +18,9 @@ const logo = require('../../assets/logo.png');
 
 export function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
-  const [devEmail, setDevEmail] = useState('volunteer@example.com');
+  // Dev sign-in must use an org-domain address — the same domain gate that
+  // production enforces (auth trigger + rules) applies against the emulator too.
+  const [devEmail, setDevEmail] = useState('volunteer@oursabeel.com');
 
   const google = async () => {
     setError(null);

@@ -37,6 +37,20 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-24 — **Sign-in restricted to the @oursabeel.com domain** (deployed).
+  Mirrors the sibling kanban app. A gen-1 `onUserCreate` auth trigger
+  (`functions/src/authTrigger.ts`) deletes any account whose verified email is
+  not `@oursabeel.com`; `firestore.rules` gains `isOrgEmail()` and gates user
+  self-registration on it (defense-in-depth so a non-org account can't even
+  create an orphan pending doc); the client passes Google an `hd`/`hostedDomain`
+  hint (UX only). `isAllowedEmail` lives in `@sabeel/shared` (exact-domain match,
+  unit-tested). Dev/e2e sign-in emails moved to `@oursabeel.com` since the gate
+  applies against the emulator too. Rules + trigger deployed; 91 emulator tests
+  (incl. new domain-gate cases) + full e2e green. **Also this session:** removed
+  the 5 remaining non-org (test/personal) accounts completely — auth, profiles,
+  entries, timesheets, push tokens — via a temp deploy→curl→delete function, and
+  set khadija (whose approver was a removed account) to self-approve. Roster is
+  now 8 `@oursabeel.com` accounts, 4 of them admins.
 - 2026-07-22 — **Responsive wide/desktop layout** (client-only, not yet released).
   The phone-first web surface no longer renders as a stretched phone on a laptop.
   Keyed off available WIDTH, never platform (`app/src/theme/layout.ts`, `useLayout`,

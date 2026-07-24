@@ -7,6 +7,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
 } from 'firebase/auth';
+import { ALLOWED_EMAIL_DOMAIN } from '@sabeel/shared';
 import { auth } from '../firebase';
 import { captureError } from '../sentry';
 
@@ -38,8 +39,9 @@ const CANCELLED = new Set([
 export async function signInWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
   // Always show Google's account chooser (with its own "Use another account")
-  // instead of silently reusing the last signed-in account.
-  provider.setCustomParameters({ prompt: 'select_account' });
+  // instead of silently reusing the last signed-in account. `hd` hints Google to
+  // surface org accounts — UX only; the server (auth trigger + rules) enforces.
+  provider.setCustomParameters({ prompt: 'select_account', hd: ALLOWED_EMAIL_DOMAIN });
   try {
     await signInWithPopup(auth, provider);
   } catch (e) {

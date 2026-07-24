@@ -10,7 +10,7 @@ import {
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { WEB_CLIENT_ID } from '@sabeel/shared';
+import { ALLOWED_EMAIL_DOMAIN, WEB_CLIENT_ID } from '@sabeel/shared';
 import { auth } from '../firebase';
 
 export const REAL_GOOGLE_AVAILABLE = true;
@@ -19,7 +19,9 @@ let configured = false;
 function ensureConfigured() {
   if (configured) return;
   // webClientId MUST be the *Web* OAuth client id (not the Android one).
-  GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
+  // hostedDomain hints Google to offer only org accounts — UX only; the server
+  // (auth trigger + rules) is the real gate.
+  GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, hostedDomain: ALLOWED_EMAIL_DOMAIN });
   configured = true;
 }
 

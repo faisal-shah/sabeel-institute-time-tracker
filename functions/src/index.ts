@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase-admin/app';
 
 initializeApp();
 
+export { onUserCreate } from './authTrigger';
 export { setUserAccess } from './users';
 export { exportCsv, reportTotals } from './reporting';
 export { syncToDrive, syncDriveNow } from './drive';
