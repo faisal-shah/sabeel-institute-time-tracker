@@ -100,8 +100,8 @@ android {
         applicationId 'com.sabeelinstitute.timetracker'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 17
-        versionName "1.0.0-beta.17"
+        versionCode 18
+        versionName "1.0.0-beta.18"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
