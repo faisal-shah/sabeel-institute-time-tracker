@@ -1,9 +1,33 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { signOut } from '../session';
 import { Button } from '../components/ui';
 import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
+
+/** Brief, self-resolving: the onUserCreate trigger is creating the profile. */
+export function ProvisioningScreen() {
+  return (
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color={t.accent.base} />
+      <Text style={styles.message}>Setting up your account…</Text>
+    </View>
+  );
+}
+
+/** Terminal: the trigger rejected+deleted this account (not an org address). */
+export function NotProvisionedScreen({ email }: { email: string }) {
+  return (
+    <Gate
+      title="Can’t sign in"
+      message={
+        'This app is for Sabeel Institute accounts only. Sign in with your\n' +
+        '@oursabeel.com Google account.'
+      }
+      email={email}
+    />
+  );
+}
 
 function Gate({ title, message, email }: { title: string; message: string; email: string }) {
   return (

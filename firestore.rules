@@ -23,15 +23,6 @@ service cloud.firestore {
     function isAdmin() {
       return isActive() && request.auth.token.get('admin', false) == true;
     }
-    // Sign-in is restricted to the org Workspace domain. The onUserCreate auth
-    // trigger deletes non-org accounts, and this gate stops a non-org account
-    // from self-registering a profile in the window before the trigger fires.
-    // Exact domain match (a naive suffix would admit `evil-oursabeel.com`).
-    function isOrgEmail() {
-      return request.auth.token.email_verified == true
-        && request.auth.token.email is string
-        && request.auth.token.email.lower().matches('.*@oursabeel[.]com');
-    }
 
     // ---- Timesheet periods (Sun–Sat weeks clipped to month boundaries) ----
     // Mirrors periodKeyFor in @sabeel/shared/src/time.ts — recomputed here so a
@@ -81,17 +72,12 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      // Self-registration: a new sign-in creates its own profile, forced pending
-      // with no privileges. role/status/admin changes only via setUserAccess.
-      // Gated to the org domain (see isOrgEmail) so only Workspace accounts land
-      // in the approval queue.
-      allow create: if isSignedIn() && request.auth.uid == uid
-        && isOrgEmail()
-        && request.resource.data.status == 'pending'
-        && request.resource.data.role == 'member'
-        && request.resource.data.admin == false
-        && request.resource.data.activeEntryId == null
-        && request.resource.data.approverUid == null;
+      // Accounts are provisioned server-side by the onUserCreate trigger (it sets
+      // pending claims + creates the doc, or deletes a non-org account) — the
+      // client never creates its own profile. role/status/admin changes only via
+      // setUserAccess. The domain gate lives once, in the trigger (shared
+      // isAllowedEmail); there is no client-create path to guard here.
+      allow create: if false;
       // Everyone active may read manager/admin profiles — users must see the
       // list of possible approvers to pick theirs (queries filter on role/admin).
       allow read: if isSignedIn()
@@ -100,7 +86,7 @@ service cloud.firestore {
                 && (resource.data.role == 'manager' || resource.data.admin == true)));
       // Self may touch the clock pointer, cosmetic profile fields, their own
       // approver choice (must be an active manager/admin, or null), notification
-      // prefs, and last-seen timezone. NOT lastReminderPeriodKey — that dedup
+      // prefs, and last-seen timezone. NOT lastReminderDayKey — that dedup
       // marker is server-written only.
       allow update: if isActive() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()

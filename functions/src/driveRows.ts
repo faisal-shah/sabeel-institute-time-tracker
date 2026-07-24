@@ -1,45 +1,21 @@
 // Pure builders for the Google Drive outputs — no I/O, so they unit-test cleanly.
 // The live Sheet gets an "Entries" grid plus summary grids; the monthly CSV
 // snapshot reuses buildCsv. All times render in each entry's own timezone.
-import { timeOfDayFor, type TimeEntryDoc } from '@sabeel/shared';
+import { REPORT_COLUMNS, reportRow, type TimeEntryDoc } from '@sabeel/shared';
 
 export type Row = (string | number)[];
 
 /** displayName + email per uid — the Sheet shows people, never raw uids. */
 export type PeopleMap = Map<string, { name: string; email: string }>;
 
-const ENTRIES_HEADER: Row = [
-  'Person',
-  'Email',
-  'Activity',
-  'Date',
-  'Start',
-  'End',
-  'Timezone',
-  'Hours',
-  'Minutes',
-  'Source',
-  'Note',
-];
-
-/** Closed entries → grid rows for the Sheet's "Entries" tab. */
+/** Closed entries → grid rows for the Sheet's "Entries" tab. Header + per-entry
+ *  projection come from @sabeel/shared, shared with the CSV export. */
 export function entriesGrid(entries: TimeEntryDoc[], people: PeopleMap): Row[] {
-  const rows: Row[] = [ENTRIES_HEADER];
+  const rows: Row[] = [[...REPORT_COLUMNS]];
   for (const e of entries) {
     if (e.end === null) continue; // running sessions excluded
-    rows.push([
-      people.get(e.uid)?.name ?? e.uid,
-      people.get(e.uid)?.email ?? '',
-      e.activityName,
-      e.dayKey,
-      timeOfDayFor(e.start, e.timeZone),
-      timeOfDayFor(e.end, e.timeZone),
-      e.timeZone,
-      Number(((e.durationMinutes ?? 0) / 60).toFixed(2)),
-      e.durationMinutes ?? 0,
-      e.source,
-      e.note ?? '',
-    ]);
+    const person = people.get(e.uid) ?? { name: e.uid, email: '' };
+    rows.push(reportRow(e, person));
   }
   return rows;
 }

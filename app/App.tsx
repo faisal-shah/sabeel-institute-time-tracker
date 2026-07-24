@@ -10,7 +10,12 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { StatusBar } from 'expo-status-bar';
 import { useSession } from './src/session';
 import { SignInScreen } from './src/screens/SignInScreen';
-import { PendingScreen, DisabledScreen } from './src/screens/GateScreens';
+import {
+  PendingScreen,
+  DisabledScreen,
+  ProvisioningScreen,
+  NotProvisionedScreen,
+} from './src/screens/GateScreens';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
 import { ActivitiesScreen } from './src/screens/ActivitiesScreen';
@@ -40,10 +45,10 @@ export default function App() {
   // Once per active sign-in: register this device for push and record the
   // last-seen timezone (the weekly reminder fires at local Tuesday 10:00).
   const activeUid =
-    session.phase === 'signedIn' && session.claims.status === 'active' && session.profile
+    session.phase === 'signedIn' && session.claims.status === 'active'
       ? session.user.uid
       : null;
-  const knownTz = activeUid && session.phase === 'signedIn' ? session.profile?.timeZone : null;
+  const knownTz = session.phase === 'signedIn' ? session.profile.timeZone : null;
   useEffect(() => {
     if (!activeUid) return;
     void registerPush(activeUid);
@@ -63,11 +68,17 @@ export default function App() {
     );
   } else if (session.phase === 'signedOut') {
     content = <SignInScreen />;
-  } else if (!session.profile || session.claims.status !== 'active') {
-    // Signed in but not (yet) an active member — gate on the doc/claims state.
+  } else if (session.phase === 'provisioning') {
+    // Signed in; the trigger is creating the profile (or about to reject it).
+    content = <ProvisioningScreen />;
+  } else if (session.phase === 'notProvisioned') {
+    // The trigger rejected+deleted the account — a non-org address.
+    content = <NotProvisionedScreen email={session.email} />;
+  } else if (session.claims.status !== 'active') {
+    // Signed in with a profile, but not (yet) an active member.
     const email = session.user.email ?? '';
     content =
-      session.profile?.status === 'disabled' ? (
+      session.profile.status === 'disabled' ? (
         <DisabledScreen email={email} />
       ) : (
         <PendingScreen email={email} />

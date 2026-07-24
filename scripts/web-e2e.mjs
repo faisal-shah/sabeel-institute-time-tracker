@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Phase 1 closed-loop e2e: drives the real exported web bundle in headless Chrome
 // against live Firebase emulators. Proves the full auth story end to end:
-//   dev Google-credential sign-in → forced-pending profile → gate screen →
-//   grant-admin bootstrap → live claims refresh un-gates without reload →
-//   in-app approval of a second user flips THEIR page live too.
+//   dev Google-credential sign-in → onUserCreate trigger provisions a pending
+//   profile server-side → gate screen → grant-admin bootstrap → live claims
+//   refresh un-gates without reload → in-app approval of a second user flips
+//   THEIR page live too.
 //
 //   node scripts/web-e2e.mjs            (from the repo root)
 //

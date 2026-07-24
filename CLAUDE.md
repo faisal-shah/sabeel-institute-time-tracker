@@ -1,5 +1,15 @@
 # Sabeel Institute Time Tracker — Working Rules for Claude
 
+## Greenfield — always target the global optimum, never band-aids
+No public release exists yet; only dev builds. There are **no backwards-compat or
+legacy-migration constraints** — breaking with previous dev versions is free. So
+at every step (bug fix or feature) target the **globally-optimal** solution for
+the current understanding of the product — architecture, UX, data model, all of
+it. As the vision evolves, converge the whole solution on the new optimum rather
+than layering a patch on top. Prefer deleting/replacing over accreting; when the
+sibling kanban app already has the clean pattern, converge onto it. The goal: by
+the first public release this must not already be a legacy codebase with cruft.
+
 ## Stack knowledge lives in a shared skill, not in this repo
 Recurring traps of this stack (Expo, Metro, react-native-web, Firebase JS SDK,
 Cloud Functions, FCM, emulator behaviour, build/export mechanics) live in the

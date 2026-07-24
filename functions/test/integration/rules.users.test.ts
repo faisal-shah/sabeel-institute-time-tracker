@@ -45,66 +45,22 @@ afterAll(async () => {
 const activeClaims = { status: 'active', role: 'member' };
 const managerClaims = { status: 'active', role: 'manager' };
 
-// A signed-in Google user whose token carries a verified org-domain email — the
-// only kind allowed to self-register (see isOrgEmail in firestore.rules).
-const orgCtx = (uid: string) =>
-  testEnv.authenticatedContext(uid, { email: `${uid}@oursabeel.com`, email_verified: true });
+describe('firestore.rules — users are provisioned server-side (no client create)', () => {
+  // The onUserCreate trigger is the sole provisioner (admin SDK, bypasses rules);
+  // clients never create their own profile. Domain enforcement + the pending
+  // shape are asserted in provision.test.ts / authTrigger.test.ts, not here.
+  it('denies client profile creation for everyone — org and non-org alike', async () => {
+    const org = testEnv.authenticatedContext('alice', {
+      email: 'alice@oursabeel.com',
+      email_verified: true,
+    });
+    await assertFails(setDoc(doc(org.firestore(), 'users/alice'), pendingProfile));
 
-describe('firestore.rules — users self-registration', () => {
-  it('lets a signed-in org user create their own pending profile', async () => {
-    const alice = orgCtx('alice');
-    await assertSucceeds(setDoc(doc(alice.firestore(), 'users/alice'), pendingProfile));
-  });
-
-  it('blocks a non-org email from self-registering (domain gate)', async () => {
     const outsider = testEnv.authenticatedContext('mallory', {
       email: 'mallory@gmail.com',
       email_verified: true,
     });
     await assertFails(setDoc(doc(outsider.firestore(), 'users/mallory'), pendingProfile));
-  });
-
-  it('blocks an unverified org email from self-registering', async () => {
-    const unverified = testEnv.authenticatedContext('alice', {
-      email: 'alice@oursabeel.com',
-      email_verified: false,
-    });
-    await assertFails(setDoc(doc(unverified.firestore(), 'users/alice'), pendingProfile));
-  });
-
-  it('blocks a look-alike domain (evil-oursabeel.com)', async () => {
-    const fake = testEnv.authenticatedContext('eve', {
-      email: 'eve@evil-oursabeel.com',
-      email_verified: true,
-    });
-    await assertFails(setDoc(doc(fake.firestore(), 'users/eve'), pendingProfile));
-  });
-
-  it('blocks creating a profile that is not pending/member/non-admin', async () => {
-    const alice = orgCtx('alice');
-    await assertFails(
-      setDoc(doc(alice.firestore(), 'users/alice'), { ...pendingProfile, status: 'active' }),
-    );
-    await assertFails(
-      setDoc(doc(alice.firestore(), 'users/alice'), { ...pendingProfile, role: 'manager' }),
-    );
-    await assertFails(
-      setDoc(doc(alice.firestore(), 'users/alice'), { ...pendingProfile, admin: true }),
-    );
-  });
-
-  it("blocks creating someone else's profile", async () => {
-    const alice = orgCtx('alice');
-    await assertFails(setDoc(doc(alice.firestore(), 'users/bob'), pendingProfile));
-  });
-
-  it('blocks a profile created without approverUid: null', async () => {
-    const alice = orgCtx('alice');
-    const { approverUid: _omit, ...noApprover } = pendingProfile;
-    await assertFails(setDoc(doc(alice.firestore(), 'users/alice'), noApprover));
-    await assertFails(
-      setDoc(doc(alice.firestore(), 'users/alice'), { ...pendingProfile, approverUid: 'mgr' }),
-    );
   });
 
   it('blocks anonymous access entirely', async () => {

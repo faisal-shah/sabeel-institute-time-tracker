@@ -56,6 +56,10 @@ export interface UserDoc {
   createdAt: number;
   approvedAt?: number;
   approvedBy?: string;
+  /** Epoch ms of the last custom-claims change (trigger provision, or an admin
+   *  access change). The client watches this and force-refreshes its token when
+   *  it moves, so approval un-gates within a second without a sign-out. */
+  claimsUpdatedAt?: number;
 }
 
 /** users/{uid}/pushTokens/{token} — one doc per device/browser that can receive pushes. */

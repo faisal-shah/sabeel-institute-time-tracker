@@ -62,8 +62,10 @@ export async function applyUserAccess(callerUid: string, input: UserAccessInput)
 
   await auth.setCustomUserClaims(input.uid, next);
 
-  const docUpdate: Record<string, unknown> = { ...next };
   // Epoch ms like every other timestamp in the shared types (see UserDoc).
+  // claimsUpdatedAt moves on every claims change; the client watches it and
+  // force-refreshes its token, so approval un-gates within a second (no poll).
+  const docUpdate: Record<string, unknown> = { ...next, claimsUpdatedAt: Date.now() };
   if (current.status === 'pending' && next.status === 'active') {
     docUpdate.approvedAt = Date.now();
     docUpdate.approvedBy = callerUid;

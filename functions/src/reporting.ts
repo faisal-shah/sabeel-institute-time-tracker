@@ -2,26 +2,20 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Query } from 'firebase-admin/firestore';
 import {
   addDays,
-  timeOfDayFor,
+  REPORT_COLUMNS,
+  reportRow,
+  type ReportFilter,
+  type Totals,
   type TimeEntryDoc,
   type TimesheetDoc,
 } from '@sabeel/shared';
 import { requireManagerOrAdmin } from './auth';
 import { guarded, sentryDsn } from './sentry';
 
-export interface ExportInput {
-  uid?: string;
-  activityId?: string;
-  fromKey: string; // inclusive dayKey 'YYYY-MM-DD'
-  toKey: string; // inclusive dayKey
-  /** Official numbers count approved timesheets only; true includes the rest (unofficial view). */
-  includeUnapproved?: boolean;
-}
-
 const KEY = /^\d{4}-\d{2}-\d{2}$/;
 
-function validate(data: unknown): ExportInput {
-  const d = data as Partial<ExportInput> | null;
+function validate(data: unknown): ReportFilter {
+  const d = data as Partial<ReportFilter> | null;
   if (!d || !KEY.test(d.fromKey ?? '') || !KEY.test(d.toKey ?? '')) {
     throw new HttpsError('invalid-argument', 'fromKey and toKey must be YYYY-MM-DD.');
   }
@@ -60,7 +54,7 @@ function approvedOnly(rows: TimeEntryDoc[], approved: Set<string>): TimeEntryDoc
 }
 
 /** Build the filtered, dayKey-ordered query shared by CSV export and Drive sync. */
-function entriesQuery(input: ExportInput): Query {
+function entriesQuery(input: ReportFilter): Query {
   let q: Query = getFirestore().collection('timeEntries');
   if (input.uid) q = q.where('uid', '==', input.uid);
   if (input.activityId) q = q.where('activityId', '==', input.activityId);
@@ -84,7 +78,7 @@ export function csvCell(v: string | number): string {
 
 /** Closed entries (approved-only unless asked otherwise) → CSV, times rendered
  *  in each entry's own timezone. People show as name + email, never raw uids. */
-export async function buildCsv(input: ExportInput): Promise<string> {
+export async function buildCsv(input: ReportFilter): Promise<string> {
   const snap = await entriesQuery(input).get();
   let rows = snap.docs
     .map((d) => d.data() as TimeEntryDoc)
@@ -105,50 +99,17 @@ export async function buildCsv(input: ExportInput): Promise<string> {
     }),
   );
 
-  const header = [
-    'Person',
-    'Email',
-    'Activity',
-    'Date',
-    'Start',
-    'End',
-    'Timezone',
-    'Hours',
-    'Minutes',
-    'Source',
-    'Note',
-  ];
-  const lines = [header.map(csvCell).join(',')];
+  const lines = [REPORT_COLUMNS.map(csvCell).join(',')];
   for (const e of rows) {
-    lines.push(
-      [
-        people.get(e.uid)?.name ?? e.uid,
-        people.get(e.uid)?.email ?? '',
-        e.activityName,
-        e.dayKey,
-        timeOfDayFor(e.start, e.timeZone),
-        timeOfDayFor(e.end as number, e.timeZone),
-        e.timeZone,
-        ((e.durationMinutes ?? 0) / 60).toFixed(2),
-        e.durationMinutes ?? 0,
-        e.source,
-        e.note ?? '',
-      ]
-        .map(csvCell)
-        .join(','),
-    );
+    const person = people.get(e.uid) ?? { name: e.uid, email: '' };
+    lines.push(reportRow(e, person).map(csvCell).join(','));
   }
   return lines.join('\n');
 }
 
-export interface Totals {
-  totalMinutes: number;
-  byActivity: { activityId: string; activityName: string; minutes: number }[];
-  byPerson: { uid: string; minutes: number }[];
-}
-
-/** In-memory rollups for dashboards over the same filtered set. */
-export async function computeTotals(input: ExportInput): Promise<Totals> {
+/** In-memory rollups for dashboards over the same filtered set. `byPerson` is
+ *  resolved to display names here so the wire shape (shared `Totals`) is whole. */
+export async function computeTotals(input: ReportFilter): Promise<Totals> {
   const snap = await entriesQuery(input).get();
   let rows = snap.docs.map((d) => d.data() as TimeEntryDoc).filter((e) => e.end !== null);
   if (!input.includeUnapproved) {
@@ -166,13 +127,23 @@ export async function computeTotals(input: ExportInput): Promise<Totals> {
     act.set(e.activityId, a);
     per.set(e.uid, (per.get(e.uid) ?? 0) + m);
   }
+
+  // Resolve display names so the dashboard shows people, not uids.
+  const names = new Map<string, string>();
+  await Promise.all(
+    [...per.keys()].map(async (uid) => {
+      const u = await getFirestore().collection('users').doc(uid).get();
+      names.set(uid, (u.data()?.displayName as string) ?? uid);
+    }),
+  );
+
   return {
     totalMinutes: total,
     byActivity: [...act.entries()]
       .map(([activityId, v]) => ({ activityId, ...v }))
       .sort((a, b) => b.minutes - a.minutes),
     byPerson: [...per.entries()]
-      .map(([uid, minutes]) => ({ uid, minutes }))
+      .map(([uid, minutes]) => ({ uid, displayName: names.get(uid) ?? uid, minutes }))
       .sort((a, b) => b.minutes - a.minutes),
   };
 }
@@ -192,20 +163,7 @@ export const reportTotals = onCall(
   { secrets: [sentryDsn] },
   guarded(async (req) => {
     requireManagerOrAdmin(req);
-    const input = validate(req.data);
-    const totals = await computeTotals(input);
-    // Attach display names so the dashboard shows people, not uids.
-    const names = new Map<string, string>();
-    await Promise.all(
-      totals.byPerson.map(async (p) => {
-        const u = await getFirestore().collection('users').doc(p.uid).get();
-        names.set(p.uid, (u.data()?.displayName as string) ?? p.uid);
-      }),
-    );
-    return {
-      ...totals,
-      byPerson: totals.byPerson.map((p) => ({ ...p, displayName: names.get(p.uid) ?? p.uid })),
-    };
+    return computeTotals(validate(req.data));
   }),
 );
 

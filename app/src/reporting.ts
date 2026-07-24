@@ -1,20 +1,8 @@
 import { httpsCallable } from 'firebase/functions';
+import { type ReportFilter, type Totals } from '@sabeel/shared';
 import { functions } from './firebase';
 
-export interface ReportFilter {
-  uid?: string;
-  activityId?: string;
-  fromKey: string;
-  toKey: string;
-  /** Official numbers are approved-timesheets-only; true adds unapproved hours (marked unofficial). */
-  includeUnapproved?: boolean;
-}
-
-export interface Totals {
-  totalMinutes: number;
-  byActivity: { activityId: string; activityName: string; minutes: number }[];
-  byPerson: { uid: string; displayName: string; minutes: number }[];
-}
+export type { ReportFilter, Totals };
 
 const exportCsvFn = httpsCallable<ReportFilter, { csv: string; filename: string }>(
   functions,

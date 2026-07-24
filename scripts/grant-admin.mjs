@@ -34,6 +34,9 @@ await getFirestore().collection('users').doc(user.uid).set(
     ...next,
     approvedAt: Date.now(),
     approvedBy: 'grant-admin-script',
+    // Bump the stamp the client watches, so the promoted user un-gates on the
+    // next snapshot (the trigger already created the pending doc + claims).
+    claimsUpdatedAt: Date.now(),
   },
   { merge: true },
 );

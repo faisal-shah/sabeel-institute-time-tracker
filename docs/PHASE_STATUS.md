@@ -37,6 +37,21 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-24 — **Greenfield cleanup pass** (auth architecture + reporting dedup).
+  Standing principle recorded in CLAUDE.md: no backwards-compat; converge on the
+  global-optimal, never band-aids. **Auth/provisioning made server-authoritative**
+  (kanban parity): the `onUserCreate` trigger is now the SOLE provisioner (sets
+  pending claims + creates the doc via the pure `decideProvision`, or deletes a
+  non-org account); `firestore.rules` users `allow create: if false` and the
+  `isOrgEmail()` helper is deleted — the domain check lives once, in shared
+  `isAllowedEmail`. The client (`session.ts`) is now a watch-only state machine
+  (`loading/signedOut/provisioning/notProvisioned/signedIn`) that un-gates on a
+  `claimsUpdatedAt` stamp instead of a 3s poll, with a real "can't sign in" screen
+  for rejected accounts. New `provision`/`authTrigger` tests; the rules
+  self-registration tests collapse to "client create denied". **Reporting dedup:**
+  one `ReportFilter`/`Totals` contract + one `REPORT_COLUMNS`/`reportRow`
+  projection in `@sabeel/shared`, consumed by the client, the CSV export, and the
+  Drive sheet (removed the drifted hand-mirrors). Plus stale doc/comment fixes.
 - 2026-07-24 — **Sign-in restricted to the @oursabeel.com domain** (deployed).
   Mirrors the sibling kanban app. A gen-1 `onUserCreate` auth trigger
   (`functions/src/authTrigger.ts`) deletes any account whose verified email is
