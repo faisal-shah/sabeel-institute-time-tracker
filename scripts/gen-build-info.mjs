@@ -3,18 +3,16 @@
 // into `prepare`, `web:export`, and the APK release) so the commit is the one
 // actually shipped. (Ported from the sibling kanban app.)
 //
-// BUILD_INFO_VERSION overrides the app.json version — the release stamps this from
-// the CLEAN tree with the about-to-be-released version, before it bumps the
-// version files (which would otherwise dirty the tree and add a spurious '+').
+// The release (scripts/release.mjs) COMMITS the version bump before invoking this,
+// so both the APK build and the later `firebase deploy` web build stamp the same
+// release commit — the sign-in footer then matches on every surface.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const version =
-  process.env.BUILD_INFO_VERSION ||
-  JSON.parse(readFileSync(resolve(root, 'app/app.json'), 'utf8')).expo.version;
+const version = JSON.parse(readFileSync(resolve(root, 'app/app.json'), 'utf8')).expo.version;
 
 let commit = 'dev';
 try {

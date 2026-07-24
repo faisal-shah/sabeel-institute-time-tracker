@@ -118,9 +118,17 @@ Guards worth keeping:
   if that row is present.
 - **`versionCode` must increase**, or installs silently refuse to upgrade.
 - Refuses to run on a dirty tree, so a release is reproducible from a commit.
+- **Commits the version bump ITSELF (`v<version>`), before building**, then stamps
+  `app/src/build-info.ts` from that release commit. The APK bundles it and the
+  later `firebase deploy --only hosting` regenerates it from the SAME commit — so
+  the sign-in footer (`v<version> · <hash>`) is identical on the APK and the web.
+  Building before the commit would stamp two different commits (that was a bug).
+  So there is no manual "commit the bump" step now; if a post-commit step fails,
+  recover with `git reset --hard HEAD~1`. Finish with `firebase deploy --only
+  hosting && git push`.
 
-`--dry-run` stops after the bump; `--verify-only` re-runs the AVD check against
-already-built APKs.
+`--dry-run` stops after the bump (before the commit); `--verify-only` re-runs the
+AVD check against already-built APKs.
 
 ### A release is not finished until the download page points at it
 

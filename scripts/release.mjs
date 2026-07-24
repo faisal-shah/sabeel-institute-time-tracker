@@ -206,33 +206,37 @@ if (shOut(`git tag -l v${version}`)) {
   process.exit(1);
 }
 
-// Stamp build-info from the CLEAN tree (so no spurious '+') with the version being
-// released, BEFORE bumpVersion dirties the tree. gradle/Metro bundles this file in
-// buildApks, so the APK's sign-in footer shows `v<version> · <HEAD-short>`.
-console.log(`▸ build-info → v${version}`);
-execSync(`node ${join(root, 'scripts/gen-build-info.mjs')}`, {
-  cwd: root,
-  stdio: 'inherit',
-  env: { ...process.env, BUILD_INFO_VERSION: version },
-});
+// Require notes up front: this release COMMITS the bump before building, so we
+// must not get halfway and discover we can't publish.
+const notesFile = opt('--notes');
+if (!DRY && !existsSync(notesFile ?? '')) {
+  console.error('--notes FILE is required to publish — aborting before any commit or build.');
+  process.exit(1);
+}
 
 const code = bumpVersion(version);
 renderManual();
 if (DRY) {
-  console.log(`\n[dry-run] stopping before build/verify/publish. versionCode would be ${code}.`);
+  console.log(`\n[dry-run] stopping before commit/build/publish. versionCode would be ${code}.`);
   console.log('[dry-run] revert with: git checkout -- app docs');
   process.exit(0);
 }
+
+// Commit the bump BEFORE building. gen-build-info then stamps this release commit,
+// and gradle/Metro bundles it in the APK; the later `firebase deploy --only
+// hosting` regenerates build-info from the SAME commit — so the sign-in footer
+// shows an identical `v<version> · <hash>` on the APK and the web. build-info.ts is
+// gitignored, so it is not part of this commit. (If a later step fails, recover
+// with `git reset --hard HEAD~1`.)
+sh('git add -A');
+sh(`git commit -m "v${version}"`);
+console.log(`▸ build-info → v${version} @ ${shOut('git rev-parse --short HEAD')}`);
+sh(`node ${join(root, 'scripts/gen-build-info.mjs')}`);
+
 const built = buildApks(version);
 verifyOnAvd(version, built.universal);
-const notesFile = opt('--notes');
-if (!existsSync(notesFile ?? '')) {
-  console.error('\nBuilt and verified, but --notes FILE is required to publish.');
-  console.error(`APKs are in ${OUT_DIR}; re-run with --notes once written.`);
-  process.exit(1);
-}
 publish(version, built, notesFile);
-console.log(`\n✔ v${version} released. Commit the version bump.`);
+console.log(`\n✔ v${version} released and committed. Now: firebase deploy --only hosting && git push.`);
 // Push the just-built, just-verified arm64 APK to the public download page as a
 // Release asset (never a commit). Same artifact, same run — provenance is tight.
 publishDownloadPage(version, built.arm64);
