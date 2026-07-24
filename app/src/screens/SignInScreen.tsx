@@ -6,6 +6,7 @@ import { USE_EMULATORS } from '../env';
 import { Button, ErrorText } from '../components/ui';
 import { captureError } from '../sentry';
 import { getTheme, spacing } from '../theme';
+import { BUILD_INFO } from '../build-info';
 
 const t = getTheme();
 
@@ -76,6 +77,12 @@ export function SignInScreen() {
         )}
         <ErrorText error={error} />
       </View>
+      {/* Which build is running — so "what version are you on?" is answerable
+          from the screen everyone sees. Stamped at build time by
+          scripts/gen-build-info.mjs. */}
+      <Text style={styles.build}>
+        v{BUILD_INFO.version} · {BUILD_INFO.commit}
+      </Text>
     </View>
   );
 }
@@ -107,6 +114,7 @@ const styles = StyleSheet.create({
     maxWidth: 380,
   },
   logo: { width: '82%', height: 150, marginBottom: spacing(2) },
+  build: { color: t.text.muted, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
   devLabel: { color: t.text.muted, fontSize: 12, marginTop: spacing(2) },
   input: {
     borderWidth: 1,

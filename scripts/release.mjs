@@ -206,6 +206,16 @@ if (shOut(`git tag -l v${version}`)) {
   process.exit(1);
 }
 
+// Stamp build-info from the CLEAN tree (so no spurious '+') with the version being
+// released, BEFORE bumpVersion dirties the tree. gradle/Metro bundles this file in
+// buildApks, so the APK's sign-in footer shows `v<version> · <HEAD-short>`.
+console.log(`▸ build-info → v${version}`);
+execSync(`node ${join(root, 'scripts/gen-build-info.mjs')}`, {
+  cwd: root,
+  stdio: 'inherit',
+  env: { ...process.env, BUILD_INFO_VERSION: version },
+});
+
 const code = bumpVersion(version);
 renderManual();
 if (DRY) {

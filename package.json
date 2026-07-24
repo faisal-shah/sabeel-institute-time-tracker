@@ -12,7 +12,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "prepare": "npm run build -w @sabeel/shared",
+    "prepare": "npm run build -w @sabeel/shared && node scripts/gen-build-info.mjs",
     "lint": "eslint . && npm run check:text",
     "pretypecheck": "npm run build -w @sabeel/shared",
     "typecheck": "npm run typecheck --workspaces --if-present",
