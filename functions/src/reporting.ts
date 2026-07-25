@@ -36,7 +36,7 @@ function validate(data: unknown): ReportFilter {
  * inclusive [fromKey, toKey] dayKey range. Periods span at most 7 days, so a
  * period overlapping the range must start no earlier than fromKey-6.
  */
-export async function approvedPeriodSet(fromKey: string, toKey: string): Promise<Set<string>> {
+async function approvedPeriodSet(fromKey: string, toKey: string): Promise<Set<string>> {
   const snap = await getFirestore()
     .collection('timesheets')
     .where('status', '==', 'approved')
@@ -53,7 +53,7 @@ function approvedOnly(rows: TimeEntryDoc[], approved: Set<string>): TimeEntryDoc
   return rows.filter((e) => approved.has(`${e.uid}_${e.periodKey}`));
 }
 
-/** Build the filtered, dayKey-ordered query shared by CSV export and Drive sync. */
+/** Build the filtered, dayKey-ordered query shared by the CSV export and totals. */
 function entriesQuery(input: ReportFilter): Query {
   let q: Query = getFirestore().collection('timeEntries');
   if (input.uid) q = q.where('uid', '==', input.uid);
@@ -69,9 +69,8 @@ export function csvCell(v: string | number): string {
   let s = String(v);
   // CSV formula injection: a cell a spreadsheet reads as starting with = + - @
   // (or a leading tab/CR) is executed as a formula when the file is opened in
-  // Excel. Neutralize by prefixing a single quote — the live Google Sheet is
-  // safe already (written with valueInputOption RAW); this guards the CSV file
-  // and the downloaded export. User-controlled fields: note, activity, name.
+  // Excel. Neutralize by prefixing a single quote — this guards the downloaded
+  // export. User-controlled fields: note, activity, name.
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }

@@ -52,7 +52,7 @@ row's times contradict its duration).
 Broadened to `manager || admin`: `requireManager`→`requireManagerOrAdmin` (3 call
 sites), activities rules, and the UI gates (reuse the existing `isApprover`). All
 deployed; unit + rules tests added.
-`exportCsv`/`reportTotals`/`syncDriveNow` all `requireManager`, and the UI gates
+`exportCsv`/`reportTotals` all `requireManagerOrAdmin`, and the UI gates
 Reports/Activities/PersonDetail on `role === 'manager'`. The org's admins
 (`sameera@`, `faisal.shah@oursabeel.com`) are `member` + `admin`, so they can
 approve timesheets and manage users but **cannot see any report or the activity
@@ -119,16 +119,13 @@ caught.
 ### L8 — One high-severity transitive vuln ✅ done (2026-07-22)
 `npm audit fix` patched `fast-xml-parser` (lockfile only); audit now shows only
 moderate.
-`fast-xml-parser` (DOCTYPE entity-expansion DoS) via `googleapis`. Only parses
-trusted Google API responses → not practically reachable; `npm audit fix` is
-non-breaking. (Other 22 are moderate Expo/RN noise.)
+`fast-xml-parser` (DOCTYPE entity-expansion DoS), reached via `googleapis` —
+which was removed entirely with the Drive sync on 2026-07-25. (Other 22 are
+moderate Expo/RN noise.)
 - **Fix:** `npm audit fix`, then re-test.
 
-### L9 — Drive sync reads the entire `timeEntries` collection every run ⏭️ deferred (2026-07-22)
-Fine at current scale; revisit with a date-window if history grows large.
-`functions/src/drive.ts:44` (`.orderBy('dayKey').get()`, no limit) loads all
-history into memory nightly and on every "sync now." Fine now; unbounded as years
-accumulate.
+### L9 — Drive sync reads the entire `timeEntries` collection every run ❎ moot (2026-07-25)
+The Drive sync was removed entirely, taking this with it.
 
 ### L10 — Public-invoker callables have no rate limiting ❎ accepted (2026-07-22)
 `maxInstances: 10` caps cost; auth enforced in-code.

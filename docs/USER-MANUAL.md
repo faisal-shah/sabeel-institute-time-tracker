@@ -293,8 +293,6 @@ Home → **Reports**:
     them).
 - **Export CSV** — downloads the filtered entries with person, email,
   activity, date, times, timezone, and hours per row.
-- **Sync to Google Drive now** — pushes the shared Google Sheet (once Drive
-  sync is configured by the admin).
 
 ![Person detail](manual/img/person-detail.png)
 
@@ -362,9 +360,6 @@ mistakes discovered after the fact.
 
 - **First admin** of the system is created once during deployment; every
   further admin is granted in-app with the Admin switch.
-- **Google Drive sync** (live Sheet + monthly CSV snapshots) requires a
-  one-time setup by the developer/admin; until then the "Sync to Drive" button
-  reports it isn't connected yet, harmlessly.
 - **Error banner**: if a red "Live data error" bar ever appears at the top of
   a screen, the app couldn't load live data (permissions or connectivity).
   It's also reported automatically to the error dashboard — tell the developer,

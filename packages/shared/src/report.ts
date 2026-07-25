@@ -7,7 +7,7 @@ import type { TimeEntryDoc } from './types';
  * shapes can't drift between the two sides.
  */
 
-/** Request filter for reports / CSV export / Drive sync. */
+/** Request filter for reports and CSV export. */
 export interface ReportFilter {
   uid?: string;
   activityId?: string;
@@ -27,8 +27,8 @@ export interface Totals {
   byPerson: { uid: string; displayName: string; minutes: number }[];
 }
 
-/** The columns of the per-entry report grid — the single source of truth for both
- *  the CSV export and the live Drive "Entries" sheet. Reorder/add here once. */
+/** The columns of the per-entry report grid, shared by the CSV export and the
+ *  row projection below. Reorder/add here once. */
 export const REPORT_COLUMNS = [
   'Person',
   'Email',

@@ -42,7 +42,7 @@ exiting 144).
 
 ## `scripts/check-text-sources.mjs` (runs inside `npm run lint`)
 
-`functions/src/driveRows.ts` once contained a **raw NUL byte** inside a template
+A functions source file once contained a **raw NUL byte** inside a template
 literal used as a composite Map-key separator. It compiled and ran correctly —
 but `file` called the source "data", git diffed it as binary, and **grep
 silently skipped the entire file**.

@@ -14,7 +14,6 @@ Faisal is building a time-tracking platform (Android app + website) for Sabeel I
 | Platforms v1 | Android app + responsive website from **one Expo codebase** (react-native-web, PineTimeCompanion-style). No iOS, no EAS. |
 | Clock-in | Own device, anywhere; one active session per user; plus manual entry (start/end or duration) with activity + optional note. |
 | Reporting | Dashboard totals, CSV export (person/activity/date filters), lifetime hours per person + printable statement. No email digests, no email at all in v1. |
-| Drive sync | Hours data lands in Google Workspace Drive: a **live Google Sheet** (nightly-updated, all entries + summary tabs) plus **monthly CSV snapshots**, both written by a scheduled Cloud Function into a shared Drive folder via a service account. |
 | Usage reality | Everyone — managers included — primarily uses the phone app; the website is the occasional big-screen/printing surface. All manager screens are designed phone-first. |
 | Timezones | Entries are bucketed/displayed in **the timezone where the work happened** (captured per entry). A volunteer in Singapore logging Monday hours shows as Monday, 9am–5pm local — never shifted into the viewer's timezone. |
 | Repo | Private; GitHub Actions CI (light, fits free tier). |
@@ -110,10 +109,9 @@ running session (clock-out is never bricked).
 
 **Indexes** (`firestore.indexes.json`): `timeEntries (uid, dayKey DESC)`, `(activityId, dayKey DESC)`, `(uid, activityId, dayKey DESC)`, `(end, start)`; `activities (status, name)`; `timesheets (status, periodKey)`, `(approverUid, status)`, `(uid, periodKey)`, `(uid, status)`.
 
-**Reporting scope**: `reportTotals`/`exportCsv`/Drive sync filter entries through the
+**Reporting scope**: `reportTotals`/`exportCsv` filter entries through the
 approved-timesheet set (`${uid}_${periodKey}` membership) by default; `includeUnapproved`
-is an explicit manager opt-in and marks the CSV filename `_unofficial`. The Drive Sheet
-is always approved-only (it is the official record).
+is an explicit manager opt-in and marks the CSV filename `_unofficial`.
 
 ## Security rules (deny-by-default, tajweed style)
 
@@ -132,10 +130,6 @@ Rules tests with `@firebase/rules-unit-testing` (tajweed's exact harness).
 1. `setUserAccess` (callable, **admin-only** — only admins approve/disable users or change roles) — writes user doc + custom claims atomically.
 2. `exportCsv` (callable, manager) — filters `{uid?, activityId?, from, to}` (dayKey range), returns CSV string (well under the 10 MB callable limit).
 3. `autoCloseStaleSessions` (scheduled hourly, Phase 6) — closes sessions running >12h at start+12h, `autoClosed: true`, clears pointer.
-4. `syncToDrive` (scheduled nightly + manager-callable "sync now") — writes to a shared Drive folder via a **service account** (`googleapis` client, Sheets + Drive APIs):
-   - Rewrites the live Google Sheet: an "Entries" tab (all closed entries: person, activity, local date, local start–end + tz, minutes, note, source) and summary tabs (per person lifetime/YTD, per activity per month).
-   - On the 1st of each month, also drops an immutable `hours-YYYY-MM.csv` snapshot of the prior month into the folder.
-   - Folder/spreadsheet IDs in function config; the service account only needs to be shared into that one folder (no domain-wide delegation).
 
 Not functions: profile creation (client create under rules), totals (aggregation queries), statements (print view).
 
@@ -156,7 +150,6 @@ Not functions: profile creation (client create under rules), totals (aggregation
 - **Phase 3 — Time entry.** Clock in/out batches + `activeEntryId` + `getAfter` rules, manual entry with tz/dayKey capture, running indicator. Rules tests incl. one-active-session.
 - **Phase 4 — Timesheets.** Day/week views via shared dayKey helpers; self-edit; manager corrections. Unit tests: dayKey/week math incl. DST transitions and a Singapore-entry-viewed-from-California case.
 - **Phase 5 — Reporting.** Dashboard aggregations, `exportCsv` (emulator integration test with seeded entries), PersonDetail + printable statement.
-- **Phase 5b — Drive sync.** `syncToDrive` sheet/CSV generation unit-tested against seeded emulator data (Sheets/Drive API calls behind a mockable seam); live verification happens in Phase 6 once the real service account exists.
 - **Phase 6 — Polish + deploy.** `autoCloseStaleSessions` + long-session nudge, Sentry wiring, real Firebase project per TODO.md, release keystore + SHA-1s, `firebase deploy` (hosting + functions + rules), release APK.
 
 ## Verification
@@ -174,7 +167,6 @@ Not functions: profile creation (client create under rules), totals (aggregation
 3. Add Web app; paste client config into the committed config file; copy the **Web** OAuth client ID as `webClientId` (mobile Google Sign-In needs the *web* one — classic `DEVELOPER_ERROR` pitfall).
 4. Sentry project + `firebase functions:secrets:set SENTRY_DSN`; web/app DSN in gitignored env.
 5. Update `.firebaserc` with real project id; first deploy; seed first admin (sign in once, then `scripts/grant-admin.mjs` one-time promotion run by Faisal).
-6. Drive sync setup: enable Google Sheets + Drive APIs in the GCP project; create a service account; create the shared Drive folder in Workspace and share it (Editor) with the service-account email; put the folder ID in function config. (Agent writes the exact click-by-click checklist.)
 
 ## Risks / gotchas
 

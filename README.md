@@ -9,8 +9,6 @@ codebase**, on Firebase (Auth, Firestore, Cloud Functions, Hosting).
 - **Honor system** — hours count immediately; managers can correct entries.
 - **Timesheets** (daily/weekly) shown in the timezone where the work happened.
 - **Reports** — dashboard totals, CSV export, lifetime hours + printable statements.
-- **Google Drive sync** — a live Google Sheet plus monthly CSV snapshots in a shared
-  Workspace Drive folder.
 
 ## Layout
 

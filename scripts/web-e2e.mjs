@@ -512,11 +512,6 @@ async function main() {
   if (!/Volunteer/.test(csv)) throw new Error('CSV missing the volunteer row');
   if (!/volunteer@oursabeel\.com/.test(csv)) throw new Error('CSV missing the volunteer email');
 
-  console.log('▸ Phase 5b: Drive sync button degrades gracefully when unconfigured…');
-  // Still on Reports here — test the sync button before navigating away.
-  await mgr.getByText('Sync to Google Drive now').click();
-  await mgr.getByText('isn’t connected yet', { exact: false }).waitFor({ timeout: 15000 });
-
   // Lifetime statement for the volunteer. "Volunteer" appears both as a Person
   // filter chip (earlier) and as the tappable By-person row (later) — .last()
   // is the row that navigates to the statement.

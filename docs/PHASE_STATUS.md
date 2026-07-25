@@ -11,7 +11,7 @@ phase boundary.
 | 3 | Time entry (clock + manual) | **complete** (2026-07-15: 11 new rules tests + e2e clock/manual flow) |
 | 4 | Timesheets (day/week) | **complete** (2026-07-15: epochFor tz tests + e2e edit/delete flow) |
 | 5 | Reporting + CSV + statements | **complete** (2026-07-15: reporting integration tests + e2e CSV download + statement) |
-| 5b | Drive sync (Sheet + CSV snapshots) | **complete** (2026-07-15: driveRows unit + runSync integration tests + full e2e green) |
+| 5b | Drive sync (Sheet + CSV snapshots) | **removed 2026-07-25** — see the decision log |
 | 6 | Polish + deploy readiness | **complete** (2026-07-15: auto-close + nudge, Sentry seams, deploy/secrets docs) |
 | 7 | Weekly timesheets: submit/approve workflow | **complete** (2026-07-16: full lifecycle e2e green; deployed to prod; greenfield wipe done — 2 test users + 8 docs removed, admin kept, approver=self) |
 | 8 | Push notifications (FCM) + overlap guard + activities rename | **complete** (2026-07-17: triggers for submit/decide/new-user + Tuesday-local weekly reminder w/ per-event prefs; overlap detection blocks submission; project/event distinction dropped; 85 emulator + 17 functions-unit + 33 shared tests + full e2e green) |
@@ -22,12 +22,11 @@ phase boundary.
   rules + indexes, all 6 Cloud Functions (us-central1, nodejs22), and Hosting
   (https://sabeel-institute-time-tracker.web.app, HTTP 200). Functions are now
   bundled with esbuild (commit de32168) so Cloud Build resolves the private
-  `@sabeel/shared` workspace package. Drive sync deployed as a safe no-op (no
-  `functions/.env` yet). First admin (faisal.shah@gmail.com) promoted via a
+  `@sabeel/shared` workspace package. First admin (faisal.shah@gmail.com) promoted via a
   temporary one-shot bootstrap function (deployed, called, deleted). OAuth consent
   screen is **published** (any Google account can sign in; app admin-approval
-  gates access). **Pending:** Drive service-account wiring (`functions/.env`) and
-  the release keystore/SHA-1 for a shareable Android APK — see `TODO.md`.
+  gates access). **Pending:** the release keystore/SHA-1 for a shareable Android
+  APK — see `TODO.md`.
 
 - 2026-07-16 — **Phase 7 deploy**: indexes → rules → functions → one-time
   token-guarded `wipeForTimesheets` (deployed, curled once, deleted) → hosting.
@@ -37,6 +36,18 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-25 — **Google Drive sync removed entirely** (Phase 5b reverted). It was
+  a *mirror*, not a backup: one live Sheet rewritten nightly (so a deletion
+  propagated within 24h), approved-hours-only, and covering time entries alone —
+  no users/activities/timesheets. A weekly timestamped full-snapshot design was
+  scoped and then dropped in favour of removing the feature rather than leaving a
+  half-useful one lingering. Deleted: `drive.ts`, `driveRows.ts`, their two test
+  suites, `syncToDrive`/`syncDriveNow` (also deleted from production), the
+  `googleapis` dependency, `DRIVE_*` config, the Reports "Sync to Google Drive
+  now" button, and the e2e beat. **Kept:** in-app CSV export, report totals and
+  person statements — those are reporting, not backup. Undo steps for the Drive
+  folder/service-account share are in `TODO.md`. Note the app therefore has **no
+  backup**: Firestore PITR and scheduled backups are still off.
 - 2026-07-24 — **Greenfield cleanup pass** (auth architecture + reporting dedup).
   Standing principle recorded in CLAUDE.md: no backwards-compat; converge on the
   global-optimal, never band-aids. **Auth/provisioning made server-authoritative**
@@ -50,8 +61,8 @@ phase boundary.
   for rejected accounts. New `provision`/`authTrigger` tests; the rules
   self-registration tests collapse to "client create denied". **Reporting dedup:**
   one `ReportFilter`/`Totals` contract + one `REPORT_COLUMNS`/`reportRow`
-  projection in `@sabeel/shared`, consumed by the client, the CSV export, and the
-  Drive sheet (removed the drifted hand-mirrors). Plus stale doc/comment fixes.
+  projection in `@sabeel/shared`, consumed by the client and the CSV export
+  (removed the drifted hand-mirrors). Plus stale doc/comment fixes.
 - 2026-07-24 — **Sign-in restricted to the @oursabeel.com domain** (deployed).
   Mirrors the sibling kanban app. A gen-1 `onUserCreate` auth trigger
   (`functions/src/authTrigger.ts`) deletes any account whose verified email is
@@ -99,15 +110,13 @@ phase boundary.
   every new sign-in is pending; admins see name+email when approving. Managers are
   operational only (activities, reports, entry corrections).
 - 2026-07-15 — Phone-first for everyone including managers; web = big screen/print.
-- 2026-07-15 — Drive sync scope: live Google Sheet + monthly CSV snapshots via
-  service account in a shared folder.
 - 2026-07-16 — **Timesheet workflow supersedes the honor system** (Phase 7):
   Sun–Sat calendar-week periods clipped to month boundaries; users submit each
   period; a sticky self-chosen approver (any active manager/admin; assignable by
   managers/admins too, stamped at submission) approves or rejects with reason;
   approved = locked, admin-only reopen (delete = back to draft); zero-hour submits
   OK, mid-period submit of the current week OK, never future periods; reporting/
-  CSV/Drive count approved timesheets only (manager opt-in unofficial view).
+  CSV reporting counts approved timesheets only (manager opt-in unofficial view).
 - 2026-07-16 — Admin grants move in-app (Manage users); self-demotion still
   blocked server-side. Greenfield wipe at deploy: all data + users except the
   admin.

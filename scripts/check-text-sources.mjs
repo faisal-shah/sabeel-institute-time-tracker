@@ -2,7 +2,7 @@
 // Fail if any tracked source file contains a NUL byte (or other control bytes
 // that make tools treat it as binary).
 //
-// Why this exists: functions/src/driveRows.ts once held a RAW NUL character
+// Why this exists: a functions source file once held a RAW NUL character
 // inside a template literal used as a composite Map-key separator. It compiled
 // and ran correctly — but `file` reported the source as "data", git diffed it as
 // binary, and **grep silently skipped the entire file**. During a dead-code

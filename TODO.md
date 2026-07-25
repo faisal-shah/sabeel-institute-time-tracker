@@ -25,44 +25,27 @@ Firebase emulators until deploy time (Phase 6).
   wired and the app builds; complete a real sign-in on a device/emulator with a
   Google account to confirm end to end.
 
-## Google Drive sync — click-by-click (no new service account needed)
+## Google Drive sync — REMOVED (undo checklist)
 
-The deployed functions authenticate as their built-in runtime service account:
+The Drive sync feature was removed on 2026-07-25 (code, config, deployed
+functions and docs all gone). Nothing in the app touches Google Drive any more.
+These are the leftovers on Google's side that only **you** can clear:
 
-    858585609550-compute@developer.gserviceaccount.com
+- [ ] **Un-share the Drive folder from the service account.** Open the "Sabeel
+  Hours" folder in Drive → Share → remove
+  `858585609550-compute@developer.gserviceaccount.com`. This is the one that
+  actually matters: it revokes the app's standing access to that folder.
+- [ ] **Decide what to do with the folder + Sheet themselves.** They are your
+  documents and hold only a copy of approved hours; keep or delete as you like.
+  Nothing will write to them again.
+- [ ] **Optional — disable the two APIs** now that nothing uses them:
+  - Sheets: https://console.cloud.google.com/apis/api/sheets.googleapis.com/metrics?project=sabeel-institute-time-tracker
+  - Drive: https://console.cloud.google.com/apis/api/drive.googleapis.com/metrics?project=sabeel-institute-time-tracker
+  (Harmless to leave enabled; disabling is just tidier.)
 
-Do NOT create a new service account — just share the folder with that email.
-
-- [x] **Enable the two APIs** on the `sabeel-institute-time-tracker` project
-  (click each link → Enable):
-  - Sheets: https://console.cloud.google.com/apis/library/sheets.googleapis.com?project=sabeel-institute-time-tracker
-  - Drive: https://console.cloud.google.com/apis/library/drive.googleapis.com?project=sabeel-institute-time-tracker
-- [x] **Create the folder** in the org's Google Drive (e.g. "Sabeel Hours").
-  Right-click → Share → add
-  `858585609550-compute@developer.gserviceaccount.com` as **Editor** → Share.
-  (Ignore the "outside your organization" warning — that's expected; if
-  Workspace *blocks* the share entirely, an admin must allow external sharing
-  for this folder/drive.)
-- [x] **Create a Google Sheet inside that folder** (any name, e.g. "Sabeel
-  Hours — live"). Leave it empty; the sync writes its own tabs.
-- [x] **Copy the two IDs from the browser URLs:**
-  - Sheet open → URL looks like
-    `https://docs.google.com/spreadsheets/d/`**`SPREADSHEET_ID`**`/edit` —
-    copy the long id between `/d/` and `/edit`.
-  - Folder open → URL looks like
-    `https://drive.google.com/drive/folders/`**`FOLDER_ID`** — copy the id
-    after `/folders/`.
-- [x] **Hand the IDs to Claude** (they're document identifiers, not secrets —
-  chat is fine), or put them in gitignored `functions/.env` yourself as:
-
-      DRIVE_SPREADSHEET_ID=<spreadsheet id>
-      DRIVE_FOLDER_ID=<folder id>
-
-- [x] Claude then **redeploys functions** and verifies with the in-app
-  **"Sync to Google Drive now"** button (Reports screen): the Sheet gains
-  "Entries" / "By person" / "By activity & month" tabs. Nightly sync runs at
-  02:15 UTC; on the 1st of each month a `hours-YYYY-MM.csv` snapshot is
-  dropped into the folder. Until the IDs are set, the sync is a safe no-op.
+No secrets to rotate: the two values were `DRIVE_SPREADSHEET_ID` and
+`DRIVE_FOLDER_ID`, which are document identifiers, not credentials. They have
+been removed from `functions/.env` and from the deployed functions' config.
 
 ## Web push notifications (one console step)
 

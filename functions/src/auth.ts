@@ -23,7 +23,7 @@ export function requireActive(req: CallableRequest): string {
 }
 
 /**
- * Reports, CSV export and Drive sync require an operational or administrative
+ * Reports and CSV export require an operational or administrative
  * role. Admin implies full access (an admin who isn't also a manager still gets
  * in), so admin-only accounts aren't locked out of reports/activities.
  */

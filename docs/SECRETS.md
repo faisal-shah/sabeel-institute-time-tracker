@@ -16,10 +16,7 @@ See `functions/.env.example`.
 
 | Name | Used by | Value |
 |---|---|---|
-| `DRIVE_SPREADSHEET_ID` | `syncToDrive` / `syncDriveNow` | The hours Sheet's id (from its URL) |
-| `DRIVE_FOLDER_ID` | Drive CSV snapshots | The shared Drive folder's id (from its URL) |
-
-Empty/absent → the Drive sync is a safe no-op.
+| `PROBE_TOKEN` | `probeQueries` (post-deploy index check) | Any long random string |
 
 ## App client env (`app/.env.local`, gitignored)
 | Name | Used by | Value |

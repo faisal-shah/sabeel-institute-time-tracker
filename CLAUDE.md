@@ -41,8 +41,8 @@ drift.
 
 ## What this project is
 Hours tracking for Sabeel Institute (small nonprofit): clock in/out + manual entries
-against projects/events, admin-approved Google sign-in, honor-system hours, reports,
-and a Google Drive sync. Source of truth: `docs/PRODUCT_BRIEF.md` (decisions & data
+against activities, admin-approved Google sign-in, honor-system hours, and reports.
+Source of truth: `docs/PRODUCT_BRIEF.md` (decisions & data
 model) and `docs/PHASE_STATUS.md` (live build status). Faisal is the developer; the
 nonprofit's staff are the admins/managers in the app.
 

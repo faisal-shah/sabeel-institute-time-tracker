@@ -10,8 +10,6 @@ then update `.firebaserc` with the real project id.
    the Android + Web apps, wire SHA-1s and `WEB_CLIENT_ID`, download
    `google-services.json`.
 2. `firebase functions:secrets:set SENTRY_DSN` (optional until launch).
-3. Drive sync: enable Sheets + Drive APIs, create the service account, share the
-   Drive folder with it, put ids in `functions/.env` (see `docs/SECRETS.md`).
 
 ## Deploy
 ```sh
@@ -60,7 +58,7 @@ bounced at the Run layer before the code ran (symptom: Reports total stuck on
 `…`, CSV export silently empty). Fix: delete the affected callables and let a
 deploy recreate them through the *create* path, which always applies the binding:
 ```sh
-firebase functions:delete setUserAccess exportCsv reportTotals syncDriveNow --region us-central1 --force
+firebase functions:delete setUserAccess exportCsv reportTotals --region us-central1 --force
 firebase deploy --only functions
 ```
 Verify: an unauthenticated `curl -X POST .../reportTotals -d '{"data":{}}'` should
@@ -90,4 +88,4 @@ callable bug. `scripts/web-e2e.mjs` now waits for a known callable to exist
   `functions/src/probe.ts` in sync with the app's queries.
 - Emulator suite still green locally: `npm test && npm run test:emulator`.
 - Smoke the live site: sign in, get approved, clock in/out, add manual hours, check a
-  report + CSV export, run "Sync to Google Drive now" and confirm the Sheet updates.
+  report + CSV export.
