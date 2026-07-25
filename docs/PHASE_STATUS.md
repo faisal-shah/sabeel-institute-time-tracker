@@ -36,6 +36,21 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-25 — **Native Firestore disaster recovery enabled** (replaces the Drive
+  sync as the actual safety net). Two complementary layers, both Google-managed,
+  no code to rot:
+  - **PITR** — rolling **7-day** rewind to any microsecond. Covers "someone
+    deleted it this morning."
+  - **Weekly scheduled backup, Mondays, 98-day (14-week) retention** — the
+    maximum Firestore allows. Covers "we noticed in September that something
+    broke in July."
+  Cost is negligible at this data size (~200 KB), but note PITR/backup data are
+  **excluded from the free tier**, so they appear as (sub-cent) billed line items.
+  Beyond 14 weeks Firestore cannot retain natively — an export to Cloud Storage
+  would be needed; deliberately deferred, with a manual pre-summer archive as the
+  cheap alternative. **Known gap:** nothing yet *detects* a problem, so discovery
+  can still outrun retention — see the anomaly-canary proposal in `TODO.md`.
+  Delete protection remains DISABLED (one command to change).
 - 2026-07-25 — **Google Drive sync removed entirely** (Phase 5b reverted). It was
   a *mirror*, not a backup: one live Sheet rewritten nightly (so a deletion
   propagated within 24h), approved-hours-only, and covering time entries alone —
@@ -46,8 +61,8 @@ phase boundary.
   `googleapis` dependency, `DRIVE_*` config, the Reports "Sync to Google Drive
   now" button, and the e2e beat. **Kept:** in-app CSV export, report totals and
   person statements — those are reporting, not backup. Undo steps for the Drive
-  folder/service-account share are in `TODO.md`. Note the app therefore has **no
-  backup**: Firestore PITR and scheduled backups are still off.
+  folder/service-account share are in `TODO.md`. Replaced the same day by native
+  Firestore protection (below) — which is what a backup should have been.
 - 2026-07-24 — **Greenfield cleanup pass** (auth architecture + reporting dedup).
   Standing principle recorded in CLAUDE.md: no backwards-compat; converge on the
   global-optimal, never band-aids. **Auth/provisioning made server-authoritative**

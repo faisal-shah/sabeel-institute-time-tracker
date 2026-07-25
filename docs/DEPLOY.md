@@ -89,3 +89,37 @@ callable bug. `scripts/web-e2e.mjs` now waits for a known callable to exist
 - Emulator suite still green locally: `npm test && npm run test:emulator`.
 - Smoke the live site: sign in, get approved, clock in/out, add manual hours, check a
   report + CSV export.
+
+## Backups / disaster recovery
+
+Enabled 2026-07-25, both native Firestore features (no code, nothing to maintain):
+
+| Layer | Window | What it covers |
+|---|---|---|
+| **PITR** | rolling **7 days** | "someone deleted it this morning" — rewind to any microsecond |
+| **Weekly backup** (Mondays, 98-day retention) | **14 weeks** | "we noticed in September that something broke in July" |
+
+14 weeks is Firestore's maximum retention. Both are **excluded from the free
+tier**, but at this data size (~200 KB) they bill as fractions of a cent.
+
+Inspect:
+```sh
+firebase firestore:databases:get "(default)"          # PITR state
+firebase firestore:backups:schedules:list             # schedule + retention
+firebase firestore:backups:list                       # actual backups taken
+```
+
+Restore (both are *new database* operations — they never overwrite in place, so
+you restore then repoint, rather than clobbering live data):
+```sh
+firebase firestore:databases:restore \
+  --database <new-db-id> --backup <backup-name>
+```
+For PITR, restore/export using a `--snapshot-time` within the last 7 days. See
+https://cloud.google.com/firestore/native/docs/disaster-recovery.
+
+**Known gap — detection.** Nothing yet notices that data has gone wrong, so
+discovery can still outrun the 14-week window (a corruption just before a long
+quiet period is the bad case). Beyond 14 weeks Firestore cannot retain natively;
+the cheap mitigation is a deliberate export to Cloud Storage before a long break.
+See the anomaly-canary proposal in `TODO.md`.
