@@ -102,6 +102,14 @@ Enabled 2026-07-25, both native Firestore features (no code, nothing to maintain
 14 weeks is Firestore's maximum retention. Both are **excluded from the free
 tier**, but at this data size (~200 KB) they bill as fractions of a cent.
 
+**Delete protection is ENABLED**, so the database itself cannot be deleted until
+someone deliberately turns it off:
+```sh
+firebase firestore:databases:update "(default)" --delete-protection DISABLED
+```
+Expect that step to be needed if you ever legitimately tear the database down —
+it is a speed bump by design, not a bug.
+
 Inspect:
 ```sh
 firebase firestore:databases:get "(default)"          # PITR state

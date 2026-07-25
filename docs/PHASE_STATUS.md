@@ -53,7 +53,8 @@ phase boundary.
   canary (`functions/src/health.ts`): a daily document-count check that raises to
   Sentry on an unexpected drop, plus a Sentry cron check-in so the job's own
   silence alerts. Thresholds live in `DROP_RULES`; see `docs/DEPLOY.md`.
-  Delete protection remains DISABLED (one command to change).
+  **Delete protection ENABLED** too — the whole database cannot be deleted
+  without explicitly disabling it first.
 - 2026-07-25 — **Google Drive sync removed entirely** (Phase 5b reverted). It was
   a *mirror*, not a backup: one live Sheet rewritten nightly (so a deletion
   propagated within 24h), approved-hours-only, and covering time entries alone —
