@@ -40,6 +40,58 @@ export async function reportError(e: unknown): Promise<void> {
   }
 }
 
+/**
+ * Report a non-exception condition worth a human's attention (e.g. the health
+ * canary spotting that document counts dropped). Not an error — nothing threw —
+ * so `captureException` would be misleading; this raises a message at
+ * error level with structured context attached.
+ */
+export async function reportMessage(
+  message: string,
+  context: Record<string, unknown> = {},
+): Promise<void> {
+  if (ensureSentry(process.env.SENTRY_DSN)) {
+    Sentry.captureMessage(message, { level: 'error', extra: context });
+    await Sentry.flush(2000).catch(() => undefined);
+  }
+}
+
+/**
+ * Cron check-ins for a scheduled job. Sentry alerts when a check-in does NOT
+ * arrive on schedule — the only way to notice a job that has silently stopped
+ * running. (A job that never runs also never reports its own failure; that blind
+ * spot once hid a broken nightly sync for over a week.) The monitor config is
+ * sent with each check-in, which upserts it — no console setup step.
+ *
+ * Two-phase by design: `start` opens the check-in, `finish` closes it, which
+ * also tells Sentry how long the run took.
+ */
+function monitorConfig(schedule: string) {
+  return {
+    schedule: { type: 'crontab' as const, value: schedule },
+    // Generous margins: a cold start or a slow read must not page anyone.
+    checkinMargin: 60,
+    maxRuntime: 10,
+  };
+}
+
+/** Returns a check-in id to pass to `finishCheckIn`, or null if Sentry is off. */
+export function startCheckIn(monitorSlug: string, schedule: string): string | null {
+  if (!ensureSentry(process.env.SENTRY_DSN)) return null;
+  return Sentry.captureCheckIn({ monitorSlug, status: 'in_progress' }, monitorConfig(schedule));
+}
+
+export async function finishCheckIn(
+  checkInId: string | null,
+  monitorSlug: string,
+  status: 'ok' | 'error',
+  schedule: string,
+): Promise<void> {
+  if (!checkInId) return;
+  Sentry.captureCheckIn({ checkInId, monitorSlug, status }, monitorConfig(schedule));
+  await Sentry.flush(2000).catch(() => undefined);
+}
+
 /** Wrap a callable handler: unexpected failures reach Sentry, then rethrow. */
 export function guarded<Req, Res>(
   fn: (req: CallableRequest<Req>) => Promise<Res>,

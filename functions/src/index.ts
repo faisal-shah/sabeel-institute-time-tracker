@@ -7,6 +7,7 @@ export { onUserCreate } from './authTrigger';
 export { setUserAccess } from './users';
 export { exportCsv, reportTotals } from './reporting';
 export { autoCloseStaleSessions } from './sessions';
+export { healthCheck } from './health';
 export { notifyNewUser, notifyTimesheet, weeklyReminder } from './notify';
 // Post-deploy index/query verification (token-guarded; see probe.ts).
 export { probeQueries } from './probe';

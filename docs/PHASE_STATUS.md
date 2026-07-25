@@ -49,7 +49,10 @@ phase boundary.
   Beyond 14 weeks Firestore cannot retain natively — an export to Cloud Storage
   would be needed; deliberately deferred, with a manual pre-summer archive as the
   cheap alternative. **Known gap:** nothing yet *detects* a problem, so discovery
-  can still outrun retention — see the anomaly-canary proposal in `TODO.md`.
+  can still outrun retention — **closed the same day** by the `healthCheck`
+  canary (`functions/src/health.ts`): a daily document-count check that raises to
+  Sentry on an unexpected drop, plus a Sentry cron check-in so the job's own
+  silence alerts. Thresholds live in `DROP_RULES`; see `docs/DEPLOY.md`.
   Delete protection remains DISABLED (one command to change).
 - 2026-07-25 — **Google Drive sync removed entirely** (Phase 5b reverted). It was
   a *mirror*, not a backup: one live Sheet rewritten nightly (so a deletion

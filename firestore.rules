@@ -228,6 +228,13 @@ service cloud.firestore {
 
     // Weekly timesheets: one doc per (user, period) from submission on; no doc =
     // draft. Lifecycle: submit (owner create) → approve/reject (stamped approver
+    // Operational state written only by the backend (the health canary's
+    // document-count baseline). Deny-by-default would already cover it; stated
+    // explicitly so the server-only intent is visible on the security surface.
+    match /meta/{docId} {
+      allow read, write: if false;
+    }
+
     // or admin) → resubmit after rejection (owner). Withdraw = owner delete while
     // not approved; admin delete reopens anything back to draft.
     match /timesheets/{tsId} {

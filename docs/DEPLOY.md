@@ -118,8 +118,25 @@ firebase firestore:databases:restore \
 For PITR, restore/export using a `--snapshot-time` within the last 7 days. See
 https://cloud.google.com/firestore/native/docs/disaster-recovery.
 
-**Known gap — detection.** Nothing yet notices that data has gone wrong, so
-discovery can still outrun the 14-week window (a corruption just before a long
-quiet period is the bad case). Beyond 14 weeks Firestore cannot retain natively;
-the cheap mitigation is a deliberate export to Cloud Storage before a long break.
-See the anomaly-canary proposal in `TODO.md`.
+### Detection — the `healthCheck` canary
+
+Retention only helps if the problem is noticed while a good backup still exists.
+`functions/src/health.ts` runs daily at 03:15 UTC and:
+
+- counts documents per collection (via `count()` aggregations, not full reads);
+- compares against the previous run stored at `meta/health` (server-only; the
+  rules deny all client access);
+- raises to Sentry when a collection shrinks past its tolerance —
+  `users`/`activities` have **zero tolerance** (activities can't be deleted at
+  all per the rules; users only by deliberate admin action), while
+  `timeEntries`/`timesheets` tolerate `max(5, 20%)` since routine deletion is
+  normal there;
+- sends a Sentry **cron check-in**, so the job going *silent* is itself an alert.
+
+Tune the thresholds in `DROP_RULES`. It always re-baselines, so a single bad day
+alerts once rather than forever. Limitation: it compares run-to-run, so a slow
+bleed of a few documents a day stays under the threshold — it is built to catch
+sudden loss, which is what accidents and bad deploys look like.
+
+**Remaining gap.** Beyond 14 weeks Firestore cannot retain natively; the cheap
+mitigation is a deliberate export to Cloud Storage before a long break.

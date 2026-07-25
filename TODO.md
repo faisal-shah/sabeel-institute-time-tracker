@@ -117,25 +117,3 @@ valid to 2052 and functionally identical for testing.
   Note: switching keys forces a one-time uninstall/reinstall for everyone who
   already has the app (Android refuses an update signed by a different key), so
   the cost scales with install count. Nothing is lost — all data is in Firestore.
-
-## Proposal — anomaly canary (not built; decide when you want it)
-
-**Problem it solves.** Backups now retain 14 weeks, but nothing *detects* a
-problem. If data is corrupted just before a quiet period and nobody looks for
-four months, every retained backup contains the already-broken state. Detection
-is the cheap lever: notice in days and the 14-week window becomes generous.
-It also answers "is the scheduled job even still running?" — the exact blind
-spot that hid the old Drive sync's status.
-
-**Sketch** (small, ~1 scheduled function + 1 Firestore doc):
-- Daily scheduled function counts docs per collection (`users`, `activities`,
-  `timeEntries`, `timesheets`) and writes them to `meta/health` with a timestamp.
-- Compares against the previous run. Raises via the existing Sentry seam
-  (`reportError`) when a count **drops** at all, or drops more than a threshold —
-  deletions are legitimate but rare, so a low bar is fine here.
-- Because it writes a timestamp every day, a *stale* `meta/health` doc is itself
-  the signal that the canary (or the whole functions deploy) has stopped.
-
-**Open questions for whoever picks this up:** where the alert lands (Sentry only,
-or also a push to admins); whether to surface "last checked" in the admin UI; and
-whether a weekly digest is friendlier than per-event alerts for a small org.
