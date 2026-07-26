@@ -36,6 +36,13 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-26 — **Shipped: v1.0.0-beta.24** (notification tap routing). Deployed
+  `functions` (11 updated; no rules/index change in this diff) and `hosting`;
+  APK verified production-mode on the AVD, GitHub release + public download page
+  published. Web and APK carry the same stamp (`1.0.0-beta.24 · 52a898a`), and
+  the deployed web bundle was confirmed to contain the VAPID key and the
+  service-worker registration — without both, the web half of tap routing is
+  inert.
 - 2026-07-26 — **Notification taps route to the screen they are about.** Every
   push now carries its destination, encoded once in `@sabeel/shared` as flat
   string key/values and shipped over both transports: an FCM `data` map on
