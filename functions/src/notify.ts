@@ -5,29 +5,42 @@ import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/fire
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
-import { dayKeyFor, type TimesheetDoc, type UserDoc } from '@sabeel/shared';
+import {
+  dayKeyFor,
+  encodeNotifRoute,
+  notifRouteUrl,
+  type TimesheetDoc,
+  type UserDoc,
+} from '@sabeel/shared';
 import {
   inReminderWindow,
   prefOn,
   reminderEligible,
   reminderPeriod,
   texts,
-  type NotifText,
+  type Notif,
 } from './notifyCore';
 import { reportError, reportMessage, sentryDsn } from './sentry';
 
 /**
  * Send to every device a user has registered; prune tokens FCM says are dead.
  * Quiet no-op when the user has no tokens (never opted in on any device).
+ *
+ * The tap destination rides along twice, because the two surfaces consume it
+ * differently: Android reads the flat `data` bag (expo-notifications hands it to
+ * JS verbatim as long as no key is named `body`), while a browser only ever gets
+ * a URL, so the same fields are re-encoded as the query of fcm_options.link.
  */
-async function sendToUser(uid: string, text: NotifText): Promise<void> {
+async function sendToUser(uid: string, notif: Notif): Promise<void> {
   const db = getFirestore();
   const tokensSnap = await db.collection('users').doc(uid).collection('pushTokens').get();
   if (tokensSnap.empty) return;
   const tokens = tokensSnap.docs.map((d) => d.id);
   const res = await getMessaging().sendEachForMulticast({
     tokens,
-    notification: { title: text.title, body: text.body },
+    notification: { title: notif.title, body: notif.body },
+    data: encodeNotifRoute(notif.route),
+    webpush: { fcmOptions: { link: notifRouteUrl(notif.route) } },
   });
   await Promise.all(
     res.responses.map((r, i) => {
@@ -91,7 +104,12 @@ export const notifyTimesheet = onDocumentWritten(
         if (approver && prefOn(approver.notifPrefs, 'submitted')) {
           await sendToUser(
             after.approverUid,
-            texts.submitted(owner?.displayName ?? after.uid, range, before?.status === 'rejected'),
+            texts.submitted(
+              after.uid,
+              owner?.displayName ?? after.uid,
+              range,
+              before?.status === 'rejected',
+            ),
           );
         }
         return;

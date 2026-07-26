@@ -36,6 +36,22 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-26 — **Notification taps route to the screen they are about.** Every
+  push now carries its destination, encoded once in `@sabeel/shared` as flat
+  string key/values and shipped over both transports: an FCM `data` map on
+  Android, the query string of `webpush.fcmOptions.link` in the browser (a web
+  push click can only open a URL). A tapped route is **queued** until the
+  navigator is ready and the session is known — a cold-start tap lands seconds
+  before auth resolves — and dropped if the destination is an approver-only
+  screen the account no longer has. Screens that seed state from a param
+  (`Timesheet`, `TimesheetReview`) now re-anchor when the param changes;
+  `navigate()` to a mounted screen swaps params without remounting, so without
+  that a second tap left you on the previous week. Verified on the AVD with a
+  local notification carrying the same payload: cold start (process killed),
+  warm tap, re-target of a mounted screen, and a plain launch that must NOT
+  route. Web transport is covered in `web-e2e` (right week, approver-only route
+  dropped for a member, query stripped, garbage → Home). FCM's own hop remains
+  the one untestable link.
 - 2026-07-26 — **Shipped: v1.0.0-beta.23** (both hardening passes). Deployed
   `firestore:rules,firestore:indexes,functions,hosting`; `onTimesheetWritten`
   created, so timesheet history starts accruing from this deploy — transitions

@@ -215,6 +215,11 @@ The app sends push notifications so nothing sits unnoticed:
   your local timezone, and then **daily** until you submit it. Weeks with
   nothing to submit don't nag.
 
+**Tapping a notification opens the screen it is about**, not just the app: a
+decision on your timesheet opens that week; a submission opens that person's
+week ready to review; a new account request opens the user list. This works from
+a closed app too — the app finishes signing you in first, then goes there.
+
 The app asks for notification permission when you sign in — allow it on each
 device where you want them. Home → **Notification settings** lets you switch
 each kind off individually; the **weekly reminder has its own switch**, so

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { decodeNotifRoute, encodeNotifRoute } from '@sabeel/shared';
 import {
   inReminderWindow,
   localClock,
@@ -69,10 +70,42 @@ describe('reminderEligible', () => {
 });
 
 describe('texts', () => {
+  const range = { fromKey: '2026-07-05', toKey: '2026-07-11' };
+
   it('reject body carries the reason; submitted flags resubmits', () => {
-    const range = { fromKey: '2026-07-05', toKey: '2026-07-11' };
     expect(texts.rejected(range, 'Missing Friday hours').body).toContain('Missing Friday hours');
-    expect(texts.submitted('Alice', range, true).title).toBe('Timesheet resubmitted');
-    expect(texts.submitted('Alice', range, false).title).toBe('Timesheet submitted');
+    expect(texts.submitted('u1', 'Alice', range, true).title).toBe('Timesheet resubmitted');
+    expect(texts.submitted('u1', 'Alice', range, false).title).toBe('Timesheet submitted');
+  });
+
+  it('every notification carries a decodable destination', () => {
+    const all = [
+      texts.newUser('Alice', 'alice@example.com'),
+      texts.submitted('u1', 'Alice', range, false),
+      texts.approved(range),
+      texts.rejected(range, 'why'),
+      texts.reminder(range),
+    ];
+    for (const n of all) {
+      expect(decodeNotifRoute(encodeNotifRoute(n.route))).toEqual(n.route);
+    }
+  });
+
+  it('sends each notification where its text points', () => {
+    // A signup goes to the approval queue; my own decisions go to my week; a
+    // submission goes to the review screen for THAT person's week.
+    expect(texts.newUser('Alice', 'a@example.com').route).toEqual({ screen: 'Users' });
+    expect(texts.approved(range).route).toEqual({ screen: 'Timesheet', periodKey: '2026-07-05' });
+    expect(texts.rejected(range, 'why').route).toEqual({
+      screen: 'Timesheet',
+      periodKey: '2026-07-05',
+    });
+    expect(texts.reminder(range).route).toEqual({ screen: 'Timesheet', periodKey: '2026-07-05' });
+    expect(texts.submitted('u1', 'Alice', range, false).route).toEqual({
+      screen: 'TimesheetReview',
+      uid: 'u1',
+      displayName: 'Alice',
+      periodKey: '2026-07-05',
+    });
   });
 });

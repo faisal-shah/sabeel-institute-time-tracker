@@ -48,6 +48,7 @@ Key stack points:
 - **Google sign-in seam**: `src/auth/google.ts` (native: `@react-native-google-signin/google-signin` → `GoogleAuthProvider.credential(idToken)` → `signInWithCredential`) / `google.web.ts` (`signInWithPopup`, redirect fallback).
 - Functions region us-central1 with `invoker: 'public'` — copy `functions/src/setup.ts` verbatim (codifies a real gen-2 callable 403 fix).
 - Web deploy: `npx expo export --platform web` → `app/dist-web` → Firebase Hosting with SPA rewrite.
+- **Push notifications carry their destination**, so a tap opens the screen the notification is about. One shared encoding (`packages/shared/src/notifRoute.ts`) travels as flat strings over both transports: an FCM `data` payload on Android, and the query string of `webpush.fcmOptions.link` in the browser (which can only be handed a URL). The client parks a tapped route until the navigator exists — a cold-start tap lands seconds before sign-in resolves — and drops routes whose screen the account no longer has.
 
 Reference files to copy/adapt (all under `~/repos/faisal-shah/tajweed-bytes-dev/` unless noted): root `package.json` (shared-first build scripts), `tsconfig.base.json`, `eslint.config.mjs`, `.github/workflows/ci.yml`, `firebase.json`, `firestore.rules` (claims-helper style), `functions/src/setup.ts`, `functions/src/sentry.ts`, `functions/vitest.config.ts`, `scripts/emulator.sh`, `scripts/test-emulator.sh`; from `~/repos/faisal-shah/PineTimeCompanion/`: `App.web.tsx` + `.web.ts` seam pattern, React Navigation setup, web export scripts.
 

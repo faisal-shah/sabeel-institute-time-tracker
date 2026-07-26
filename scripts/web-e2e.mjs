@@ -48,6 +48,18 @@ function cleanup(code) {
 }
 process.on('SIGINT', () => cleanup(130));
 
+/** Look up a uid the way a notification payload would have it: server-side. */
+async function uidByEmail(email) {
+  const res = await fetch(
+    'http://127.0.0.1:8080/v1/projects/demo-sabeel/databases/(default)/documents/users',
+    { headers: { Authorization: 'Bearer owner' } },
+  );
+  const body = await res.json();
+  const hit = (body.documents ?? []).find((d) => d.fields?.email?.stringValue === email);
+  if (!hit) throw new Error(`no user doc for ${email}`);
+  return hit.name.split('/').pop();
+}
+
 function waitFor(url, label, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
@@ -519,6 +531,35 @@ async function main() {
   await mgr.getByText('LIFETIME APPROVED HOURS').last().waitFor();
   await mgr.getByText('3h 00m', { exact: true }).last().waitFor();
   await mgr.screenshot({ path: join(shots, '16-person-detail.png'), animations: 'disabled', timeout: 8000 }).catch(() => {});
+
+  console.log('▸ notification taps land on the right screen (web transport)…');
+  // A tapped push carries its destination as the same key/values on both
+  // surfaces: an FCM data payload on Android, this query string on the web
+  // (the browser can only hand the page a URL). Same shared decoder either way,
+  // so exercising it here covers the routing for both.
+  const volUid = await uidByEmail('volunteer@oursabeel.com');
+  await vol.goto(`${baseUrl}/?screen=Timesheet&periodKey=${otherWeek.fromKey}`);
+  // Right screen AND right week: that week is the empty one used above.
+  await vol.getByText('No hours in this week.').waitFor({ timeout: 45000 });
+  // The route must be stripped, or a reload would navigate all over again.
+  if (new URL(vol.url()).search !== '')
+    throw new Error('notification route left in the URL: ' + vol.url());
+
+  // A member has no Users screen; navigating to a name the navigator doesn't
+  // have would throw, so an out-of-reach route must be dropped, not attempted.
+  await vol.goto(`${baseUrl}/?screen=Users`);
+  await vol.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
+  if ((await vol.getByText('Manage users', { exact: true }).count()) !== 0)
+    throw new Error('member was routed into an approver-only screen');
+
+  // The approver's submission notification: straight to that person's week.
+  await mgr.goto(
+    `${baseUrl}/?screen=TimesheetReview&uid=${volUid}&displayName=Volunteer&periodKey=${shared.periodKeyFor(todayKey)}`,
+  );
+  await mgr.getByText('Total: 3h 00m', { exact: false }).waitFor({ timeout: 45000 });
+  // Garbage in the query must leave you on Home rather than crash the app.
+  await mgr.goto(`${baseUrl}/?screen=Timesheet`);
+  await mgr.getByText('Salaam,', { exact: false }).waitFor({ timeout: 45000 });
 
   console.log('▸ notification settings: reminder toggle flips and persists…');
   await vol.goto(baseUrl + '/');

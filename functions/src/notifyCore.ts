@@ -5,6 +5,7 @@ import {
   periodLabel,
   periodRangeFor,
   type NotifPrefs,
+  type NotifRoute,
   type TimesheetStatus,
 } from '@sabeel/shared';
 
@@ -58,30 +59,43 @@ export function reminderEligible(
   return hasEntries;
 }
 
-export interface NotifText {
+/**
+ * A push is text plus a destination — the two are decided together, because a
+ * notification that says "your timesheet was rejected" and then drops you on the
+ * home screen has done half its job.
+ */
+export interface Notif {
   title: string;
   body: string;
+  route: NotifRoute;
 }
 
+type Range = { fromKey: string; toKey: string };
+
 export const texts = {
-  newUser: (name: string, email: string): NotifText => ({
+  newUser: (name: string, email: string): Notif => ({
     title: 'New account request',
     body: `${name} (${email}) is waiting for approval.`,
+    route: { screen: 'Users' },
   }),
-  submitted: (name: string, range: { fromKey: string; toKey: string }, resubmit: boolean): NotifText => ({
+  submitted: (uid: string, name: string, range: Range, resubmit: boolean): Notif => ({
     title: resubmit ? 'Timesheet resubmitted' : 'Timesheet submitted',
     body: `${name} · ${periodLabel(range)}`,
+    route: { screen: 'TimesheetReview', uid, displayName: name, periodKey: range.fromKey },
   }),
-  approved: (range: { fromKey: string; toKey: string }): NotifText => ({
+  approved: (range: Range): Notif => ({
     title: 'Timesheet approved',
     body: `Your timesheet for ${periodLabel(range)} was approved.`,
+    route: { screen: 'Timesheet', periodKey: range.fromKey },
   }),
-  rejected: (range: { fromKey: string; toKey: string }, reason: string): NotifText => ({
+  rejected: (range: Range, reason: string): Notif => ({
     title: 'Timesheet rejected',
     body: `${periodLabel(range)}: ${reason}`,
+    route: { screen: 'Timesheet', periodKey: range.fromKey },
   }),
-  reminder: (range: { fromKey: string; toKey: string }): NotifText => ({
+  reminder: (range: Range): Notif => ({
     title: 'Timesheet reminder',
     body: `Last week (${periodLabel(range)}) hasn't been submitted yet.`,
+    route: { screen: 'Timesheet', periodKey: range.fromKey },
   }),
 };

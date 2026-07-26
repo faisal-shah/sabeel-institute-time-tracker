@@ -1,3 +1,5 @@
+import { createNavigationContainerRef } from '@react-navigation/native';
+
 export type RootStackParamList = {
   Home: undefined;
   Users: undefined;
@@ -16,3 +18,9 @@ export type RootStackParamList = {
   /** Approver review of one person's period. */
   TimesheetReview: { uid: string; displayName: string; periodKey: string };
 };
+
+/**
+ * Navigation from outside the tree — specifically a notification tap, which has
+ * no component to hang a useNavigation() on. See notifRouting.ts.
+ */
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();

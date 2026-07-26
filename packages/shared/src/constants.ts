@@ -23,6 +23,10 @@ export const ALLOWED_EMAIL_DOMAIN = 'oursabeel.com';
 export const WEB_CLIENT_ID =
   '858585609550-4pkumltbrleru9om5q91jhrv1pcnblk9.apps.googleusercontent.com';
 
+// Where the web build is hosted. Used to build the click target of a web push;
+// the browser has no app to hand a route to, so the route rides in the URL.
+export const WEB_APP_ORIGIN = 'https://sabeel-institute-time-tracker.web.app';
+
 /** Clock sessions running longer than this get auto-closed at start + cap. */
 export const SESSION_CAP_HOURS = 12;
 

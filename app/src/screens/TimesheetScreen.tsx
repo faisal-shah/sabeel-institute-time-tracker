@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -99,6 +99,13 @@ export function TimesheetScreen({
   const todayKey = dayKeyFor(Date.now(), tz);
   const [anchor, setAnchor] = useState(initialPeriodKey ?? todayKey);
   const [error, setError] = useState<string | null>(null);
+
+  // Re-target when the param changes under a mounted screen: navigating here
+  // from a notification while already on this screen updates params rather than
+  // remounting, so without this the tap would leave you on the previous week.
+  useEffect(() => {
+    if (initialPeriodKey) setAnchor(initialPeriodKey);
+  }, [initialPeriodKey]);
 
   const period = periodRangeFor(anchor);
   const entries = useEntriesRange(uid, period.fromKey, period.toKey);

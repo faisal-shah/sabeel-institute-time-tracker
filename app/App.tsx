@@ -3,7 +3,8 @@ import { ActivityIndicator, View } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { COLLECTIONS, deviceTimeZone } from '@sabeel/shared';
 import { db } from './src/firebase';
-import { registerPush } from './src/notify';
+import { registerPush, useNotifTaps } from './src/notify';
+import { setNotifRoutingSession, flushNotifRoute } from './src/notifRouting';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -28,7 +29,7 @@ import { ApprovalsScreen } from './src/screens/ApprovalsScreen';
 import { TimesheetReviewScreen } from './src/screens/TimesheetReviewScreen';
 import { NeedsAttentionScreen } from './src/screens/NeedsAttentionScreen';
 import { NotificationSettingsScreen } from './src/screens/NotificationSettingsScreen';
-import type { RootStackParamList } from './src/nav';
+import { navigationRef, type RootStackParamList } from './src/nav';
 import { getTheme } from './src/theme';
 import { initSentry } from './src/sentry';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -59,6 +60,18 @@ export default function App() {
     // Deps are only who-is-signed-in — deliberately not the profile snapshot.
   }, [activeUid]);
 
+  // Notification taps are collected unconditionally — one can land during the
+  // sign-in gate or before the navigator exists — and released to the navigator
+  // only once there is an active session to route within. null parks them.
+  useNotifTaps();
+  const isApprover =
+    session.phase === 'signedIn' &&
+    (session.claims.role === 'manager' || session.claims.admin === true);
+  const routingApprover = activeUid ? isApprover : null;
+  useEffect(() => {
+    setNotifRoutingSession(routingApprover);
+  }, [routingApprover]);
+
   let content;
   if (session.phase === 'loading') {
     content = (
@@ -85,9 +98,8 @@ export default function App() {
       );
   } else {
     const { profile, claims, user } = session;
-    const isApprover = claims.role === 'manager' || claims.admin === true;
     content = (
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef} onReady={flushNotifRoute}>
         <Stack.Navigator
           screenOptions={{
             headerShown: false,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -44,6 +44,9 @@ export function TimesheetReviewScreen({
 }) {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [anchor, setAnchor] = useState(periodKey);
+  // A second submission notification can re-target this screen (another person,
+  // another week) while it is mounted — navigate() swaps the params in place.
+  useEffect(() => setAnchor(periodKey), [periodKey]);
   const period = periodRangeFor(anchor);
   const sheet = useTimesheet(uid, period.fromKey);
   const status = sheet === undefined ? undefined : (sheet?.status ?? 'draft');
