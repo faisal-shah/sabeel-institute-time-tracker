@@ -36,6 +36,13 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-26 — **Shipped: v1.0.0-beta.23** (both hardening passes). Deployed
+  `firestore:rules,firestore:indexes,functions,hosting`; `onTimesheetWritten`
+  created, so timesheet history starts accruing from this deploy — transitions
+  before it are unrecoverable. APK verified production-mode on the AVD, GitHub
+  release + public download page published, hosting redeployed from the release
+  commit so the web and APK build stamps match (`1f1aa60`). `probeQueries`
+  all-OK in prod across 12 shapes, including the two new `users` ones.
 - 2026-07-26 — **Second hardening pass (A1–A8), emulator-driven.** Prompted by
   M5b: if one "validated once, never revisited" bug existed, how many more?
   Hypotheses were **run against the rules**, not reasoned about — ten probes,
