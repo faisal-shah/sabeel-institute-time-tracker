@@ -171,7 +171,11 @@ export function HomeScreen({
         <Text style={styles.approverLabel}>My timesheet approver</Text>
         <SearchablePicker
           items={approvers
-            .filter((a) => a.uid !== uid || claims.admin === true) // only admins may self-approve
+            // Managers and admins may approve their own hours (PRODUCTION-REVIEW
+            // M5 — deliberate at this org size). Sorted last so picking yourself
+            // stays a considered choice rather than the first thing in the list.
+            .slice()
+            .sort((a, b) => Number(a.uid === uid) - Number(b.uid === uid))
             .map((a) => ({
               id: a.uid,
               label: a.uid === uid ? `${a.displayName} (myself)` : a.displayName,

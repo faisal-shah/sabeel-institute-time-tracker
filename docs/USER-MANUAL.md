@@ -147,6 +147,11 @@ under **My timesheet approver**, tap the selector and pick from the list of
 managers. This is sticky — it applies to all future submissions until you
 change it. Changing it never affects a timesheet you've already submitted.
 
+If you are a manager or an admin yourself, your own name appears at the bottom
+of the list as **"(myself)"** — managers and admins may approve their own hours.
+Even then you still submit first and approve after: a submitted week is locked
+to you like anyone else's, so withdraw it if you need to make a change.
+
 *Can't submit and see "Pick your timesheet approver on the home screen
 first"?* This is why.
 
@@ -311,8 +316,7 @@ shift hours into the viewer's timezone.
 # Part 3 — For admins
 
 Admins manage people. On Home: **Manage users** (admins also see Approvals —
-an admin can approve or reject *any* submitted timesheet, and self-approves
-their own).
+an admin can approve or reject *any* submitted timesheet, including their own).
 
 ## 3.1 Approving new users
 
@@ -331,6 +335,9 @@ Each active user's card shows their state directly:
 
 - **Approver** — who approves their timesheets. Set it here, or let them pick
   their own on their home screen. (Managers can set this for non-admins too.)
+  A manager or admin may be listed as their own approver. Note that **changing
+  someone's role, or disabling them, clears every approver pointing at them** —
+  those people will be asked to pick a new approver before their next submission.
 - **Role: member | manager** — managers get Approvals, Reports, and
   Activities.
 - **Admin** — the full-control switch (see below).

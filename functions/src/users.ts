@@ -31,6 +31,37 @@ function validateInput(data: unknown): UserAccessInput {
   return { uid: d.uid, status: d.status, role: d.role, admin: d.admin };
 }
 
+interface Access {
+  status: string;
+  role: string;
+  admin: boolean;
+}
+
+/** Who may be someone's timesheet approver — mirrors approverOk in firestore.rules. */
+function isEligibleApprover(u: Access): boolean {
+  return u.status === 'active' && (u.role === 'manager' || u.admin === true);
+}
+
+/**
+ * Clear every users/{uid}.approverUid pointing at this account — their own
+ * included, since a manager may be their own approver.
+ *
+ * An approver is validated when the pointer is WRITTEN and never again, so a
+ * pointer that outlives the role is a real hazard: submissions keep stamping a
+ * person who is no longer entitled to decide. Rules now re-check the role at
+ * decide time, but a stale pointer would still strand the submitter on a sheet
+ * only an admin could clear. Cheaper to have no dangling pointers at all.
+ */
+async function clearApproverPointers(approverUid: string): Promise<number> {
+  const db = getFirestore();
+  const pointing = await db.collection('users').where('approverUid', '==', approverUid).get();
+  if (pointing.empty) return 0;
+  const batch = db.batch();
+  for (const d of pointing.docs) batch.update(d.ref, { approverUid: null });
+  await batch.commit();
+  return pointing.size;
+}
+
 /**
  * Core of setUserAccess, callable-independent so integration tests can drive it
  * against the emulators. Merges the requested changes into the user doc and
@@ -46,7 +77,7 @@ export async function applyUserAccess(callerUid: string, input: UserAccessInput)
   if (!snap.exists) {
     throw new HttpsError('not-found', 'No such user.');
   }
-  const current = snap.data() as { status: string; role: string; admin: boolean };
+  const current = snap.data() as Access;
 
   // An admin may not strip their own admin flag or disable themselves — prevents
   // locking the org out of user management entirely.
@@ -71,6 +102,19 @@ export async function applyUserAccess(callerUid: string, input: UserAccessInput)
     docUpdate.approvedBy = callerUid;
   }
   await userRef.update(docUpdate);
+
+  // Demotion, disabling, or losing admin can strip approver eligibility — drop
+  // the pointers rather than leave them dangling. Skipped unless the account was
+  // eligible before, so the common case (approving a pending signup) costs nothing.
+  // No return value: the cascade is already visible to the admin who caused it
+  // (the Users list's Approver column blanks live) and to the affected user (their
+  // timesheet says to pick an approver before submitting).
+  if (isEligibleApprover(current) && !isEligibleApprover(next)) {
+    const cleared = await clearApproverPointers(input.uid);
+    if (cleared > 0) {
+      console.log(`applyUserAccess: ${input.uid} lost approver eligibility — cleared ${cleared}`);
+    }
+  }
 
   return next;
 }

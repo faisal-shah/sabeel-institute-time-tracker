@@ -69,7 +69,10 @@ export function UsersScreen({ selfUid, claims }: { selfUid: string; claims: Toke
               <Text style={styles.approverLabel}>Approver</Text>
               <SearchablePicker
                 items={approvers
-                  .filter((a) => a.uid !== u.uid || u.admin) // only admins may self-approve
+                  // Self-approval is allowed for managers and admins alike; listed
+                  // last so it reads as a deliberate assignment (see M5).
+                  .slice()
+                  .sort((a, b) => Number(a.uid === u.uid) - Number(b.uid === u.uid))
                   .map((a) => ({
                     id: a.uid,
                     label: a.uid === u.uid ? `${a.displayName} (self)` : a.displayName,

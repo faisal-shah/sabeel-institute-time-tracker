@@ -82,3 +82,73 @@ describe('applyUserAccess (admin approval flow)', () => {
     );
   });
 });
+
+/**
+ * An approver is validated when the pointer is written and never again, so a
+ * pointer that outlives the role would keep routing submissions to someone no
+ * longer entitled to decide. Losing eligibility must drop the pointers.
+ */
+describe('applyUserAccess — approver pointer cleanup', () => {
+  const approverOf = async (uid: string) =>
+    (await getFirestore().collection('users').doc(uid).get()).data()?.approverUid;
+
+  it('demoting a manager clears every pointer at them, their own included', async () => {
+    const admin = freshUid('admin');
+    const mgr = freshUid('mgr');
+    const alice = freshUid('alice');
+    await seedUser(admin, { status: 'active', admin: true });
+    // Self-approving manager (M5) — the pointer at themselves must go too.
+    await seedUser(mgr, { status: 'active', role: 'manager', approverUid: mgr });
+    await seedUser(alice, { status: 'active', approverUid: mgr });
+
+    await applyUserAccess(admin, { uid: mgr, role: 'member' });
+
+    expect(await approverOf(mgr)).toBeNull();
+    expect(await approverOf(alice)).toBeNull();
+  });
+
+  it('disabling an approver clears pointers even though the role is untouched', async () => {
+    const admin = freshUid('admin');
+    const mgr = freshUid('mgr');
+    const alice = freshUid('alice');
+    await seedUser(admin, { status: 'active', admin: true });
+    await seedUser(mgr, { status: 'active', role: 'manager' });
+    await seedUser(alice, { status: 'active', approverUid: mgr });
+
+    await applyUserAccess(admin, { uid: mgr, status: 'disabled' });
+
+    expect(await approverOf(alice)).toBeNull();
+  });
+
+  it('revoking admin from a non-manager clears pointers; a manager-admin keeps them', async () => {
+    const admin = freshUid('admin');
+    const soleAdmin = freshUid('adminonly');
+    const mgrAdmin = freshUid('mgradmin');
+    const alice = freshUid('alice');
+    const bob = freshUid('bob');
+    await seedUser(admin, { status: 'active', admin: true });
+    await seedUser(soleAdmin, { status: 'active', admin: true });
+    await seedUser(mgrAdmin, { status: 'active', role: 'manager', admin: true });
+    await seedUser(alice, { status: 'active', approverUid: soleAdmin });
+    await seedUser(bob, { status: 'active', approverUid: mgrAdmin });
+
+    await applyUserAccess(admin, { uid: soleAdmin, admin: false });
+    await applyUserAccess(admin, { uid: mgrAdmin, admin: false });
+
+    expect(await approverOf(alice)).toBeNull();
+    // Still an active manager, so still a valid approver.
+    expect(await approverOf(bob)).toBe(mgrAdmin);
+  });
+
+  it('leaves pointers alone when eligibility is gained or unchanged', async () => {
+    const admin = freshUid('admin');
+    const mgr = freshUid('mgr');
+    const alice = freshUid('alice');
+    await seedUser(admin, { status: 'active', admin: true });
+    await seedUser(mgr, { status: 'active', role: 'manager' });
+    await seedUser(alice, { status: 'active', approverUid: mgr });
+
+    await applyUserAccess(admin, { uid: mgr, admin: true }); // promotion
+    expect(await approverOf(alice)).toBe(mgr);
+  });
+});

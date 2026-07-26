@@ -252,8 +252,11 @@ service cloud.firestore {
           && d.totalMinutes is int && d.totalMinutes >= 0
           && d.entryCount is int && d.entryCount >= 0;
       }
-      // The approver is stamped from the submitter's CURRENT profile value;
-      // admins may stamp themselves (top of the chain self-approves).
+      // The approver is stamped from the submitter's CURRENT profile value.
+      // Self-approval is deliberate policy at this org size: approverOk accepts
+      // any active manager/admin including oneself, so a manager may choose
+      // themselves; admins may stamp themselves without having chosen it (top of
+      // the chain). See PRODUCTION-REVIEW M5.
       function stampOk(d) {
         return d.approverUid ==
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approverUid
@@ -306,10 +309,16 @@ service cloud.firestore {
                  ['status', 'approverUid', 'submittedAt', 'totalMinutes',
                   'entryCount', 'updatedAt', 'decidedAt', 'decidedBy', 'rejectReason']))
           ||
-          // DECIDE (submitted → approved | rejected): stamped approver or admin;
-          // rejections carry a reason, approvals don't.
+          // DECIDE (submitted → approved | rejected): the stamped approver,
+          // revalidated as a CURRENT manager, or any admin; rejections carry a
+          // reason, approvals don't. The role re-check matters because a stamp is
+          // written once and never revisited afterwards — without it a manager who
+          // was demoted or disabled would keep deciding (their own sheets included,
+          // now that self-approval is allowed) for as long as the stamp survived.
+          // applyUserAccess clears dangling pointers when eligibility is lost; this
+          // is the braces to that belt, on the surface that actually enforces.
           (resource.data.status == 'submitted'
-            && (isAdmin() || resource.data.approverUid == request.auth.uid)
+            && (isAdmin() || (isManager() && resource.data.approverUid == request.auth.uid))
             && request.resource.data.status in ['approved', 'rejected']
             && request.resource.data.decidedBy == request.auth.uid
             && request.resource.data.decidedAt is int

@@ -376,6 +376,39 @@ describe('timeEntries — submitted period lock', () => {
     await assertSucceeds(deleteDoc(doc(mgrDb, 'timeEntries/e1')));
   });
 
+  // Self-approval does NOT weaken the freeze: canTouchPeriod excludes the owner
+  // outright on a submitted period, before it ever looks at who the approver is.
+  // A self-approving manager withdraws (or approves) rather than editing in place,
+  // so what gets approved is always what was submitted.
+  it('a self-approving manager is still locked out of their OWN submitted period', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, `timesheets/mgr_${PERIOD}`), {
+        ...aliceTimesheet('submitted'),
+        uid: 'mgr',
+        approverUid: 'mgr',
+      });
+      await setDoc(doc(db, 'timeEntries/m1'), { ...closedEntry, uid: 'mgr' });
+    });
+    const db = manager().firestore();
+    await assertFails(
+      updateDoc(doc(db, 'timeEntries/m1'), { note: 'tweak', lastEditedBy: 'mgr', updatedAt: T0 }),
+    );
+    await assertFails(deleteDoc(doc(db, 'timeEntries/m1')));
+    await assertFails(
+      setDoc(doc(db, 'timeEntries/m2'), { ...closedEntry, uid: 'mgr', lastEditedBy: 'mgr' }),
+    );
+
+    // Control: the identical write succeeds once the period is back to draft, so
+    // the failures above are the lock and not a malformed entry.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await deleteDoc(doc(ctx.firestore(), `timesheets/mgr_${PERIOD}`));
+    });
+    await assertSucceeds(
+      setDoc(doc(db, 'timeEntries/m2'), { ...closedEntry, uid: 'mgr', lastEditedBy: 'mgr' }),
+    );
+  });
+
   it('admin (not stamped) may edit in a submitted period', async () => {
     await assertSucceeds(
       updateDoc(doc(admin().firestore(), 'timeEntries/e1'), {

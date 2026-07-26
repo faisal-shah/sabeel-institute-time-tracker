@@ -72,19 +72,43 @@ input); CSV files only.
 - **Where:** `functions/src/reporting.ts:74-77` (`csvCell`).
 - **Fix:** prefix at-risk cells (leading `=+-@`, tab, CR) with `'`.
 
-### M5 — A manager can be their own approver and self-approve ❎ won't-fix (Faisal, 2026-07-21)
-Acceptable for a very small org. **Revisit trigger:** if managers/admins grow
-beyond Faisal's immediate circle, or volume makes self-review non-obvious.
-`approverOk` permits any active manager/admin as an approver, including self, so a
-manager can set `approverUid` to themselves, submit, and approve their own
-timesheet — bypassing review. The brief said only *admins* self-approve.
-- **Where:** `firestore.rules:67-72` (`approverOk`); self-update branch at
-  `firestore.rules:93-102`.
-- **Fix (policy call — Faisal):** if managers must be reviewed by someone else,
-  add `av != request.auth.uid` to the self-update `approverOk` path (admins still
-  self-approve via `stampOk`'s admin clause).
-- **Verify in emulator:** manager can no longer self-stamp; admin self-approve
-  still works; sheets already stamped to a manager still decide.
+### M5 — A manager can be their own approver and self-approve ✅ by design (Faisal, 2026-07-25)
+**Resolved as policy, not as a defect.** Managers and admins alike may be their
+own approver. Flexibility is worth more than enforced second-party review at this
+org size and trust level, and self-approval is the only escape from a real dead
+end: a manager with no eligible approver — the sole manager, or one whose approver
+account was removed (this happened on 2026-07-19) — cannot submit at all.
+- **Revisit trigger:** if managers/admins grow beyond Faisal's immediate circle,
+  or volume makes self-review non-obvious. The lever is one clause:
+  `av != request.auth.uid` on the self-update `approverOk` path
+  (`firestore.rules:91-96`), which would leave admin self-approval intact via
+  `stampOk`'s admin clause.
+- **Landed 2026-07-25:** the client filters that had been enforcing the *old*
+  policy alone are gone (`HomeScreen.tsx`, `UsersScreen.tsx`); self is now listed
+  last in the picker so choosing it stays deliberate. Rules and UI had disagreed
+  since launch — the rules always permitted this — which is the worst state to
+  leave a policy in.
+- **Audit trail is intact:** `decidedBy`/`decidedAt` record every decision, so a
+  self-approval is identifiable after the fact. Nothing surfaces it in the UI;
+  that is a deliberate omission, not an oversight.
+- **What self-approval does NOT weaken:** the submitted-period freeze.
+  `canTouchPeriod` (`firestore.rules:57-63`) excludes the owner outright before it
+  considers who the approver is, so a self-approver still withdraws rather than
+  editing a submitted week in place. Pinned by an emulator test.
+
+### M5b — An approver's authority outlived their role ✅ done (2026-07-25)
+Found while formalising M5. `approverUid` was validated only when **written**
+(`approverOk`), never afterwards: the DECIDE branch checked identity alone, so a
+manager who was demoted or disabled kept deciding every sheet still stamped to
+them — their own included, once self-approval is allowed. Dangling pointers also
+outlived deleted accounts (hand-fixed once, 2026-07-19).
+- **Fixed in two places.** `firestore.rules` DECIDE now requires the stamped
+  approver to be a *current* `isManager()` (admins unaffected). `applyUserAccess`
+  clears every `approverUid` pointing at an account that loses eligibility
+  (demotion, disable, admin revoked from a non-manager), the account's own
+  self-pointer included.
+- **Verified in emulator:** demoted and disabled approvers rejected, admin still
+  decides, promotion leaves pointers alone, self-pointer cleared on demotion.
 
 ### M6 — No web security headers ✅ done (2026-07-22)
 Added `X-Frame-Options: SAMEORIGIN` (**not `DENY`** — DENY blocks Firebase Auth's

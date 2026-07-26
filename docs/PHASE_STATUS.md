@@ -36,6 +36,24 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-25 — **Self-approval formalised; approver authority now expires with the
+  role.** Managers and admins alike may be their own timesheet approver
+  (PRODUCTION-REVIEW **M5**, flipped from ❎ won't-fix to ✅ by design): flexibility
+  beats enforced second-party review at this org size, and it is the only exit
+  from having no eligible approver — the dead end hit for real on 2026-07-19.
+  Rules had *always* permitted it; only two client filters enforced the old
+  policy, so rules and UI disagreed. Filters removed; self now sorts last in the
+  picker, labelled "(myself)", so choosing it stays deliberate. Deliberately NOT
+  changed: the admin-only auto-fallback (self-approval is chosen, never
+  defaulted), and the submitted-period freeze — `canTouchPeriod` excludes the
+  owner outright, so a self-approver still withdraws rather than editing in place
+  (now pinned by a test, with a positive control). **Bug found and fixed in the
+  same batch (M5b):** `approverUid` was validated only when written, never again,
+  so a demoted or disabled manager kept deciding every sheet stamped to them —
+  their own included. DECIDE now revalidates `isManager()`, and `applyUserAccess`
+  clears every pointer at an account losing eligibility (self-pointer included),
+  the same orphan class that had to be hand-cleaned on 2026-07-19. 8 new emulator
+  tests (98 total, green).
 - 2026-07-25 — **Native Firestore disaster recovery enabled** (replaces the Drive
   sync as the actual safety net). Two complementary layers, both Google-managed,
   no code to rot:

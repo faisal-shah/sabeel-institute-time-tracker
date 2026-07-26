@@ -129,6 +129,22 @@ describe('timesheets — submit', () => {
     await assertFails(setDoc(doc(alice().firestore(), `timesheets/${TS_ID}`), submitDoc));
   });
 
+  it('manager self-stamps when they are their own approver (M5 policy)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'users/mgr'),
+        userDoc({ displayName: 'Mgr', role: 'manager', approverUid: 'mgr' }),
+      );
+    });
+    await assertSucceeds(
+      setDoc(doc(mgr().firestore(), `timesheets/mgr_${PERIOD}`), {
+        ...submitDoc,
+        uid: 'mgr',
+        approverUid: 'mgr',
+      }),
+    );
+  });
+
   it('admin self-stamps (top of chain)', async () => {
     await assertSucceeds(
       setDoc(doc(adm().firestore(), `timesheets/adm_${PERIOD}`), {
@@ -212,7 +228,38 @@ describe('timesheets — decide', () => {
     );
   });
 
-  it('the owner cannot decide their own sheet', async () => {
+  it('a manager approves their own sheet when self-stamped (M5 policy)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `timesheets/mgr_${PERIOD}`), {
+        ...submitDoc,
+        uid: 'mgr',
+        approverUid: 'mgr',
+      });
+    });
+    await assertSucceeds(
+      updateDoc(doc(mgr().firestore(), `timesheets/mgr_${PERIOD}`), approvePatch),
+    );
+  });
+
+  // A stamp is written once and never revisited, so the role must be re-checked
+  // at decide time — otherwise losing the role leaves the authority behind.
+  it('a stamped approver who has since been demoted or disabled cannot decide', async () => {
+    const demoted = testEnv.authenticatedContext('mgr', { status: 'active', role: 'member' });
+    await assertFails(updateDoc(doc(demoted.firestore(), `timesheets/${TS_ID}`), approvePatch));
+
+    const disabled = testEnv.authenticatedContext('mgr', { status: 'disabled', role: 'manager' });
+    await assertFails(updateDoc(doc(disabled.firestore(), `timesheets/${TS_ID}`), approvePatch));
+
+    // …but an admin who is not a manager still decides anything.
+    await assertSucceeds(
+      updateDoc(doc(adm().firestore(), `timesheets/${TS_ID}`), {
+        ...approvePatch,
+        decidedBy: 'adm',
+      }),
+    );
+  });
+
+  it('an owner who is NOT the stamped approver cannot decide their own sheet', async () => {
     await assertFails(
       updateDoc(doc(alice().firestore(), `timesheets/${TS_ID}`), {
         ...approvePatch,
