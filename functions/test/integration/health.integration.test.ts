@@ -40,7 +40,13 @@ describe('runHealthCheck', () => {
 
     const { counts, findings } = await runHealthCheck(1000);
 
-    expect(counts).toEqual({ users: 1, activities: 0, timeEntries: 3, timesheets: 0 });
+    expect(counts).toEqual({
+      users: 1,
+      activities: 0,
+      timeEntries: 3,
+      timesheets: 0,
+      timesheetEvents: 0,
+    });
     // First run has no baseline to compare against.
     expect(findings).toEqual([]);
 

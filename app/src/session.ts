@@ -55,6 +55,13 @@ function emit(next: Session) {
 let unsubDoc: (() => void) | null = null;
 let lastClaimsStamp: number | null = null;
 let provisioningTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * Snapshot ordering guard. handleSnapshot awaits a token read (up to 8s on a
+ * forced refresh, ~0 on the cached path), so two snapshots in flight can finish
+ * out of order and let an older profile overwrite a newer one. Each snapshot
+ * takes a ticket; only the latest may emit.
+ */
+let snapshotSeq = 0;
 
 /**
  * How long to wait for the trigger before concluding it is not coming.
@@ -67,6 +74,9 @@ function stopWatching() {
   unsubDoc?.();
   unsubDoc = null;
   lastClaimsStamp = null;
+  // Invalidate anything still in flight — on a sign-out or account switch its
+  // emit would restore the previous user's session.
+  snapshotSeq++;
   if (provisioningTimer) {
     clearTimeout(provisioningTimer);
     provisioningTimer = null;
@@ -120,6 +130,7 @@ async function readClaims(user: User, forceRefresh: boolean): Promise<TokenClaim
 }
 
 async function handleSnapshot(user: User, snap: DocumentSnapshot): Promise<void> {
+  const seq = ++snapshotSeq;
   if (!snap.exists()) {
     // The trigger has not finished yet, or it rejected the account and is about
     // to delete it. The timeout decides which.
@@ -140,6 +151,9 @@ async function handleSnapshot(user: User, snap: DocumentSnapshot): Promise<void>
   lastClaimsStamp = stamp;
 
   const claims = await readClaims(user, claimsChanged);
+  // A newer snapshot overtook this one while the token was in flight; its result
+  // is the current truth and this one is stale.
+  if (seq !== snapshotSeq) return;
   emit({ phase: 'signedIn', user, profile, claims });
 }
 

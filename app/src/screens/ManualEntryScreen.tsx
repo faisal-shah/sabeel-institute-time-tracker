@@ -6,12 +6,14 @@ import {
   dayKeyFor,
   deviceTimeZone,
   entryTimesValid,
+  epochFor,
   formatDuration,
   minutesBetween,
-  parseDayKey,
+  tzLabelFor,
 } from '@sabeel/shared';
 import { useActivities } from '../activities';
 import { createManualEntry, explainEntryWriteError } from '../entries';
+import { useUser } from '../users';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { DateTimeField } from '../components/DateTimeField';
 import { Button, ErrorText, Screen } from '../components/ui';
@@ -19,14 +21,13 @@ import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
 
-// Device-local wall time → epoch ms. Manual entries are always in the device's
-// timezone — the same timezone stored on the entry.
-function toEpoch(dateKey: string, hhmm: string): number | null {
+// Wall time → epoch ms, interpreted in the timezone the WORK happened in (which
+// is not the writer's when a manager logs hours on someone else's behalf).
+function toEpoch(dateKey: string, hhmm: string, timeZone: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
-  const { y, m, d } = parseDayKey(dateKey);
   const [h, min] = hhmm.split(':').map(Number);
   if (h > 23 || min > 59) return null;
-  const ms = new Date(y, m - 1, d, h, min).getTime();
+  const ms = epochFor(dateKey, hhmm, timeZone);
   return Number.isFinite(ms) ? ms : null;
 }
 
@@ -43,9 +44,15 @@ export function ManualEntryScreen({
 }) {
   const nav = useNavigation();
   const activities = useActivities({ includeArchived: false });
-  const tz = deviceTimeZone();
-  const todayKey = dayKeyFor(Date.now(), tz);
   const targetUid = forUid ?? uid;
+  // The work's timezone is the TARGET user's last-seen one (App.tsx keeps it
+  // current on every active sign-in), never the writer's. Falls back to this
+  // device only while the profile is loading or for an account that has not
+  // opened the app since timezones were recorded.
+  const target = useUser(targetUid);
+  const tz = target?.timeZone ?? deviceTimeZone();
+  const onBehalf = forUid !== undefined && forUid !== uid;
+  const todayKey = dayKeyFor(Date.now(), tz);
 
   const [activityId, setActivityId] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState(todayKey);
@@ -55,8 +62,8 @@ export function ManualEntryScreen({
   const [error, setError] = useState<string | null>(null);
 
   const activity = activities.find((a) => a.id === activityId) ?? null;
-  const start = toEpoch(dateKey, from);
-  const end = toEpoch(dateKey, to);
+  const start = toEpoch(dateKey, from, tz);
+  const end = toEpoch(dateKey, to, tz);
   const valid =
     activity && start !== null && end !== null && entryTimesValid({ start, end });
 
@@ -64,7 +71,15 @@ export function ManualEntryScreen({
     if (!valid || !activity || start === null || end === null) return;
     setError(null);
     try {
-      await createManualEntry({ uid: targetUid, activity, start, end, note, creatorUid: uid });
+      await createManualEntry({
+        uid: targetUid,
+        activity,
+        start,
+        end,
+        note,
+        timeZone: tz,
+        creatorUid: uid,
+      });
       nav.goBack();
     } catch (e) {
       setError(explainEntryWriteError(e));
@@ -73,8 +88,13 @@ export function ManualEntryScreen({
 
   return (
     <Screen width="read">
-      {forUid && forUid !== uid ? (
-        <Text style={styles.onBehalf}>Adding hours for {forName ?? forUid}</Text>
+      {onBehalf ? (
+        <Text style={styles.onBehalf}>
+          Adding hours for {forName ?? forUid}
+          {/* Which clock these times are read against is not guessable — say it,
+              but only when it differs from the one this device would have used. */}
+          {tz !== deviceTimeZone() ? ` · times are ${tzLabelFor(Date.now(), tz)}` : ''}
+        </Text>
       ) : null}
       <Text style={styles.label}>Activity</Text>
       <ActivityPicker activities={activities} selectedId={activityId} onSelect={setActivityId} />

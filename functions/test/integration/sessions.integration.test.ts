@@ -12,7 +12,7 @@ beforeAll(() => {
 
 async function reset() {
   const db = getFirestore();
-  for (const c of ['timeEntries', 'users']) {
+  for (const c of ['timeEntries', 'users', 'timesheets']) {
     const snap = await db.collection(c).get();
     await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
@@ -26,6 +26,7 @@ const running = (startMsAgo: number) => ({
   end: null,
   timeZone: 'America/Chicago',
   dayKey: '2026-07-15',
+  periodKey: '2026-07-12',
   source: 'clock',
   createdAt: 1,
   updatedAt: 1,
@@ -59,6 +60,46 @@ describe('closeStaleSessions', () => {
     const closed = await closeStaleSessions(NOW);
     expect(closed).toBe(0);
     expect((await ref.get()).data()!.end).toBeNull();
+  });
+
+  // This job runs on the admin SDK, so the approved-period lock every client
+  // rule enforces does not apply to it. It must not leave an approved sheet
+  // asserting a total its own entries contradict.
+  it('repairs the stored snapshot when it closes an entry inside an approved period', async () => {
+    const db = getFirestore();
+    const ref = await db.collection('timeEntries').add(running(20 * HOUR));
+    await db.collection('users').doc('alice').set({ activeEntryId: ref.id, status: 'active' });
+    await db.collection('timesheets').doc('alice_2026-07-12').set({
+      uid: 'alice',
+      periodKey: '2026-07-12',
+      toKey: '2026-07-18',
+      status: 'approved',
+      approverUid: 'mgr',
+      submittedAt: 1,
+      decidedAt: 2,
+      decidedBy: 'mgr',
+      totalMinutes: 0, // approved believing the period was empty
+      entryCount: 0,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    await closeStaleSessions(NOW);
+
+    const sheet = (await db.collection('timesheets').doc('alice_2026-07-12').get()).data()!;
+    expect(sheet.totalMinutes).toBe(12 * 60);
+    expect(sheet.entryCount).toBe(1);
+    expect(sheet.status).toBe('approved'); // repaired, never silently reopened
+  });
+
+  it('leaves a draft period alone (no timesheet to repair)', async () => {
+    const db = getFirestore();
+    const ref = await db.collection('timeEntries').add(running(20 * HOUR));
+    await db.collection('users').doc('alice').set({ activeEntryId: ref.id, status: 'active' });
+
+    await closeStaleSessions(NOW);
+
+    expect((await db.collection('timesheets').doc('alice_2026-07-12').get()).exists).toBe(false);
   });
 
   it("does not clear the pointer if it moved to a different entry", async () => {

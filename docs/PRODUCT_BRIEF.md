@@ -92,6 +92,12 @@ timesheets/{uid}_{periodKey}          # one doc per (user, period) once submitte
   submittedAt, decidedAt?, decidedBy?, rejectReason?
   totalMinutes, entryCount            # informational snapshot; live truth = the period's entries
   createdAt, updatedAt
+
+timesheetEvents/{id}                  # append-only history; server-written, no client access
+  sheetId, uid, periodKey             # submit/approve/reject/withdraw/reopen all mutate or
+  kind, actorUid, at                  #   DELETE the single timesheet doc, so without this the
+  totalMinutes, entryCount            #   record of who approved a period — and that it was
+  approverUid, rejectReason?          #   later reopened — would not exist anywhere
 ```
 
 **Timesheet lifecycle**: submit = owner creates the doc (zero-hour OK; current week may
@@ -103,7 +109,7 @@ creates are closed-only and flagged `lastEditedBy`); submitted → stamped appro
 admins only; approved → nobody. Exception: the owner may always close their own
 running session (clock-out is never bricked).
 
-**Timezone semantics** (Faisal's Singapore example is the spec): every entry carries the IANA timezone of the device that created it; `dayKey` is the local calendar date of `start` in that timezone, computed by a shared helper (`Intl.DateTimeFormat`-based, no date library). Timesheets and reports bucket by `dayKey` (string range queries), and times display in `entry.timeZone` with a tz label (e.g. "09:00–17:00 SGT") — so the manager in California sees Monday 9–5, not Sunday 9pm. Edits recompute `dayKey` via the same helper.
+**Timezone semantics** (Faisal's Singapore example is the spec): every entry carries the IANA timezone **the work happened in** — the device's when you log your own hours, and the *target user's* (`users/{uid}.timeZone`, refreshed on each active sign-in) when a manager logs hours on someone's behalf. Using the writer's zone there was a real bug (PRODUCTION-REVIEW A1): it recorded the wrong instant and could file the entry in the wrong week. `dayKey` is the local calendar date of `start` in that timezone, computed by a shared helper (`Intl.DateTimeFormat`-based, no date library). Timesheets and reports bucket by `dayKey` (string range queries), and times display in `entry.timeZone` with a tz label (e.g. "09:00–17:00 SGT") — so the manager in California sees Monday 9–5, not Sunday 9pm. Edits recompute `dayKey` via the same helper. Rules can't do tz math, but they do require `start` to lie within [`dayKey` − 14h, + 36h), which spans every real UTC offset.
 
 **Totals** (dashboard, lifetime): Firestore aggregation queries (`getAggregateFromServer` + `sum('durationMinutes')`) on the fly — no counter docs; effectively free at this scale and running sessions are excluded automatically.
 
@@ -120,7 +126,8 @@ Roles via **custom claims** (`role`, `status`, `admin`) set only by the `setUser
 - `users/{uid}`: **no client create** (`allow create: if false`) — the `onUserCreate` trigger provisions the forced-pending doc `{status:'pending', role:'member', admin:false, activeEntryId:null, approverUid:null, claimsUpdatedAt}` server-side; read = self, manager/admin, or (for manager/admin profiles) any active user — people must see the approver choices; self-update limited via `diff().affectedKeys().hasOnly(['activeEntryId','displayName','photoURL','approverUid','notifPrefs','timeZone'])` with the approver validated as an active manager/admin (`notifPrefs` a map, `timeZone` a string); managers may set any non-admin's `approverUid`, admins anyone's (that single field only).
 - `activities`: read = any active user; create/update = manager; delete = never (archive only).
 - `timeEntries`: read = owner or manager; writes gated by the covering timesheet's state (`canTouchPeriod`, one `get()` on `timesheets/{uid}_{periodKey}`) and `periodKey == periodKeyOf(dayKey)` recomputed in rules (pure integer date math — spoofing a periodKey cannot dodge a lock); clock-in create requires the same batch to set `users/{uid}.activeEntryId` (checked with `getAfter()`); on-behalf writes are closed-entries-only and must set `lastEditedBy`; the owner's clock-out carve-out bypasses the period lock but may touch only `end/durationMinutes/updatedAt`.
-- `timesheets/{uid}_{periodKey}`: the full lifecycle state machine lives in rules (submit/resubmit/decide/withdraw/reopen — see the data-model section); the doc id must equal `uid + '_' + periodKey` so entry rules can `get()` it deterministically.
+- `timesheets/{uid}_{periodKey}`: the full lifecycle state machine lives in rules (submit/resubmit/decide/withdraw/reopen — see the data-model section); the doc id must equal `uid + '_' + periodKey` so entry rules can `get()` it deterministically. Deciding revalidates the stamped approver as a *current* manager, so authority can't outlive the role.
+- `meta`, `timesheetEvents`: server-only (`allow read, write: if false`) — the canary's count baseline and the append-only timesheet history. A client that could write the latter could forge the record it exists to preserve.
 - One-active-session enforced by the `activeEntryId == null` precondition at clock-in; the rare race is harmless at this scale.
 
 Rules tests with `@firebase/rules-unit-testing` (tajweed's exact harness).

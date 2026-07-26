@@ -10,7 +10,11 @@ import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/
 
 let testEnv: RulesTestEnvironment;
 
-const T0 = 1752570000000; // arbitrary epoch ms
+// 2026-07-15T09:00Z — 04:00 in America/Chicago, so it really is the local day
+// every fixture below labels it. Not arbitrary: rules now check that an entry's
+// dayKey can actually correspond to its `start`, and the previous value was a
+// year off from the dayKeys it was paired with.
+const T0 = Date.UTC(2026, 6, 15, 9);
 // dayKey 2026-07-15 is a Wednesday; its Sun–Sat month-clipped period starts 07-12.
 const PERIOD = '2026-07-12';
 const closedEntry = {
@@ -83,7 +87,21 @@ beforeAll(async () => {
 beforeEach(async () => {
   await testEnv.clearFirestore();
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    await setDoc(doc(ctx.firestore(), 'users/alice'), aliceUserDoc(null));
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/alice'), aliceUserDoc(null));
+    // Entry creates now check referential integrity, so the referenced activity
+    // and the entry's owner must exist.
+    await setDoc(doc(db, 'users/mgr'), {
+      ...aliceUserDoc(null),
+      displayName: 'Mgr',
+      role: 'manager',
+    });
+    await setDoc(doc(db, 'activities/act1'), {
+      name: 'Tutoring',
+      status: 'active',
+      createdAt: T0,
+      createdBy: 'mgr',
+    });
   });
 });
 
@@ -273,13 +291,16 @@ describe('timeEntries — canonical periodKey guard (spoof-proof)', () => {
     await assertFails(setDoc(doc(db, 'timeEntries/p4'), noPeriod));
   });
 
+  /** An entry on `dayKey` at 09:00Z — the instant has to match the day claimed. */
+  const onDay = (dayKey: string, periodKey: string) => {
+    const [y, m, d] = dayKey.split('-').map(Number);
+    const start = Date.UTC(y, m - 1, d, 9);
+    return { ...closedEntry, start, end: start + 60 * 60000, dayKey, periodKey };
+  };
+
   it('month-clipped day: dayKey 2026-07-04 (Sat) must carry periodKey 2026-07-01', async () => {
     const db = alice().firestore();
-    const clipped = {
-      ...closedEntry,
-      dayKey: '2026-07-04',
-      periodKey: '2026-07-01',
-    };
+    const clipped = onDay('2026-07-04', '2026-07-01');
     await assertSucceeds(setDoc(doc(db, 'timeEntries/c1'), clipped));
     await assertFails(
       setDoc(doc(db, 'timeEntries/c2'), { ...clipped, periodKey: '2026-06-28' }), // unclipped Sunday
@@ -289,18 +310,10 @@ describe('timeEntries — canonical periodKey guard (spoof-proof)', () => {
   it('a Sunday and a 1st-of-month are their own periodKey (pins dowSun0 anchoring)', async () => {
     const db = alice().firestore();
     await assertSucceeds(
-      setDoc(doc(db, 'timeEntries/s1'), {
-        ...closedEntry,
-        dayKey: '2026-07-12',
-        periodKey: '2026-07-12',
-      }),
+      setDoc(doc(db, 'timeEntries/s1'), onDay('2026-07-12', '2026-07-12')),
     );
     await assertSucceeds(
-      setDoc(doc(db, 'timeEntries/s2'), {
-        ...closedEntry,
-        dayKey: '2026-07-01',
-        periodKey: '2026-07-01',
-      }),
+      setDoc(doc(db, 'timeEntries/s2'), onDay('2026-07-01', '2026-07-01')),
     );
   });
 });
@@ -502,19 +515,28 @@ describe('timeEntries — rejected period behaves like draft again', () => {
 });
 
 describe('timeEntries — cross-period moves respect both locks', () => {
+  // Moving a day means moving the instant too — dayKey must stay plausible for
+  // `start`, or these would fail on validation and never reach the period lock
+  // they exist to test.
+  const FIVE_DAYS = 5 * 24 * 3600000;
+  const nextPeriod = {
+    start: T0 + FIVE_DAYS,
+    end: T0 + FIVE_DAYS + 60 * 60000,
+    dayKey: '2026-07-20',
+    periodKey: '2026-07-19',
+  };
+
   it('cannot move an entry from an open period into an approved one (or out of it)', async () => {
     // Approved sheet covers 07-12..07-18; the entry lives in the NEXT (draft) period.
     await seedTimesheet('approved');
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'timeEntries/e2'), {
-        ...closedEntry,
-        dayKey: '2026-07-20',
-        periodKey: '2026-07-19',
-      });
+      await setDoc(doc(ctx.firestore(), 'timeEntries/e2'), { ...closedEntry, ...nextPeriod });
     });
     // Move into the approved period: target lock must block it.
     await assertFails(
       updateDoc(doc(alice().firestore(), 'timeEntries/e2'), {
+        start: T0,
+        end: T0 + 60 * 60000,
         dayKey: '2026-07-15',
         periodKey: PERIOD,
         updatedAt: T0,
@@ -525,10 +547,80 @@ describe('timeEntries — cross-period moves respect both locks', () => {
       await setDoc(doc(ctx.firestore(), 'timeEntries/e3'), closedEntry);
     });
     await assertFails(
-      updateDoc(doc(alice().firestore(), 'timeEntries/e3'), {
-        dayKey: '2026-07-20',
-        periodKey: '2026-07-19',
-        updatedAt: T0,
+      updateDoc(doc(alice().firestore(), 'timeEntries/e3'), { ...nextPeriod, updatedAt: T0 }),
+    );
+
+    // Control: the same move between two OPEN periods succeeds, so the failures
+    // above are the approved lock and not the new dayKey/start validation.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await deleteDoc(doc(db, `timesheets/alice_${PERIOD}`));
+      await setDoc(doc(db, 'timeEntries/e4'), closedEntry);
+    });
+    await assertSucceeds(
+      updateDoc(doc(alice().firestore(), 'timeEntries/e4'), { ...nextPeriod, updatedAt: T0 }),
+    );
+  });
+});
+
+describe('timeEntries — integrity validation', () => {
+  it('rejects a dayKey that cannot correspond to the entry start', async () => {
+    // start is 2026-07-15; claiming 07-12 puts the bucket three days from the
+    // instant, which no real UTC offset can explain.
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'timeEntries/bad1'), {
+        ...closedEntry,
+        dayKey: '2026-07-12',
+        periodKey: PERIOD,
+      }),
+    );
+  });
+
+  it('accepts the extremes of real UTC offsets around a dayKey', async () => {
+    const db = alice().firestore();
+    const dayMs = Date.UTC(2026, 6, 15);
+    // UTC+14 (Kiritimati): local 2026-07-15 00:00 is 2026-07-14 10:00Z.
+    await assertSucceeds(
+      setDoc(doc(db, 'timeEntries/edge1'), {
+        ...closedEntry,
+        start: dayMs - 13 * 3600000,
+        end: dayMs - 12 * 3600000,
+        timeZone: 'Pacific/Kiritimati',
+      }),
+    );
+    // UTC-12: local 2026-07-15 23:00 is 2026-07-16 11:00Z.
+    await assertSucceeds(
+      setDoc(doc(db, 'timeEntries/edge2'), {
+        ...closedEntry,
+        start: dayMs + 35 * 3600000,
+        end: dayMs + 35.5 * 3600000,
+        durationMinutes: 30,
+        timeZone: 'Etc/GMT+12',
+      }),
+    );
+  });
+
+  it('rejects an empty activity name and a blank owner', async () => {
+    const db = alice().firestore();
+    await assertFails(
+      setDoc(doc(db, 'timeEntries/bad2'), { ...closedEntry, activityName: '' }),
+    );
+    await assertFails(setDoc(doc(db, 'timeEntries/bad3'), { ...closedEntry, uid: '' }));
+  });
+
+  it('rejects references to an activity or user that does not exist', async () => {
+    await assertFails(
+      setDoc(doc(alice().firestore(), 'timeEntries/bad4'), {
+        ...closedEntry,
+        activityId: 'no-such-activity',
+      }),
+    );
+    // A manager may log on behalf — but not for a uid with no account.
+    await assertFails(
+      setDoc(doc(manager().firestore(), 'timeEntries/bad5'), {
+        ...closedEntry,
+        uid: 'ghost-uid',
+        lastEditedBy: 'mgr',
       }),
     );
   });

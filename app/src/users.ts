@@ -1,7 +1,7 @@
 import { collection, doc, or, query, updateDoc, where } from 'firebase/firestore';
 import { COLLECTIONS, type UserDoc } from '@sabeel/shared';
 import { db } from './firebase';
-import { useLiveQuery } from './liveQuery';
+import { useLiveDoc, useLiveQuery } from './liveQuery';
 
 export type UserRow = UserDoc & { uid: string };
 
@@ -12,6 +12,21 @@ export type UserRow = UserDoc & { uid: string };
  */
 export function setApprover(uid: string, approverUid: string | null): Promise<void> {
   return updateDoc(doc(db, COLLECTIONS.users, uid), { approverUid });
+}
+
+/**
+ * Live view of one user's profile. Readable for yourself always, and for anyone
+ * by a manager/admin (firestore.rules /users read) — which is exactly the pair of
+ * cases that need it: logging hours for yourself, or on someone else's behalf.
+ */
+export function useUser(uid: string): UserRow | null {
+  return useLiveDoc(
+    'useUser',
+    () => doc(db, COLLECTIONS.users, uid),
+    (snap) => (snap.exists() ? { uid: snap.id, ...(snap.data() as UserDoc) } : null),
+    null,
+    [uid],
+  );
 }
 
 /** The active managers/admins a user may pick as their approver. */

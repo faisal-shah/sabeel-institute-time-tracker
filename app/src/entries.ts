@@ -85,11 +85,19 @@ export async function createManualEntry(input: {
   start: number;
   end: number;
   note?: string;
+  /**
+   * The timezone the work happened in — the TARGET user's, not the writer's.
+   * A manager in Chicago logging 9–5 for someone in Singapore must record
+   * Singapore's 9–5, or the entry lands on the wrong local day (and near a week
+   * boundary, in the wrong timesheet period). The caller resolves it; see
+   * ManualEntryScreen.
+   */
+  timeZone: string;
   /** Who is writing. When ≠ uid (manager/approver adding on behalf), rules require the lastEditedBy flag. */
   creatorUid: string;
 }): Promise<void> {
   const now = Date.now();
-  const tz = deviceTimeZone();
+  const tz = input.timeZone;
   const dayKey = dayKeyFor(input.start, tz);
   const entry: TimeEntryDoc = {
     uid: input.uid,

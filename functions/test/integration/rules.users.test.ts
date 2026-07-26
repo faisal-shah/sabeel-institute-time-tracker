@@ -6,7 +6,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 let testEnv: RulesTestEnvironment;
 
@@ -237,5 +237,38 @@ describe('firestore.rules — notification prefs & push tokens', () => {
         updatedAt: 1,
       }),
     );
+  });
+
+  it('an account that is not active cannot register for push', async () => {
+    const carol = testEnv.authenticatedContext('carol', { status: 'pending', role: 'member' });
+    await assertFails(
+      setDoc(doc(carol.firestore(), 'users/carol/pushTokens/tok1'), {
+        token: 'tok1',
+        platform: 'android',
+        updatedAt: 1,
+      }),
+    );
+
+    // Deleting stays open to any signed-in owner: sign-out deregisters the device,
+    // and that has to keep working for someone disabled mid-session — otherwise
+    // their tokens outlive them and the next person on the phone inherits them.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/carol/pushTokens/tok1'), {
+        token: 'tok1',
+        platform: 'android',
+      });
+    });
+    const disabled = testEnv.authenticatedContext('carol', {
+      status: 'disabled',
+      role: 'member',
+    });
+    await assertSucceeds(deleteDoc(doc(disabled.firestore(), 'users/carol/pushTokens/tok1')));
+  });
+
+  it('display name is bounded: non-empty, not unbounded', async () => {
+    const me = doc(alice().firestore(), 'users/alice');
+    await assertFails(updateDoc(me, { displayName: '' }));
+    await assertFails(updateDoc(me, { displayName: 'x'.repeat(101) }));
+    await assertSucceeds(updateDoc(me, { displayName: 'Alice Anderson' }));
   });
 });

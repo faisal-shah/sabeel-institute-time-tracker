@@ -102,4 +102,30 @@ describe('firestore.rules — activities', () => {
       addDoc(collection(m.firestore(), 'activities'), { ...activity, name: '' }),
     );
   });
+
+  // Updates used to check only `status`, which left archive/restore free to blank
+  // the name or rewrite the provenance fields on the way past.
+  describe('updates are validated too, not just the status field', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'activities/a1'), activity);
+      });
+    });
+
+    it('archiving and restoring still work', async () => {
+      const db = manager().firestore();
+      await assertSucceeds(updateDoc(doc(db, 'activities/a1'), { status: 'archived' }));
+      await assertSucceeds(updateDoc(doc(db, 'activities/a1'), { status: 'active' }));
+    });
+
+    it('rejects blanking the name', async () => {
+      await assertFails(updateDoc(doc(manager().firestore(), 'activities/a1'), { name: '' }));
+    });
+
+    it('rejects rewriting who created it, or when', async () => {
+      const db = manager().firestore();
+      await assertFails(updateDoc(doc(db, 'activities/a1'), { createdBy: 'someone-else' }));
+      await assertFails(updateDoc(doc(db, 'activities/a1'), { createdAt: 999 }));
+    });
+  });
 });

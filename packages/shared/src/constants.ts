@@ -3,6 +3,8 @@ export const COLLECTIONS = {
   activities: 'activities',
   timeEntries: 'timeEntries',
   timesheets: 'timesheets',
+  /** Append-only lifecycle history. Server-written, never client-visible. */
+  timesheetEvents: 'timesheetEvents',
 } as const;
 
 // Functions region must match setGlobalOptions in functions/src/setup.ts.

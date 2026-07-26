@@ -254,7 +254,10 @@ Tap a submission to review it:
 - **Tap any entry to correct it** (times, activity, note) — your edit is
   flagged "corrected" on the entry.
 - **Add entry for {name}** logs hours on the person's behalf (e.g. they forgot
-  their Saturday setup hours).
+  their Saturday setup hours). **Times are read in *their* timezone, not yours** —
+  enter the hours as that person worked them, and if their zone differs from
+  yours the screen says so under their name. That way an entry always means what
+  the person actually did, whoever typed it in.
 - Then either:
   - **Approve timesheet** — the week becomes official and locks, or
   - type a reason and **Reject timesheet** — it returns to the owner, who sees

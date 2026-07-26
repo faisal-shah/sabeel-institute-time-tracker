@@ -65,6 +65,12 @@ export const probeQueries = onRequest(async (req, res) => {
       .collection('timesheets')
       .where('uid', '==', 'probe')
       .where('status', '==', 'rejected'),
+    'users approverUid== (clear pointers when eligibility is lost)': db
+      .collection('users')
+      .where('approverUid', '==', 'probe'),
+    'users status==active (weekly reminder sweep)': db
+      .collection('users')
+      .where('status', '==', 'active'),
     // No composite index needed (single-field OR); probed for query-shape regression.
     'users or(role==manager, admin==true) (approver choices)': db
       .collection('users')

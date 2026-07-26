@@ -1,9 +1,57 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { SESSION_CAP_HOURS, minutesBetween, type TimeEntryDoc } from '@sabeel/shared';
-import { reportError, sentryDsn } from './sentry';
+import {
+  COLLECTIONS,
+  SESSION_CAP_HOURS,
+  minutesBetween,
+  type TimeEntryDoc,
+  type TimesheetDoc,
+} from '@sabeel/shared';
+import { reportError, reportMessage, sentryDsn } from './sentry';
 
 const CAP_MS = SESSION_CAP_HOURS * 60 * 60 * 1000;
+
+/**
+ * Closing an entry changes a period's hours — which is fine while the period is a
+ * draft, and is NOT fine once its timesheet has been submitted or approved. Rules
+ * forbid every client from touching an approved period; this job runs on the
+ * admin SDK and bypasses them, so it has to honour that boundary itself.
+ *
+ * It cannot simply skip: leaving someone clocked in forever is worse than a
+ * corrected total, and the entry would be re-examined every hour. So it closes
+ * the entry, then repairs the sheet's stored snapshot so it stops contradicting
+ * its own entries, and tells a human — an approved period changing after the fact
+ * is exactly the kind of silent edit nobody would otherwise notice.
+ */
+async function reconcileSealedPeriod(uid: string, periodKey: string, entryId: string) {
+  const db = getFirestore();
+  const ref = db.collection(COLLECTIONS.timesheets).doc(`${uid}_${periodKey}`);
+  const snap = await ref.get();
+  if (!snap.exists) return; // draft period — nothing sealed, nothing to say
+  const sheet = snap.data() as TimesheetDoc;
+  if (sheet.status !== 'submitted' && sheet.status !== 'approved') return;
+
+  const entries = await db
+    .collection(COLLECTIONS.timeEntries)
+    .where('uid', '==', uid)
+    .where('dayKey', '>=', sheet.periodKey)
+    .where('dayKey', '<=', sheet.toKey)
+    .get();
+  const closed = entries.docs
+    .map((d) => d.data() as TimeEntryDoc)
+    .filter((e) => e.end !== null);
+  const totalMinutes = closed.reduce((s, e) => s + (e.durationMinutes ?? 0), 0);
+
+  await ref.update({ totalMinutes, entryCount: closed.length, updatedAt: Date.now() });
+  await reportMessage(`Auto-close touched a ${sheet.status} timesheet`, {
+    uid,
+    periodKey,
+    entryId,
+    status: sheet.status,
+    totalMinutes,
+    previousTotalMinutes: sheet.totalMinutes,
+  });
+}
 
 /**
  * Close clock sessions left running past the cap. Caps the entry at start+cap,
@@ -39,6 +87,8 @@ export async function closeStaleSessions(now: number): Promise<number> {
       batch.update(userRef, { activeEntryId: null });
     }
     await batch.commit();
+    // After the entry is closed, not before: the repair must see the new total.
+    await reconcileSealedPeriod(entry.uid, entry.periodKey, docSnap.id);
     closed++;
   }
   return closed;

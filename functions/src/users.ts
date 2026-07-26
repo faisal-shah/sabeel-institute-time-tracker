@@ -116,6 +116,21 @@ export async function applyUserAccess(callerUid: string, input: UserAccessInput)
     }
   }
 
+  // Losing access must not wait for a token to expire. Rules trust the ID token,
+  // which lives up to an hour, so new claims alone don't stop someone already
+  // holding one. A connected client force-refreshes immediately (it watches
+  // claimsUpdatedAt); revoking the refresh token closes the other case, where the
+  // app is backgrounded or offline and would otherwise keep its old rights until
+  // expiry. Residual window: an ID token already in hand stays valid until it
+  // expires — Firestore rules cannot check revocation time.
+  const lostAccess =
+    (current.status === 'active' && next.status !== 'active') ||
+    (current.role === 'manager' && next.role !== 'manager') ||
+    (current.admin === true && next.admin !== true);
+  if (lostAccess) {
+    await auth.revokeRefreshTokens(input.uid);
+  }
+
   return next;
 }
 

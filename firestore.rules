@@ -92,6 +92,18 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['activeEntryId', 'displayName', 'photoURL', 'approverUid',
                        'notifPrefs', 'timeZone'])
+        // Cosmetic fields are still typed and bounded. This cannot stop someone
+        // choosing a name that collides with a colleague's — names legitimately
+        // collide — but reports and the CSV carry the email alongside, so a
+        // display name is never the identifier anything is decided on.
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName'])
+            || (request.resource.data.displayName is string
+                && request.resource.data.displayName.size() > 0
+                && request.resource.data.displayName.size() <= 100))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['photoURL'])
+            || request.resource.data.photoURL == null
+            || (request.resource.data.photoURL is string
+                && request.resource.data.photoURL.size() <= 2000))
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approverUid'])
             || approverOk(request.resource.data.approverUid))
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['notifPrefs'])
@@ -108,10 +120,16 @@ service cloud.firestore {
 
       // Push registration tokens: strictly the owner's business. The server
       // (admin SDK) reads them to send and prunes dead ones.
+      // Registering requires an ACTIVE account (a pending/disabled user has no
+      // reason to receive anything). Read/delete stay at merely signed-in on
+      // purpose: sign-out deregisters this device, and that cleanup must still
+      // work for someone who was disabled while signed in — otherwise their
+      // tokens linger and the next person on the device inherits them.
       match /pushTokens/{tokenId} {
         allow read, delete: if isSignedIn() && request.auth.uid == uid;
-        allow create, update: if isSignedIn() && request.auth.uid == uid
+        allow create, update: if isActive() && request.auth.uid == uid
           && request.resource.data.token is string
+          && request.resource.data.token.size() > 0
           && request.resource.data.platform in ['web', 'android'];
       }
     }
@@ -120,13 +138,19 @@ service cloud.firestore {
     // them; only managers shape the list. Never deleted — archived (status flip),
     // so historical entries keep a valid reference.
     match /activities/{activityId} {
+      function activityValid(d) {
+        return d.name is string && d.name.size() > 0 && d.name.size() <= 200
+          && d.status in ['active', 'archived'];
+      }
       allow read: if isActive();
-      allow create: if (isManager() || isAdmin())
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.status in ['active', 'archived'];
+      allow create: if (isManager() || isAdmin()) && activityValid(request.resource.data);
+      // The same validation on update — checking only `status` would have let an
+      // archive/restore blank the name or rewrite the provenance fields. The UI
+      // only ever sends `status`; this is the surface, not the caller, agreeing.
       allow update: if (isManager() || isAdmin())
-        && request.resource.data.status in ['active', 'archived'];
+        && activityValid(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if false;
     }
 
@@ -137,13 +161,27 @@ service cloud.firestore {
     // timeZone/dayKey pin the entry to the local day the work happened, and
     // periodKey pins it to its Sun–Sat month-clipped timesheet period.
     match /timeEntries/{entryId} {
+      // A dayKey is derived from `start` in the entry's own timezone, which rules
+      // cannot recompute (there is no tz database here). What they CAN do is bound
+      // it: every real UTC offset lies in [-12h, +14h], so the instant behind local
+      // day D must fall in [D_utc - 14h, D_utc + 36h). Outside that the entry is
+      // incoherent — the day a report files it under would contradict the times
+      // printed on it. Deliberately loose; it catches gross mismatches, not
+      // off-by-an-hour ones, and no honest client can trip it.
+      function dayKeyPlausible(dayKey, start) {
+        let p = dayKey.split('-');
+        let dayMs = timestamp.date(int(p[0]), int(p[1]), int(p[2])).toMillis();
+        return start >= dayMs - 14 * 3600000 && start < dayMs + 36 * 3600000;
+      }
       function entryValid(d) {
-        return d.activityId is string && d.activityId.size() > 0
-          && d.activityName is string
+        return d.uid is string && d.uid.size() > 0
+          && d.activityId is string && d.activityId.size() > 0
+          && d.activityName is string && d.activityName.size() > 0
           && d.start is int && d.start > 0
           && d.timeZone is string && d.timeZone.size() > 0
           && d.dayKey is string && d.dayKey.size() == 10
           && d.periodKey == periodKeyOf(d.dayKey)
+          && dayKeyPlausible(d.dayKey, d.start)
           && d.source in ['clock', 'manual']
           && (d.end == null
               ? !('durationMinutes' in d)
@@ -175,8 +213,13 @@ service cloud.firestore {
       // session runs). Managers/approvers create CLOSED entries on behalf of
       // others, flagged with lastEditedBy — who may do so per period state is
       // canTouchPeriod's call (submitted → stamped approver/admin only).
+      // Referential integrity is checked on CREATE only: an existing entry's
+      // references were validated when it was written, activities are never
+      // deleted, and re-reading both docs on every clock-out would be waste.
       allow create: if isActive()
         && entryValid(request.resource.data)
+        && exists(/databases/$(database)/documents/activities/$(request.resource.data.activityId))
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.uid))
         && canTouchPeriod(request.resource.data.uid, request.resource.data.periodKey)
         && (
           (request.resource.data.uid == request.auth.uid
@@ -226,8 +269,6 @@ service cloud.firestore {
             || (resource.data.uid == request.auth.uid && meAfter().activeEntryId == null));
     }
 
-    // Weekly timesheets: one doc per (user, period) from submission on; no doc =
-    // draft. Lifecycle: submit (owner create) → approve/reject (stamped approver
     // Operational state written only by the backend (the health canary's
     // document-count baseline). Deny-by-default would already cover it; stated
     // explicitly so the server-only intent is visible on the security surface.
@@ -235,6 +276,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Append-only timesheet history, written by the onTimesheetWritten trigger.
+    // Server-only for the same reason it exists: submit/approve/reject/withdraw/
+    // reopen all mutate (or delete) the single timesheet doc, so without this the
+    // record of who approved a period — and that it was later reopened — is gone.
+    // A client that could write here could forge that record; a client that could
+    // read it gains nothing the app doesn't already show.
+    match /timesheetEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Weekly timesheets: one doc per (user, period) from submission on; no doc =
+    // draft. Lifecycle: submit (owner create) → approve/reject (stamped approver
     // or admin) → resubmit after rejection (owner). Withdraw = owner delete while
     // not approved; admin delete reopens anything back to draft.
     match /timesheets/{tsId} {

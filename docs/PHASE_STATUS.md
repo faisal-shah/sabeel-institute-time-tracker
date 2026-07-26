@@ -36,6 +36,24 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-26 — **Second hardening pass (A1–A8), emulator-driven.** Prompted by
+  M5b: if one "validated once, never revisited" bug existed, how many more?
+  Hypotheses were **run against the rules**, not reasoned about — ten probes,
+  eight confirmed gaps. Fixed: on-behalf entries stamped the *writer's* timezone
+  instead of the target's (A1, straight contradiction of the work-local
+  invariant); `closeStaleSessions` could rewrite an approved timesheet's hours
+  silently, since the admin SDK bypasses the period lock (A2); withdraw/reopen
+  **deleted** the doc and with it the record that a period was ever approved —
+  now an append-only `timesheetEvents` written by a trigger (A3); losing access
+  didn't revoke refresh tokens (A4); the weekly reminder skipped users with no
+  timezone in silence (A5); a batch of rules gaps confirmed permitted before
+  being closed (A6); overlap detection couldn't see overnight collisions (A7);
+  session snapshots could emit out of order (A8). L11 upgraded from "accepted,
+  inherent" to a real bound — rules can't do tz math, but they *can* require
+  `start` to lie within [dayKey − 14h, dayKey + 36h), which covers every UTC
+  offset. **That check immediately exposed a year of drift in our own fixtures**
+  (`T0` was 2025-07-15 paired with 2026 dayKeys). Details and residuals in
+  `docs/PRODUCTION-REVIEW.md`. 111 emulator + 47 unit + e2e green.
 - 2026-07-25 — **Self-approval formalised; approver authority now expires with the
   role.** Managers and admins alike may be their own timesheet approver
   (PRODUCTION-REVIEW **M5**, flipped from ❎ won't-fix to ✅ by design): flexibility

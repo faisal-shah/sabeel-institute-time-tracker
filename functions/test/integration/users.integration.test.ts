@@ -140,6 +140,41 @@ describe('applyUserAccess — approver pointer cleanup', () => {
     expect(await approverOf(bob)).toBe(mgrAdmin);
   });
 
+  /**
+   * Claims alone don't stop someone already holding an ID token — rules trust the
+   * token, and it lives up to an hour. Revoking the refresh token is what stops a
+   * backgrounded or offline client from simply carrying on.
+   */
+  it('revokes refresh tokens when access is lost, not when it is granted', async () => {
+    const admin = freshUid('admin');
+    const target = freshUid('mgr');
+    await seedUser(admin, { status: 'active', admin: true });
+    await seedUser(target, { status: 'active', role: 'manager' });
+
+    // Undefined until something revokes — that absence is the "not revoked" state.
+    const validAfter = async () => (await getAuth().getUser(target)).tokensValidAfterTime;
+    expect(await validAfter()).toBeFalsy();
+
+    await applyUserAccess(admin, { uid: target, status: 'active', role: 'member' });
+    const afterDemote = await validAfter();
+    expect(afterDemote).toBeTruthy();
+
+    // Promotion grants access — nothing to cut off, so no further revocation.
+    await applyUserAccess(admin, { uid: target, role: 'manager' });
+    expect(await validAfter()).toBe(afterDemote);
+  });
+
+  it('revokes on disable', async () => {
+    const admin = freshUid('admin');
+    const target = freshUid('victim');
+    await seedUser(admin, { status: 'active', admin: true });
+    await seedUser(target, { status: 'active' });
+
+    expect((await getAuth().getUser(target)).tokensValidAfterTime).toBeFalsy();
+    await applyUserAccess(admin, { uid: target, status: 'disabled' });
+    expect((await getAuth().getUser(target)).tokensValidAfterTime).toBeTruthy();
+  });
+
   it('leaves pointers alone when eligibility is gained or unchanged', async () => {
     const admin = freshUid('admin');
     const mgr = freshUid('mgr');

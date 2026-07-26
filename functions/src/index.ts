@@ -9,5 +9,6 @@ export { exportCsv, reportTotals } from './reporting';
 export { autoCloseStaleSessions } from './sessions';
 export { healthCheck } from './health';
 export { notifyNewUser, notifyTimesheet, weeklyReminder } from './notify';
+export { onTimesheetWritten } from './timesheetAudit';
 // Post-deploy index/query verification (token-guarded; see probe.ts).
 export { probeQueries } from './probe';

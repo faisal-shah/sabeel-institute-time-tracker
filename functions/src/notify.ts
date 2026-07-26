@@ -14,7 +14,7 @@ import {
   texts,
   type NotifText,
 } from './notifyCore';
-import { reportError, sentryDsn } from './sentry';
+import { reportError, reportMessage, sentryDsn } from './sentry';
 
 /**
  * Send to every device a user has registered; prune tokens FCM says are dead.
@@ -132,9 +132,19 @@ export const weeklyReminder = onSchedule(
       const now = Date.now();
       const db = getFirestore();
       const users = await db.collection('users').where('status', '==', 'active').get();
+      // A user with no recorded timezone is skipped silently — and the whole
+      // feature would die that way if the write in App.tsx ever regressed, with
+      // the schedule still reporting success every hour. Count them so "nobody is
+      // reachable" is a signal rather than a silence.
+      let noTimeZone = 0;
+      let sent = 0;
       for (const snap of users.docs) {
         const user = snap.data() as UserDoc;
-        if (!user.timeZone || !prefOn(user.notifPrefs, 'reminder')) continue;
+        if (!user.timeZone) {
+          noTimeZone++;
+          continue;
+        }
+        if (!prefOn(user.notifPrefs, 'reminder')) continue;
         if (!inReminderWindow(now, user.timeZone)) continue;
         const todayKey = dayKeyFor(now, user.timeZone);
         const prev = reminderPeriod(todayKey);
@@ -157,6 +167,19 @@ export const weeklyReminder = onSchedule(
 
         await sendToUser(snap.id, texts.reminder(prev));
         await snap.ref.update({ lastReminderDayKey: todayKey });
+        sent++;
+      }
+
+      if (noTimeZone > 0) {
+        console.log(`weeklyReminder: sent ${sent}, skipped ${noTimeZone} with no timezone`);
+      }
+      // Every active account unreachable means the timezone write is broken, not
+      // that everyone is new. That is a dead feature, and it would never surface
+      // on its own — the job succeeds either way.
+      if (users.size > 0 && noTimeZone === users.size) {
+        await reportMessage('weeklyReminder: no active user has a recorded timezone', {
+          activeUsers: users.size,
+        });
       }
     } catch (e) {
       await reportError(e);

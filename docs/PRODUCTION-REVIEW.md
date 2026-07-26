@@ -156,11 +156,101 @@ The Drive sync was removed entirely, taking this with it.
 `setup.ts` `invoker: 'public'` (documented workaround). Unauthenticated calls fail
 in-code but still spin instances; `maxInstances: 10` caps cost. Acceptable; noted.
 
-### L11 — `dayKey` not validated against `start`+`timeZone` in rules ❎ accepted (2026-07-22)
-Inherent (rules can't do IANA tz math); honor model + approver review.
-Inherent (rules can't do IANA tz math), so `dayKey`/`periodKey` are a trust
-boundary the honest client fills and the approver reviews. Document as a known
-limit of the honor model.
+### L11 — `dayKey` not validated against `start`+`timeZone` in rules ✅ partly done (2026-07-26)
+Originally accepted as inherent: rules can't do IANA tz math, so `dayKey` was a
+pure trust boundary. **Exact** validation is still impossible, but a *bound* is
+not: every real UTC offset lies in [-12h, +14h], so the instant behind local day
+D must fall in [D_utc − 14h, D_utc + 36h). `dayKeyPlausible` in `firestore.rules`
+now enforces that on every entry write.
+- Catches gross incoherence (an entry filed days from when it happened, which is
+  what would move hours into the wrong week or past a period lock); does not catch
+  an off-by-an-hour DST slip, and does not try to.
+- Confirmed by probe **before** the fix: a `dayKey` three days from `start` was
+  accepted. Now rejected, with both UTC-offset extremes still passing.
+- **It immediately found a real defect in our own fixtures:** `rules.timeEntries`
+  used `T0 = 1752570000000`, which is 2025-07-15, paired with `dayKey`s labelled
+  2026-07-15 — a year of drift nothing had ever checked. Fixture corrected.
+
+---
+
+## Second pass — 2026-07-26
+
+Prompted by M5b: if one "validated once, never revisited" bug existed, how many
+more? Method differed from the 2026-07-21 review — **hypotheses were run against
+the rules in the emulator, not reasoned about**. Ten probes; eight confirmed a
+gap, two came back clean (malformed dayKeys and a dangling `approverUid` were
+already rejected). All findings below are fixed.
+
+### A1 — Hours logged on someone's behalf used the *writer's* timezone ✅ done
+`createManualEntry` and `ManualEntryScreen` stamped `deviceTimeZone()` — the
+manager's. A manager in Chicago entering 09:00–17:00 for someone in Singapore
+recorded a Chicago instant with a Chicago `dayKey`, so the entry showed the wrong
+hours and, near a week boundary, landed in the **wrong timesheet period** — a
+locked one at worst. Straight contradiction of the work-local-timezone invariant,
+and the edit path (`EntryEditScreen`) had always done it correctly.
+- Now resolved from the TARGET's profile (`useUser` → `timeZone`, kept fresh by
+  `App.tsx`), falling back to the device. Wall-clock input is interpreted via
+  `epochFor` in that zone, and the on-behalf banner names the zone when it differs.
+
+### A2 — Auto-close could silently rewrite an approved timesheet ✅ done
+`closeStaleSessions` runs on the admin SDK and so bypasses the approved-period
+lock every client obeys. Probing confirmed rules permit submitting a period that
+still holds a running entry (only the client blocks it), so an approved period
+could contain one — and the hourly job would then change its hours with no trace,
+leaving the sheet's stored `totalMinutes` contradicting its own entries.
+- Now: still closes (leaving someone clocked in forever is worse), then repairs
+  the sheet's snapshot and raises a Sentry message. An approved period changing
+  after the fact is exactly what must not be silent.
+
+### A3 — Withdraw and reopen destroyed the approval record ✅ done
+Both transitions **delete** the timesheet doc, so who approved a period, when, and
+the fact it was later reopened simply vanished — the worst thing to lose in the
+official record of an org's hours.
+- New append-only `timesheetEvents`, written by the `onTimesheetWritten` trigger
+  (server-side: a client could otherwise forge or omit the very events this
+  exists to preserve), deny-all in rules, counted by the health canary. A delete
+  from `approved` is recorded as a reopen, from anything else as a withdrawal.
+
+### A4 — Losing access didn't evict a live session ✅ done
+`applyUserAccess` never revoked refresh tokens, and rules trust the ID token,
+which lives up to an hour. A connected client re-gates instantly (it watches
+`claimsUpdatedAt`), but a backgrounded or offline one kept its rights.
+- Now revokes on any loss of access (disable, demote, admin revoked).
+  **Residual, unavoidable:** an ID token already in hand stays valid until it
+  expires — Firestore rules cannot check revocation time.
+
+### A5 — The weekly reminder skipped users silently ✅ done
+`weeklyReminder` skips anyone with no recorded `timeZone`, and the write that
+populates it swallows failures. If that write ever regressed the entire feature
+would die while the schedule kept reporting success every hour.
+- Now counts skips, and raises to Sentry when *no* active user is reachable —
+  "nobody has a timezone" is a broken feature, not a quiet week.
+
+### A6 — Rules hardening (all confirmed permitted by probe first) ✅ done
+Entry `uid` and `activityName` are now non-empty; `activityId`/`uid` must exist
+(create only — references don't rot, and re-reading on every clock-out is waste);
+activity updates are validated like creates, with `createdAt`/`createdBy`
+immutable (archiving used to be able to blank a name); push registration requires
+an **active** account, while delete stays open to any signed-in owner so sign-out
+cleanup survives being disabled mid-session; `displayName`/`photoURL` are typed
+and bounded. See L11 for the `dayKey` bound.
+- **Not fixed, by design:** a timesheet's `totalMinutes`/`entryCount` remain
+  unverified against real entries. Rules cannot aggregate, and it doesn't matter —
+  reports recompute from entries (see "Verified solid"). The figure is display-only.
+- **Not fixable:** a member can still choose a display name matching a colleague's.
+  Names legitimately collide; reports and CSV carry the email alongside.
+
+### A7 — Overlap detection missed overnight collisions ✅ done
+`overlappingEntryIds` grouped by `dayKey`, but an overnight entry carries the day
+it *started* — so 23:00–01:00 could never be seen to collide with the next day's
+00:30–02:00. Now compared on absolute instants, which is also correct across
+entries in different timezones.
+
+### A8 — Session snapshot ordering ✅ done
+`handleSnapshot` awaits a token read (up to 8s), so two snapshots in flight could
+finish out of order and let an older profile overwrite a newer one. Sequence guard
+added; `stopWatching` invalidates in-flight work so a sign-out can't be undone by
+a late emit.
 
 ---
 
@@ -174,9 +264,9 @@ limit of the honor model.
 - **Reporting integrity:** totals recompute from approved entries; the
   client-supplied `totalMinutes` snapshot is display-only (hence M2 targets the
   *entry* `durationMinutes`, not the snapshot).
-- **Disable propagation:** `isStale → poll` in `session.ts` force-refreshes the
-  token when the profile doc diverges from claims, so an online user re-gates
-  promptly. Residual: a manual token-replay within the ≤1h TTL (low).
+- **Disable propagation:** `session.ts` watches `claimsUpdatedAt` and force-refreshes
+  the token when it moves, so an online user re-gates within a second. Refresh
+  tokens are now revoked too (A4); residual is a live ID token within its ≤1h TTL.
 - **`useLiveQuery`/`useLiveDoc`**, auth seams, `guarded()` (rethrows, excludes
   HttpsError from Sentry, flushes), secret hygiene (`debug.keystore` intentional;
   no real secrets tracked), callable auth guards.
@@ -206,3 +296,12 @@ supply-chain/license audit. Emulator was intentionally not run (shared machine).
   L10/L11 accepted. Full suites green (33 shared, 23 functions unit, 88
   emulator, e2e); prod verified (probe all-OK, headers live, sign-in clean,
   M2 pre-flight 0 violators).
+- 2026-07-25 — M5 settled as by-design (managers may self-approve); M5b found and
+  fixed in the same batch.
+- 2026-07-26 — Second pass, emulator-driven. A1–A8 opened and all fixed; L11
+  upgraded from accepted to bounded. 111 emulator tests + 47 unit + e2e green.
+  **Method note for the next pass:** every finding here came from running a
+  hypothesis against the rules, and the one claim made by inspection alone
+  (a self-approver escaping the submitted-period freeze) was wrong. Probe, then
+  pair each `assertFails` with a positive control — several existing tests were
+  passing for reasons other than the one they named.
