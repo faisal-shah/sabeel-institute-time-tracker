@@ -38,7 +38,58 @@ environmental.** Bisect against clean HEAD before debugging your own diff.
 
 Ports are looked up **by port**, never `pkill -f firebase` — that pattern also
 matches the script's own command line and kills the caller (seen as a shell
-exiting 144).
+exiting 144). This is easy to re-learn the hard way: on 2026-07-26 a
+`pkill -f functionsEmulatorRuntime` typed by hand killed the agent shell the
+same way. Kill by PID, skipping `$$`/`$PPID`:
+
+```sh
+for p in $(pgrep -f "emulator/functionsEmulatorRuntime"); do
+  case " $$ $PPID " in *" $p "*) continue;; esac
+  kill -9 "$p"
+done
+```
+
+**What this script cannot clean up:** orphaned `functionsEmulatorRuntime`
+children. They hold no fixed port, so a port-based sweep never sees them, and
+`npm run emulators:free` will happily report *"emulator ports clear"* while
+several are still resident. Check for them directly when a run misbehaves:
+
+```sh
+ps -eo pid,args --no-headers | grep [f]unctionsEmulatorRuntime
+```
+
+(`pgrep -f` counts its own subshell, so it reports one or two phantom hits —
+use `ps | grep [f]…` when you want a truthful count.)
+
+## The emulator suite dies with `ECONNREFUSED` and most tests "skipped"
+
+Signature: the run lasts ~6 seconds, a dozen tests fail with
+`connect ECONNREFUSED 127.0.0.1:9099`, and 80+ are skipped. Buried above the
+vitest output — and easy to miss, because the tail of the log is all test
+noise — is the real cause:
+
+```
+⚠  Firestore Emulator has exited upon receiving signal: SIGKILL
+Killed
+```
+
+That is the **OOM killer**, not a bug in your diff. This machine runs `earlyoom`
+with `--prefer ^(qemu-system-x86|clang\+\+|cc1plus|ld|node|java|gradle)$`, so
+the Firestore emulator (Java) is a preferred victim the moment memory gets
+tight.
+
+The usual culprit is a **Gradle daemon left resident by an APK build** — after a
+release it sits on ~3.7 GB indefinitely. Seen 2026-07-26: the emulator suite
+failed three times in a row, looking exactly like a broken change, until:
+
+```sh
+cd app/android && ./gradlew --stop    # freed 4.1 GB; suite immediately green
+```
+
+So when the suite fails right after you have built an APK or run the AVD, check
+`free -h` and `ps -eo pid,rss,comm --sort=-rss | head` **before** reading the
+failures. Always `./gradlew --stop` and kill the AVD when finishing build work —
+it also keeps the machine usable for anyone else working in the repo.
 
 ## `scripts/check-text-sources.mjs` (runs inside `npm run lint`)
 

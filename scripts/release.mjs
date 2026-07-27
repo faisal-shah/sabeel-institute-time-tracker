@@ -274,3 +274,16 @@ console.log(`\n✔ v${version} released and committed. Now: firebase deploy --on
 // Push the just-built, just-verified arm64 APK to the public download page as a
 // Release asset (never a commit). Same artifact, same run — provenance is tight.
 publishDownloadPage(version, built.arm64);
+
+// Release over: stop the Gradle daemon. It sits on ~3.7GB indefinitely, and on
+// this 15GB machine earlyoom then kills the Firestore emulator (Java is a
+// preferred victim) partway through the next `npm run test:emulator` — which
+// presents as ECONNREFUSED and 80+ skipped tests, i.e. as a broken diff rather
+// than as memory pressure. Costs one cold Gradle start; saves an hour of
+// debugging the wrong thing. Never fail a completed release over this.
+try {
+  execSync('./gradlew --stop', { cwd: join(root, 'app/android'), stdio: 'ignore' });
+  console.log('▸ Gradle daemon stopped (frees ~3.7GB — see docs/DEV-TOOLING.md)');
+} catch {
+  console.log('  (could not stop the Gradle daemon; run `./gradlew --stop` in app/android)');
+}
