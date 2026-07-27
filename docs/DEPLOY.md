@@ -29,22 +29,57 @@ GCLOUD_PROJECT=<real-project-id> node scripts/grant-admin.mjs you@example.com
 (Needs gcloud ADC or `GOOGLE_APPLICATION_CREDENTIALS`.) Sign out/in to pick up the
 admin claim. From then on, promote others in-app (Manage users).
 
-## Android release APK
-`android/` is committed (no EAS). Build locally:
+## Ship it — the release runbook
+
+`android/` is committed (no EAS); everything below is local. **Do not run the
+Gradle/`gh release` commands by hand** — `npm run release` encodes the steps and
+the checks, and skipping it is how versions and stamps drift apart.
+
 ```sh
-cd app && npx expo run:android            # debug, onto a device/emulator
-cd app/android && ./gradlew assembleRelease   # release APK (universal)
-cd app/android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a  # arm64-only (~30MB)
+# 0. clean tree, CI green on the commit you are shipping
+npm run verify                       # lint (incl. version check) + typecheck + knip + unit
+scripts/emulator.sh headless &       # the release VERIFIES on the AVD; it needs one
+
+# 1. cut it — version is X.Y.Z, no suffix, and must increase (see check-version.mjs)
+npm run release -- 0.26.0 --notes notes.md
+
+# 2. push the release commit FIRST, then deploy the web from it
+git push origin main
+firebase deploy --only hosting --project dev
+#    …plus `functions` / `firestore:rules` / `firestore:indexes` if they changed.
 ```
-**Distribution is ALWAYS a GitHub release** (never chat/ad-hoc file sharing):
-```sh
-gh release create vX.Y.Z --title "..." --notes "..." path/to/renamed.apk
-```
-Verify the APK is production-mode before publishing: install on the tb_emu AVD
-and screenshot — the sign-in screen must NOT show the dev sign-in row.
-Before sharing a release build: generate a real keystore (the debug key is only for
-sideloading your own device) and register its SHA-1 on the Firebase Android app, then
-re-download `google-services.json`. See `TODO.md`.
+
+`npm run release` bumps `app/app.json` (the only place the version lives),
+re-renders the manual PDF, builds both APK variants, **installs the universal
+APK on the AVD and refuses to publish unless it is a production bundle** (the
+check that matters is the ABSENCE of the dev sign-in row), creates the GitHub
+release, then calls `scripts/publish-apk.sh`.
+
+`publish-apk.sh` updates the public download page
+(https://faisal-shah.github.io/sabeel-time-tracker/):
+
+- uploads the arm64 APK as an asset on the **fixed rolling tag**
+  `timetracker-latest`, so the download URL never changes;
+- rewrites the version **and a published date/time** on the page. The rolling
+  URL means the page is the only place a reader can tell whether what they are
+  downloading is current, so it carries `published <date>, <time> <TZ>` in local
+  time next to the version. Both are stamped by the script — never edit them by
+  hand, and if you restructure that page keep the `Current build: <strong>v…`
+  and `<time datetime="…">` anchors or the script aborts (by design).
+
+**Order matters in step 2.** Deploying hosting before pushing stamps the web
+build with a commit that is not on `main` yet; the sign-in footer then disagrees
+with the APK. Both surfaces must read `v<version> · <same hash>`.
+
+### After shipping
+- Download page shows the new version **and a fresh timestamp** (Pages lags ~1 min):
+  `curl -s "https://faisal-shah.github.io/sabeel-time-tracker/?cb=$RANDOM" -H 'Cache-Control: no-cache' | grep -A1 'Current build'`
+- Both surfaces agree: the web bundle's `BUILD_INFO` matches the APK's.
+- Record the deploy in `docs/PHASE_STATUS.md`.
+
+Signing: the APKs are debug-signed, which is fine for sideloading but not for
+Play. Switching to a real keystore later forces a one-time uninstall/reinstall
+for everyone — see `TODO.md`.
 
 ## Troubleshooting
 
