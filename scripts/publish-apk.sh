@@ -7,6 +7,8 @@ ASSET="sabeel-time-tracker-arm64-v8a.apk"
 APK="${1:-app/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk}"
 PAGES_DIR="${TT_PAGES_DIR:-../faisal-shah.github.io}"
 [ -f "$APK" ] || { echo "APK not found: $APK" >&2; exit 1; }
+# Last gate before a public download URL exists, which is awkward to retract.
+node scripts/check-version.mjs
 VERSION="$(node -p "require('./app/app.json').expo.version")"
 tmp="$(mktemp -d)/$ASSET"; cp "$APK" "$tmp"
 gh release upload "$TAG" "$tmp" --clobber --repo "$REPO"

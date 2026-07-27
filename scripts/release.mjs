@@ -17,13 +17,17 @@
  *    that matters is the ABSENCE of the dev sign-in row: an emulator-mode
  *    bundle looks identical otherwise, and Metro will happily serve a cached
  *    bundle built under different EXPO_PUBLIC_* env.
+ *  - **The version is X.Y.Z and lives ONLY in app/app.json.** Gradle derives
+ *    versionName and versionCode from it; this script writes the derived copies
+ *    nowhere. See scripts/check-version.mjs for why the shape is not negotiable.
  *  - **versionCode must increase** or the install silently refuses to upgrade.
- *  - The version lives in FOUR places that drifted apart before this existed
- *    (app.json was stranded at beta.7 while builds said beta.11).
+ *    It is derived (major*1000000 + minor*1000 + patch), so a version that goes
+ *    backwards is caught here rather than by a phone that won't take the update.
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { versionProblems } from './check-version.mjs';
 
 const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const args = process.argv.slice(2);
@@ -34,9 +38,10 @@ const opt = (name) => {
 };
 const DRY = flag('--dry-run');
 const VERIFY_ONLY = flag('--verify-only');
-const version = args.find((a) => /^\d+\.\d+\.\d+/.test(a));
+// Anchored at both ends: an unanchored test happily accepted `1.0.0-beta.24`,
+// which is exactly the shape this scheme exists to keep out.
+const version = args.find((a) => /^\d+\.\d+\.\d+$/.test(a));
 
-const GRADLE = join(root, 'app/android/app/build.gradle');
 const APP_JSON = join(root, 'app/app.json');
 const MANUAL_MD = join(root, 'docs/USER-MANUAL.md');
 const RENDER_PY = join(root, 'docs/render-manual.py');
@@ -47,24 +52,19 @@ const sh = (cmd, cwd = root) =>
 const shOut = (cmd, cwd = root) =>
   execSync(cmd, { cwd, encoding: 'utf8', env: process.env }).trim();
 
+const versionCodeOf = (v) => {
+  const [major, minor, patch] = v.split('.').map(Number);
+  return major * 1000000 + minor * 1000 + patch;
+};
+
 function currentVersion() {
-  const m = readFileSync(GRADLE, 'utf8').match(/versionName\s+"([^"]+)"/);
-  return m?.[1] ?? null;
-}
-function currentCode() {
-  const m = readFileSync(GRADLE, 'utf8').match(/versionCode\s+(\d+)/);
-  return m ? Number(m[1]) : 0;
+  return JSON.parse(readFileSync(APP_JSON, 'utf8')).expo.version;
 }
 
 function bumpVersion(v) {
-  const code = currentCode() + 1;
-  let g = readFileSync(GRADLE, 'utf8');
-  g = g.replace(/versionCode\s+\d+/, `versionCode ${code}`);
-  g = g.replace(/versionName\s+"[^"]+"/, `versionName "${v}"`);
-  writeFileSync(GRADLE, g);
+  const code = versionCodeOf(v);
 
-  // app.json drifts silently — nothing builds from it on Android, so nobody
-  // notices until the web build reports a version nobody recognises.
+  // The ONLY place the version is written. Gradle reads it from here.
   const aj = JSON.parse(readFileSync(APP_JSON, 'utf8'));
   aj.expo.version = v;
   writeFileSync(APP_JSON, JSON.stringify(aj, null, 2) + '\n');
@@ -83,7 +83,7 @@ function bumpVersion(v) {
       `App version ${v} &nbsp;`,
     ),
   );
-  console.log(`▸ version → ${v} (versionCode ${code}) in gradle, app.json, manual, renderer`);
+  console.log(`▸ version → ${v} (versionCode ${code}) in app.json, manual, renderer`);
   return code;
 }
 
@@ -193,9 +193,43 @@ if (VERIFY_ONLY) {
 }
 
 if (!version) {
-  console.error('usage: node scripts/release.mjs <version> [--notes FILE] [--dry-run]');
+  // Say what is wrong with what they typed rather than printing usage at them:
+  // the whole point of this scheme is that `0.25.0-beta.1` LOOKS like a version.
+  const attempted = args.find((a) => /^v?\d/.test(a) && args[args.indexOf(a) - 1] !== '--notes');
+  if (attempted) {
+    console.error(`refusing to release "${attempted}":`);
+    for (const p of versionProblems(attempted)) console.error(`  - ${p}`);
+    process.exit(1);
+  }
+  console.error('usage: node scripts/release.mjs <X.Y.Z> [--notes FILE] [--dry-run]');
   console.error('       node scripts/release.mjs --verify-only');
+  console.error('\nThe version is three integers, no suffix — see scripts/check-version.mjs.');
   process.exit(2);
+}
+// Shape alone is not enough: `2026.07.01` is three dot-separated integers and
+// still illegal, because 07 and 7 are the same number.
+if (versionProblems(version).length > 0) {
+  console.error(`refusing to release "${version}":`);
+  for (const p of versionProblems(version)) console.error(`  - ${p}`);
+  process.exit(1);
+}
+// A published versionCode is spent forever: Android refuses to install an APK
+// whose code is not greater than the installed one, so a version that goes
+// backwards produces an update nobody can take. Catch it before the tag exists.
+{
+  const prev = currentVersion();
+  if (versionProblems(prev).length > 0) {
+    console.error(`app.json holds "${prev}", which is not a comparable version — fix it first.`);
+    process.exit(1);
+  }
+  if (versionCodeOf(version) <= versionCodeOf(prev)) {
+    console.error(
+      `refusing to release ${version} (versionCode ${versionCodeOf(version)}): ` +
+        `not greater than the current ${prev} (${versionCodeOf(prev)}). ` +
+        'Android would refuse the upgrade.',
+    );
+    process.exit(1);
+  }
 }
 if (shOut('git status --porcelain')) {
   console.error('working tree is dirty — commit first so the release is reproducible');

@@ -77,9 +77,16 @@ it records which failures are environmental and what each script guards against.
 - Android: `scripts/emulator.sh headless` (AVD `tb_emu`, Google-APIs image), then
   `npx expo run:android` in `app/`. Firebase emulators from the AVD = `10.0.2.2`.
   There are NO physical devices — emulator only; verify UI by adb screenshot.
-- Releases: `npm run release -- <version> --notes FILE` (bumps all four version
-  files, rebuilds the manual PDF, builds both APK variants, verifies the
-  production bundle on the AVD, publishes to GitHub). Never hand-bump versions.
+- Releases: `npm run release -- <X.Y.Z> --notes FILE` (bumps the version,
+  rebuilds the manual PDF, builds both APK variants, verifies the production
+  bundle on the AVD, publishes to GitHub). Never hand-bump versions.
+- **The version is three integers and lives only in `app/app.json` →
+  `expo.version`** (currently the `0.x` train, matching the kanban app). Gradle
+  derives `versionName` and `versionCode` from it — never add a second copy.
+  `scripts/check-version.mjs` enforces store legality from lint/CI, `web:export`,
+  `publish-apk.sh` and the release; the rule itself and the traps behind it are
+  in the **`expo-firebase-stack` skill** ("The version number is a store
+  contract"). A published version is spent forever — never reuse one.
 - If a suite fails, first ask whether it fails on **stashed changes too** — a
   clean-HEAD repro means the cause is environmental (usually a leftover
   emulator: `npm run emulators:free`), not your diff.

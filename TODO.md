@@ -117,3 +117,22 @@ valid to 2052 and functionally identical for testing.
   Note: switching keys forces a one-time uninstall/reinstall for everyone who
   already has the app (Android refuses an update signed by a different key), so
   the cost scales with install count. Nothing is lost — all data is in Firestore.
+
+## App Store phase (not now — versioning groundwork done 2026-07-26)
+
+The version scheme is already what Apple requires (`X.Y.Z`, one source of truth,
+enforced in CI — see `docs/PHASE_STATUS.md`). Nothing below blocks Android work.
+
+- [ ] **Apple Developer Program enrolment** ($99/yr, org enrolment needs a D-U-N-S
+  number and can take weeks — start it well before you want to ship). Only you
+  can do this; it needs the nonprofit's legal identity and a payment method.
+- [ ] **A Mac.** iOS builds and App Store uploads cannot be produced on Linux, and
+  this project has no EAS. Decide between a physical Mac and a hosted one before
+  planning the port — it changes the build loop, not the code.
+
+Once those exist, the remaining work is mine, not yours:
+
+- `CFBundleVersion` (the iOS build number) needs its own scheme — it is separate
+  from the version and cannot simply mirror the Android `versionCode`.
+- An `ios/` directory (the repo is Android-only today), the Google sign-in seam
+  re-pointed at an iOS OAuth client, and APNs wired for push.

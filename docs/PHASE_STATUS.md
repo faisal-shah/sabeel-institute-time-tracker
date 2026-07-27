@@ -36,6 +36,33 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-26 — **Store-legal versioning, ahead of iOS.** Adopted the sibling
+  kanban app's rule: the version is exactly `X.Y.Z` with one source of truth
+  (`app/app.json` → `expo.version`). Apple's `CFBundleShortVersionString` takes
+  at most three numeric components, so `1.0.0-beta.24` could never have shipped
+  to the App Store — and nothing on Android would have said so until submission,
+  by which point the version is tagged, built and installed.
+  - **`1.0.0-beta.24` → `0.24.0`, and the next release is `0.25.0`.** Staying on
+    the `0.x` train is the honest signal (still pre-1.0) and matches the kanban
+    app. The 24 carries the release count across.
+  - **versionCode is now derived**, `major*1000000 + minor*1000 + patch`
+    (`0.24.0` → 24000). Three digits per field, because the common two-digit
+    scheme collides (`0.1.100` and `0.2.0` both give 200) and Android then
+    refuses the upgrade. The jump from a hand-incremented 24 to 24000 increases,
+    so beta.24 installs upgrade cleanly; it is one-way (narrowing the
+    multipliers later would break upgrades).
+  - Gradle no longer carries its own `versionName`/`versionCode` — two copies
+    desync silently, and every release then reports the same version to Sentry.
+  - Enforced in three places that each catch what the others cannot:
+    `scripts/check-version.mjs` (from lint/CI and `web:export`, for a web-only
+    release that never runs Gradle), `build.gradle` (fails even if nobody ran the
+    script), and `release.mjs` (refuses a version whose versionCode does not
+    increase). The validator self-tests against the shapes it exists to stop on
+    every run — which is how it caught that `^\d+\.\d+\.\d+$` accepts
+    `2026.07.01`, where `07` and `7` are the same number. Leading zeros are now
+    rejected outright, a step stricter than the kanban implementation.
+  - Still outstanding for iOS: `CFBundleVersion` (the build number) is a
+    separate scheme and cannot just mirror `versionCode`. See `TODO.md`.
 - 2026-07-26 — **Shipped: v1.0.0-beta.24** (notification tap routing). Deployed
   `functions` (11 updated; no rules/index change in this diff) and `hosting`;
   APK verified production-mode on the AVD, GitHub release + public download page
