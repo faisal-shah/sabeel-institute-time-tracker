@@ -36,6 +36,12 @@ phase boundary.
 
 ## Decision log
 
+- 2026-07-26 — **Shipped: v0.25.0**, the first release under the new scheme and
+  the proof of it: the universal APK installed straight over the AVD's
+  `versionCode=24` build and reported `versionCode=25000 / versionName=0.25.0`,
+  both derived from `app.json`. Hosting redeployed from the release commit
+  (`0.25.0 · cccb9bd` on web and APK); download page updated. Release notes lead
+  with why the number looks smaller, since every user sees it.
 - 2026-07-26 — **Store-legal versioning, ahead of iOS.** Adopted the sibling
   kanban app's rule: the version is exactly `X.Y.Z` with one source of truth
   (`app/app.json` → `expo.version`). Apple's `CFBundleShortVersionString` takes
