@@ -3,7 +3,7 @@
     "name": "Sabeel Time Tracker",
     "slug": "sabeel-time-tracker",
     "scheme": "sabeeltimetracker",
-    "version": "0.24.0",
+    "version": "0.25.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "platforms": [
