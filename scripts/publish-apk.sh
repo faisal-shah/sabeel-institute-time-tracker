@@ -16,10 +16,15 @@ if [ -d "$PAGES_DIR/.git" ]; then
   PAGE="$PAGES_DIR/sabeel-time-tracker/index.html"
   # The rolling asset URL never changes, so the page is the ONLY place a reader
   # can tell whether what they are downloading is current. Stamp when it was
-  # published, in the team's local time (they are all in one place), plus a
-  # machine-readable datetime attribute.
-  STAMP_ISO="$(date +%Y-%m-%dT%H:%M:%S%:z)"
-  STAMP_HUMAN="$(date '+%-d %B %Y, %-I:%M %p %Z')"
+  # published, plus a machine-readable datetime attribute.
+  #
+  # The zone is PINNED to the team's (Houston), not the build machine's. A bare
+  # `date` relabels the public page in whatever zone the laptop that cut the
+  # release happens to be set to — silently, and readers have no way to tell.
+  # Same format and zone as the kanban download page, so the two match.
+  PUBLISH_TZ="America/Chicago"
+  STAMP_ISO="$(TZ="$PUBLISH_TZ" date +%Y-%m-%dT%H:%M:%S%:z)"
+  STAMP_HUMAN="$(TZ="$PUBLISH_TZ" date '+%-d %B %Y, %-I:%M %p %Z')"
 
   # Both edits are blind rewrites of someone else's file: if the page is
   # restructured and an anchor disappears, sed reports success and the page

@@ -24,14 +24,20 @@ def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
  *
  * These checks are duplicated in scripts/check-version.mjs on purpose: that one
  * must catch a web-only release that never runs Gradle, and this one must fail
- * even when nobody ran the script.
+ * even when nobody ran the script — which is exactly the case where a hole here
+ * matters. The regex below must stay CHARACTER-IDENTICAL to the one there.
+ *
+ * It rejects leading zeros, which the naive /^\d+\.\d+\.\d+$/ accepts:
+ * `2026.07.01` is three dot-separated integers, but 07 and 7 are the same
+ * number, so 2026.07.01 and 2026.7.1 compute the SAME versionCode.
  */
 def expoVersion = new groovy.json.JsonSlurper()
     .parse(file("$projectRoot/app.json")).expo.version
-if (!expoVersion.matches(/^\d+\.\d+\.\d+$/)) {
+if (!expoVersion.matches(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)) {
     throw new GradleException(
-        "app.json version '${expoVersion}' must be exactly three integers (X.Y.Z) — " +
-        "no pre-release suffix, no fourth component. See scripts/check-version.mjs.")
+        "app.json version '${expoVersion}' must be exactly three integers (X.Y.Z) " +
+        "with no leading zeros — no pre-release suffix, no fourth component, no " +
+        "date-style components. See scripts/check-version.mjs.")
 }
 def (vMajor, vMinor, vPatch) = expoVersion.tokenize('.').collect { it.toInteger() }
 if (vMinor > 999 || vPatch > 999 || vMajor > 2147) {

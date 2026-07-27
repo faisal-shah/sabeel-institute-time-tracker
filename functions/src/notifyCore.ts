@@ -24,6 +24,13 @@ export function localClock(nowMs: number, timeZone: string): { weekday: number; 
   }).formatToParts(new Date(nowMs));
   const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const weekday = names.indexOf(parts.find((p) => p.type === 'weekday')?.value ?? '');
+  // `% 24` guards the h24-vs-h23 hourCycle quirk: some ICU builds render local
+  // midnight as "24" under hour12:false, which would put the reminder window an
+  // hour off for anyone whose 10:00 check straddles it. This Node's ICU returns
+  // "00", so the modulo is a no-op HERE and cannot be tested on this runtime — a
+  // test pinning midnight would pass with or without it. Keep it: functions run
+  // on a different ICU than this machine. Do not "simplify" it away, and do not
+  // add a test that only looks like it covers it.
   const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '-1') % 24;
   return { weekday, hour };
 }

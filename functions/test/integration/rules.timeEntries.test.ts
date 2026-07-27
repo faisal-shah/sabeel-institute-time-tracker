@@ -307,6 +307,51 @@ describe('timeEntries — canonical periodKey guard (spoof-proof)', () => {
     );
   });
 
+  /**
+   * The dayKeyPlausible window is the only timezone reasoning in the rules, and
+   * every other fixture sits comfortably inside it — so the 14h/36h constants
+   * could be any other pair and the suite would stay green. These pin both
+   * edges: each `assertSucceeds` is one millisecond from an `assertFails`, so
+   * narrowing OR widening either bound breaks exactly one of them.
+   *
+   * The numbers are not arbitrary: real UTC offsets run [-12h, +14h], so the
+   * instant behind local day D lies in [D_utc - 14h, D_utc + 36h).
+   */
+  describe('dayKey plausibility window (the ±offset bound)', () => {
+    const DAY = '2026-07-15';
+    const dayMs = Date.UTC(2026, 6, 15);
+    const HOUR = 3600000;
+    const at = (start: number) => ({
+      ...closedEntry,
+      start,
+      end: start + 60 * 60000,
+      dayKey: DAY,
+      periodKey: PERIOD,
+    });
+
+    it('earliest legal instant: exactly 14h before UTC midnight (a UTC+14 zone)', async () => {
+      const db = alice().firestore();
+      // 2026-07-14T10:00Z is already the 15th in Pacific/Kiritimati (UTC+14).
+      await assertSucceeds(setDoc(doc(db, 'timeEntries/w1'), at(dayMs - 14 * HOUR)));
+      await assertFails(setDoc(doc(db, 'timeEntries/w2'), at(dayMs - 14 * HOUR - 1)));
+    });
+
+    it('latest legal instant: just under 36h after UTC midnight (a UTC-12 zone)', async () => {
+      const db = alice().firestore();
+      // 2026-07-16T11:59:59.999Z is still the 15th at UTC-12.
+      await assertSucceeds(setDoc(doc(db, 'timeEntries/w3'), at(dayMs + 36 * HOUR - 1)));
+      await assertFails(setDoc(doc(db, 'timeEntries/w4'), at(dayMs + 36 * HOUR)));
+    });
+
+    it('a dayKey a whole day off its instant is refused', async () => {
+      // The gross mismatch the window exists for: times printed on the entry
+      // would contradict the day a report files it under.
+      await assertFails(
+        setDoc(doc(alice().firestore(), 'timeEntries/w5'), at(dayMs + 4 * 24 * HOUR)),
+      );
+    });
+  });
+
   it('a Sunday and a 1st-of-month are their own periodKey (pins dowSun0 anchoring)', async () => {
     const db = alice().firestore();
     await assertSucceeds(
