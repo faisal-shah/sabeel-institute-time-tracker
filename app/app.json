@@ -13,7 +13,11 @@
     "android": {
       "package": "com.sabeelinstitute.timetracker",
       "predictiveBackGestureEnabled": false,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F6EBDD"
+      }
     },
     "web": {
       "bundler": "metro",

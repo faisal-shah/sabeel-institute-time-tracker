@@ -91,6 +91,52 @@ strokes. **One asset, no plate and no tint**: a flat `tintColor` would recolour
 the mark and throw the gold away. It appears on the **sign-in screen only**;
 inside the app the brand is carried by the palette.
 
+## The app icon
+
+All three Sabeel apps share **one calligraphic mark** with a Dark Raspberry
+badge saying which app it is — a stopwatch here, a board for kanban, a
+microphone for recordings. Warm Ivory canvas; raspberry is spent on the badge
+alone. The wordmark is deliberately dropped: "SABEEL INSTITUTE" is a smudge at
+launcher size.
+
+**Never hand-edit the icons.** They come from one generator, shared by all three
+repos, which re-proves its geometry invariants on every run and exits non-zero
+if either breaks:
+
+```sh
+cd ../sabeel-institute-kanban
+uv run scripts/make-app-icons.py timetracker --repo ../sabeel-institute-time-tracker
+```
+
+It rewrites `app/assets/{icon,adaptive-icon,favicon}.png`, every
+`android/…/res/mipmap-*` icon, the two `mipmap-anydpi-v26` XMLs and the
+`iconBackground` colour. Output is deterministic — re-running it on an unchanged
+repo is a no-op, which is how you check the committed files are really generator
+output. The design rationale (badge size, how low the mark sits, bearing — all
+measured, at their limits in three directions at once) is in that repo's
+`docs/BRAND.md`. Do not nudge the numbers by eye.
+
+Two things that will bite:
+
+- **Do not run `expo prebuild`** to regenerate icons. This repo commits
+  `android/`, so prebuild rewrites `build.gradle` from its template and would
+  silently revert hand edits there. The generator writes exactly what prebuild
+  would write, so a later prebuild is a no-op on icons rather than a conflict.
+- **`app.json` alone changes nothing Gradle sees.** Because `android/` is
+  committed, the build compiles the checked-in mipmaps and never reads
+  `app.json`. The `res/` files are part of the change — they are not
+  "generated artifacts" to be dropped from a commit.
+
+Verifying an icon change means **looking at the launcher**, not reading the
+build log: resource shrinking renames every icon to `res/-6.webp`, so the APK
+listing proves nothing.
+
+```sh
+adb shell input keyevent KEYCODE_HOME
+adb shell input swipe 540 2000 540 400 300
+adb exec-out screencap -p > drawer.png
+```
+
 ## How this is enforced in code
 
 - `app/src/theme/palette.ts` is the **only** file allowed to contain color
