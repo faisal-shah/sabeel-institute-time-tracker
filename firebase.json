@@ -39,16 +39,31 @@
       {
         "source": "**",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
-          { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          }
         ]
       },
       {
         "source": "/_expo/static/**",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
         ]
       }
     ],
@@ -58,16 +73,24 @@
   },
   "emulators": {
     "auth": {
-      "port": 9099
+      "port": 61002
     },
     "functions": {
-      "port": 5001
+      "port": 61003
     },
     "firestore": {
-      "port": 8080
+      "port": 61000,
+      "websocketPort": 61001
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 61004
+    },
+    "hub": {
+      "port": 61005
+    },
+    "logging": {
+      "port": 61006
     },
     "singleProjectMode": true
   }

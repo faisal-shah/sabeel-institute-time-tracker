@@ -71,7 +71,35 @@ function portsFromShell(): number[] {
   return line.trim().split(/\s+/).map(Number);
 }
 
+/**
+ * This checkout's block. Bases are 100 apart, one per repo on the machine.
+ *
+ * 61000+ because the ephemeral range here is 32768–60999
+ * (`/proc/sys/net/ipv4/ip_local_port_range`) so nothing above it is handed out
+ * at random, and Firebase's own defaults top out at 9499
+ * (`firebase-tools/lib/emulator/constants.js`) so the block collides with
+ * nothing the CLI would choose for itself.
+ */
+const BLOCK_START = 61000;
+const BLOCK_END = BLOCK_START + 99;
+
 describe('emulator ports agree across every file that states them', () => {
+  it('every port is inside this checkout’s block', async () => {
+    const scripts = await portsFromScripts();
+    expect(Object.keys(scripts).length).toBeGreaterThan(0);
+
+    for (const [service, port] of Object.entries(scripts)) {
+      expect(
+        port >= BLOCK_START && port <= BLOCK_END,
+        `${service}=${port} is outside ${BLOCK_START}-${BLOCK_END} — that is another checkout's territory`,
+      ).toBe(true);
+    }
+
+    // Distinct, or two services quietly share one listener.
+    const values = Object.values(scripts);
+    expect(new Set(values).size, 'two services claim the same port').toBe(values.length);
+  });
+
   it('firebase.json matches scripts/lib/ports.mjs', async () => {
     const scripts = await portsFromScripts();
     const config = portsFromFirebaseJson();

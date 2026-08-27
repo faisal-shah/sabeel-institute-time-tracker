@@ -10,12 +10,14 @@
  * to one of them fails `npm run verify` in seconds rather than surfacing later
  * as an emulator that answers on a port nobody expected.
  */
+const PORT_BASE = 61000;
+
 export const EMULATOR_PORTS = {
-  firestore: 8080,
-  firestoreWebsocket: 9150,
-  auth: 9099,
-  functions: 5001,
-  ui: 4000,
-  hub: 4400,
-  logging: 4500,
+  firestore: PORT_BASE + 0,
+  firestoreWebsocket: PORT_BASE + 1,
+  auth: PORT_BASE + 2,
+  functions: PORT_BASE + 3,
+  ui: PORT_BASE + 4,
+  hub: PORT_BASE + 5,
+  logging: PORT_BASE + 6,
 };

@@ -6,6 +6,9 @@ packages/shared/lib/
 functions/lib/
 app/dist-web/
 app/.expo/
+# Metro's transform cache, moved in-repo so `--clear` cannot delete a sibling
+# project's cache out from under it (see app/metro.config.js).
+app/.metro-cache/
 # Generated at build time by scripts/gen-build-info.mjs (version + git hash).
 app/src/build-info.ts
 

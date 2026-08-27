@@ -26,7 +26,7 @@ export const EMULATOR_HOST = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1
  * `functions/test/unit/emulator-ports.test.ts` asserts all four agree.
  */
 export const EMULATOR_PORTS = {
-  auth: 9099,
-  firestore: 8080,
-  functions: 5001,
+  auth: 61002,
+  firestore: 61000,
+  functions: 61003,
 } as const;

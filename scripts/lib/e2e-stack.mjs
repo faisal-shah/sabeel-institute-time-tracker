@@ -85,7 +85,7 @@ function waitFor(url, label, timeoutMs = 60000) {
 }
 
 /**
- * The functions emulator ACCEPTS CONNECTIONS on 5001 well before it has
+ * The functions emulator ACCEPTS CONNECTIONS on its port well before it has
  * registered any function: until then every call 404s with "Function ... does
  * not exist". A 404 carries no CORS headers, so in the browser that surfaces as
  * a misleading "blocked by CORS policy" error and the app shows a bare

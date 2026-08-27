@@ -44,7 +44,15 @@ const userDoc = (over: Record<string, unknown>) => ({
 });
 
 beforeAll(async () => {
-  const fs = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
+  const host = process.env.FIRESTORE_EMULATOR_HOST;
+  // No fallback on purpose. This suite only ever runs under
+  // `firebase emulators:exec`, which always exports this (firebase-tools
+  // lib/emulator/env.js). A default would be dead code that springs to life at
+  // exactly the wrong moment: with the var unset it would connect to whatever
+  // sits on the old shared port — possibly a SIBLING REPO's Firestore — and the
+  // suite would read, write and pass against the wrong database.
+  if (!host) throw new Error('FIRESTORE_EMULATOR_HOST is unset — run via npm run test:emulator');
+  const fs = host.split(':');
   testEnv = await initializeTestEnvironment({
     projectId: 'demo-sabeel',
     firestore: {

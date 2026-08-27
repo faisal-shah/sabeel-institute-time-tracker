@@ -29,6 +29,11 @@ import {
 } from './lib/e2e-stack.mjs';
 
 const shots = process.env.E2E_SHOTS_DIR ?? join(root, 'e2e-shots');
+
+// Which URLs are calls to OUR functions emulator. Derived, not a literal: this
+// checkout's ports moved out of the shared block, and a stale `:5001/` here
+// would silently stop reporting callable failures rather than fail loudly.
+const FN_ORIGIN = `:${EMULATOR_HOSTS.functions.split(':')[1]}/`;
 mkdirSync(shots, { recursive: true });
 
 process.on('SIGINT', () => cleanup(130));
@@ -108,7 +113,7 @@ async function main() {
         console.log(`  (warn) [${label}] ${m.text()}`);
     });
     page.on('response', async (resp) => {
-      if (!/:5001\//.test(resp.url()) || resp.status() < 400) return;
+      if (!resp.url().includes(FN_ORIGIN) || resp.status() < 400) return;
       let body = '';
       try {
         body = (await resp.text()).slice(0, 400);
@@ -118,7 +123,7 @@ async function main() {
       callableFailures.push(`[${label}] ${resp.status()} ${resp.url()}\n    ${body}`);
     });
     page.on('requestfailed', (req) => {
-      if (!/:5001\//.test(req.url())) return;
+      if (!req.url().includes(FN_ORIGIN)) return;
       callableFailures.push(
         `[${label}] REQUEST FAILED ${req.url()}\n    ${req.failure()?.errorText ?? ''}` +
           '\n    (a 404 from the functions emulator carries no CORS headers, so the' +
