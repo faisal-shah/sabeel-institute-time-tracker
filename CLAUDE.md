@@ -1,35 +1,54 @@
 # Sabeel Institute Time Tracker — Working Rules for Claude
 
-## Greenfield — always target the global optimum, never band-aids
-No public release exists yet; only dev builds. There are **no backwards-compat or
-legacy-migration constraints** — breaking with previous dev versions is free. So
-at every step (bug fix or feature) target the **globally-optimal** solution for
-the current understanding of the product — architecture, UX, data model, all of
-it. As the vision evolves, converge the whole solution on the new optimum rather
-than layering a patch on top. Prefer deleting/replacing over accreting; when the
-sibling kanban app already has the clean pattern, converge onto it. The goal: by
-the first public release this must not already be a legacy codebase with cruft.
+## What this project is
 
-## Stack knowledge lives in a shared skill, not in this repo
+Hours tracking for Sabeel Institute (small nonprofit): clock in/out + manual
+entries against activities, admin-approved Google sign-in, and reports. Faisal is
+the developer; the nonprofit's staff are the admins/managers in the app.
+
+**It is in production and the team uses it.** Live at
+`sabeel-institute-time-tracker.web.app` since 2026-07-16; the Android APK is
+installed from a public GitHub Pages download page. There is no app-store
+presence.
+
+Source of truth: `docs/PRODUCT_BRIEF.md` (decisions & data model),
+`docs/PHASE_STATUS.md` (live build status), `docs/DEV-TOOLING.md` (what each
+script guards against — **read it before debugging the harness or cutting a
+release**).
+
+## Converge on the optimum; do not accrete
+
+At every step — bug fix or feature — target the **globally-optimal** solution for
+the current understanding of the product: architecture, UX, data model, all of
+it. As the vision evolves, converge the whole solution on the new optimum rather
+than layering a patch on top. Prefer deleting and replacing over accreting; where
+the sibling kanban app already has the clean pattern, converge onto it. The goal
+is that this does not quietly become a legacy codebase.
+
+**What that does and does not license.** There is no public API and no store
+listing, so internal refactoring is cheap and should be taken. But the team is
+*on this app*: Firestore holds their real hours, and they have APKs installed. So
+a change to stored shapes needs a migration, and a change that breaks an older
+installed build needs a release they can actually get. "Breaking is free" was
+true before the first deploy and has not been true since.
+
+## Stack knowledge lives in a shared skill, not here
+
 Recurring traps of this stack (Expo, Metro, react-native-web, Firebase JS SDK,
 Cloud Functions, FCM, emulator behaviour, build/export mechanics) live in the
-**`expo-firebase-stack` skill** — source: `faisal-shah/agent-skills`,
-`skills/expo-firebase-stack/SKILL.md`; installed at
+**`expo-firebase-stack` skill** — source `faisal-shah/agent-skills`, installed at
 `~/.claude/skills/expo-firebase-stack/`. Read its closing section, **"How this
 stack fools you"**, *before* a debugging session, not during one.
 
-**Boundary rule — one question: would this be true for a different company
-building on the same stack?**
-- **Yes → the skill.** Stack behaviour, SDK quirks, tooling, emulator and build
-  mechanics.
-- **No → this file.** Product invariants, brand, ports/AVD conventions, phase
-  process, division of labour, anything naming this project.
-
-The test is not "is it secret", it is "is it about the stack or about us".
+**The boundary is one question: would this be true for a different company
+building on the same stack?** Yes → the skill (stack behaviour, SDK quirks,
+tooling, build mechanics). No → this file (product invariants, brand, ports/AVD
+conventions, division of labour, anything naming this project). The test is not
+"is it secret", it is "is it about the stack or about us".
 
 **The skill repo is PUBLIC.** Nothing naming this project goes into it — no
-project ids, internal domains, email addresses, AVD names, secrets, or product
-decisions. Generalise first, then grep the file for identifiers before pushing.
+project ids, internal domains, email addresses, AVD names, secrets or product
+decisions. Generalise first, then grep for identifiers before pushing.
 
 **Contribute back in the same batch as the fix.** When a stack problem costs real
 time, write the entry into the skill alongside the code change — not only into a
@@ -37,99 +56,182 @@ commit message. The knowledge only compounds if it lands where both projects rea
 
 **Never copy the skill's content into this repo.** A second copy drifts and the
 sync is manual; `docs/STACK-GOTCHAS.md` is a stub for that reason. A stub cannot
-drift.
+drift. **Installation is a COPY, not a symlink** — editing a skill changes
+nothing an agent reads until `install.sh --claude` runs again, and a stale
+installed copy looks identical to a current one.
 
-## What this project is
-Hours tracking for Sabeel Institute (small nonprofit): clock in/out + manual entries
-against activities, admin-approved Google sign-in, honor-system hours, and reports.
-Source of truth: `docs/PRODUCT_BRIEF.md` (decisions & data
-model) and `docs/PHASE_STATUS.md` (live build status). Faisal is the developer; the
-nonprofit's staff are the admins/managers in the app.
+The skill also carries `tools/bootstrap-linux.sh`, which installs this whole
+toolchain on a fresh machine under `$HOME` with no root. See
+`docs/DEV-TOOLING.md`.
 
-Key product invariants (do not silently change):
+## Product invariants
+
+Do not silently change any of these.
+
 - **General-purpose time tracker** — nothing volunteer-specific in the data model.
-- **Google sign-in only, restricted to @oursabeel.com** (server-enforced: the
-  `onUserCreate` function deletes non-org accounts + rules block non-org
-  self-register; client `hd` hint is UX only). Every new org account lands `pending`;
-  **only admins** approve/disable users or change roles.
-- **Honor system** — entries count immediately; managers may edit/correct.
-- **Work-local timezones** — entries bucket/display in the timezone where the work
-  happened (`timeZone` + `dayKey` on each entry), never the viewer's.
-- **Phone-first for everyone** — managers included; web is the big-screen/print surface.
+- **Google sign-in only, restricted to `@oursabeel.com`**, server-enforced: the
+  `onUserCreate` function deletes non-org accounts and rules block non-org
+  self-register. The client `hd` hint is UX only. Every new org account lands
+  `pending`; **only admins** approve/disable users or change roles.
+- **Honor system** — entries count immediately; managers may edit/correct. (The
+  Phase 7 submit/approve workflow layers on top of this; it does not replace the
+  principle.)
+- **Work-local timezones** — entries bucket and display in the timezone where the
+  work happened (`timeZone` + `dayKey` on each entry), never the viewer's. This is
+  deliberate and is why this project has **no org timezone at all**, unlike the
+  sibling kanban. ALL timezone math lives in `@sabeel/shared` — never do ad-hoc
+  date math elsewhere.
+- **Phone-first for everyone**, managers included; web is the big-screen and print
+  surface.
+- **Brand colours are fixed** — the designer's Option 1 palette, shared exactly
+  with the sibling kanban. Single light theme, no dark mode. Never hardcode a
+  colour.
 
 ## Stack (locked)
+
 - One Expo codebase (`app/`): Android (local Gradle builds, committed `android/`,
-  NO iOS, NO EAS) + web via react-native-web (`expo export --platform web` →
+  **NO iOS, NO EAS**) + web via react-native-web (`expo export --platform web` →
   Firebase Hosting). Platform seams as `.web.ts(x)` siblings.
 - Firebase **JS SDK on all surfaces** (not react-native-firebase — no web support).
-- Backend: Cloud Functions (TS, nodejs22, us-central1) + Firestore. No Storage,
-  no email in v1. Sentry web/native/functions.
-- Monorepo (npm workspaces): `app`, `functions`, `packages/shared`. Shared types +
-  ALL timezone math live in `@sabeel/shared` — never do ad-hoc date math elsewhere.
-- Config-as-code: rules/indexes deploy from the repo, never console-edited.
+- Backend: Cloud Functions (TS, nodejs22, us-central1) + Firestore. No Storage, no
+  email in v1. Sentry on web/native/functions.
+- Monorepo (npm workspaces): `app`, `functions`, `packages/shared`.
+- Config-as-code: rules and indexes deploy from the repo, never console-edited.
+- **The version is three integers and lives only in `app/app.json` →
+  `expo.version`.** Gradle derives `versionName` and `versionCode` from it — never
+  add a second copy. `scripts/check-version.mjs` enforces store legality from
+  lint/CI, `web:export`, `publish-apk.sh` and the release. A published version is
+  spent forever — never reuse one. The rule and the traps behind it are in the
+  skill ("The version number is a store contract").
 
 ## Dev & test loops
-**Read `docs/DEV-TOOLING.md` before debugging the harness or cutting a release** —
-it records which failures are environmental and what each script guards against.
+
+- `npm run verify` — lint + typecheck + knip + unit, the fast CI gates in one
+  shot. **Run it before pushing.**
 - Unit: `npm test` (Vitest: functions + shared).
-- Rules/integration: `npm run test:emulator` (needs JDK 21; wraps
-  `firebase emulators:exec --project demo-sabeel`).
-- Android: `scripts/emulator.sh headless` (AVD `tb_emu`, Google-APIs image), then
-  `npx expo run:android` in `app/`. Firebase emulators from the AVD = `10.0.2.2`.
-  There are NO physical devices — emulator only; verify UI by adb screenshot.
-- Releases: `npm run release -- <X.Y.Z> --notes FILE` (bumps the version,
-  rebuilds the manual PDF, builds both APK variants, verifies the production
-  bundle on the AVD, publishes to GitHub). Never hand-bump versions.
-- **The version is three integers and lives only in `app/app.json` →
-  `expo.version`** (currently the `0.x` train, matching the kanban app). Gradle
-  derives `versionName` and `versionCode` from it — never add a second copy.
-  `scripts/check-version.mjs` enforces store legality from lint/CI, `web:export`,
-  `publish-apk.sh` and the release; the rule itself and the traps behind it are
-  in the **`expo-firebase-stack` skill** ("The version number is a store
-  contract"). A published version is spent forever — never reuse one.
-- If a suite fails, first ask whether it fails on **stashed changes too** — a
-  clean-HEAD repro means the cause is environmental (usually a leftover
-  emulator: `npm run emulators:free`), not your diff.
-- Dead code: `npm run knip` (CI-enforced). Its false positives in this stack are
-  documented in `docs/DEV-TOOLING.md` — check there before deleting anything.
+- Rules/integration: `npm run test:emulator` (needs JDK 21).
+- Browser e2e: `npm run test:e2e` — the full flow against the emulators, at a
+  420x860 viewport.
+- Dead code: `npm run knip` (a **separate** CI step; `npm run lint` does not
+  include it). Its false positives in this stack are documented in
+  `docs/DEV-TOOLING.md` — check there before deleting anything.
 - Web: `npx expo start --web` in `app/` (emulator-backed via env flag).
-- CI (GitHub Actions): lint + typecheck + unit + emulator tests on every push. Keep
-  it green. No deploys from CI.
+- Android: `scripts/emulator.sh headless` (AVD `tb_emu`), then `npx expo
+  run:android` in `app/`. Firebase emulators from the AVD = `10.0.2.2`. There are
+  NO physical devices.
+- Releases: `npm run release -- <X.Y.Z> --notes FILE` — bumps the version, rebuilds
+  the manual PDF, builds both APK variants, verifies the production bundle on the
+  AVD, publishes. **Never hand-bump versions.**
+- CI (GitHub Actions): lint + typecheck + knip + unit + emulator tests on every
+  push. Keep it green, and **check the actual run** — don't assume. No deploys
+  from CI.
+- **If a suite fails, first ask whether it fails on stashed changes too.** A
+  clean-HEAD repro means the cause is environmental — usually a leftover emulator
+  (`npm run emulators:free`) — not your diff.
+
+## Verification — what counts as evidence
+
+**Never claim a screen works because the code looks right.** Look at a rendered,
+authenticated screenshot. Correct hex values in `palette.ts` survive right up
+until you look at the rendered screen; contrast misuse and layout gaps pass every
+code-level check.
+
+**A check that cannot fail is a screenshot generator.** A tour wrapped in a
+try/catch that logs and continues reports success either way.
+
+### The browser is the default surface for layout work
+
+`npm run test:e2e` drives the real web build at a phone-width viewport, and a
+narrow browser window is the right place to iterate on mobile layout. Reach for
+it on any change to a shared component, the theme, or a layout — it is faster and
+more repeatable than a human on an emulator.
+
+**The sibling kanban has the better version of this** — `screens-e2e.mjs`, every
+screen at five widths straddling the breakpoint, asserted rather than merely
+screenshotted. This repo has no multi-width sweep yet. Porting it is the single
+highest-value testing improvement available here; until then, resize deliberately
+rather than trusting one viewport.
+
+### The Android emulator is reserved for the seams a browser cannot reach
+
+Not for routine layout work. Use it for:
+
+| Seam | Why the browser cannot cover it |
+|---|---|
+| **Flex shrink / wrap / overflow** | Yoga ≠ CSS — Yoga defaults `flexShrink` to **0** |
+| **Keyboard / IME** | Emulators misreport IME insets; edge-to-edge makes `Keyboard` events no-ops |
+| **Gestures** | Long-press and swipe have no web path |
+| **Native modules** | FCM/push, pickers, sharing |
+| **Safe area / insets** | No browser equivalent |
+
+Plus **before a release** — `scripts/release.mjs` already verifies the production
+bundle on the AVD, and that gate is mandatory — and whenever Faisal asks.
+
+**Why this is safe, and exactly where it is not.** react-native-web resolves
+flexbox through the browser's engine, so a narrow viewport tests *your layout
+intent* but not *Yoga's behaviour*. The one documented native-only layout bug in
+this family was precisely that — a button shrinking below its basis, which "never
+reproduced under react-native-web at any width" (sibling recording app,
+`docs/PHASE_STATUS.md` 2026-07-24). That is the gap, and it is narrow enough to
+name rather than to fear.
+
+**Two traps when you do run native:** `BUILD SUCCESSFUL` is not proof the APK
+installed — if the AVD drops mid-run, yesterday's build stays on the device and
+every screenshot after it is a lie, so confirm `versionName` with `adb shell
+dumpsys package`. And a native debug build takes `EXPO_PUBLIC_*` from the
+environment that started **Metro**, not from the APK; if a flag looks unset,
+restart Metro with `--clear`.
+
+**The AVD needs hardware virtualization and a VM may not have it.**
+`emulator -accel-check` is authoritative; without it the AVD still boots in
+software at ~805 s and ~14 s per screenshot, which retires the screenshot loop
+while leaving input usable. Builds are unaffected — Gradle needs no KVM.
+`check-host.sh` in the skill's `tools/` gives the verdict.
+
+**A rules test that only asserts denials must be shown to fail when the rules are
+opened.** `assertFails` passes when an operation fails for *any* reason, including
+a broken connection — so flip the rule to `if true`, watch the suite go red, and
+flip it back.
 
 ## Secrets (zero tolerance)
-- NEVER ask for, accept, or echo real API keys/DSNs/tokens in chat; never hardcode
-  them. Server secrets: output the exact `firebase functions:secrets:set NAME`
-  command for Faisal to run. Client-side non-secrets (Firebase web config) are
-  committed; client DSNs go in gitignored `.env.local` (key names only in docs).
+
+NEVER ask for, accept, or echo real API keys/DSNs/tokens in chat; never hardcode
+them. Server secrets: output the exact `firebase functions:secrets:set NAME`
+command for Faisal to run. Client-side non-secrets (Firebase web config) are
+committed by design — rules are enforced server-side. Client DSNs go in gitignored
+`.env.local` (key names only in docs).
 
 ## Division of labor
+
 - Agent: all code, rules, indexes, tests, emulator runs, CI, exact click-by-click
   console checklists, diagnosing pasted logs.
-- Faisal only: third-party consoles (Firebase/GCP/Sentry), OAuth/SHA-1 registration,
-  the Workspace Drive folder + service account, anything with production secrets.
-  Everything Faisal must do himself is tracked in `TODO.md` — keep it current.
+- Faisal only: third-party consoles (Firebase/GCP/Sentry), OAuth/SHA-1
+  registration, the Workspace Drive folder + service account, anything with
+  production secrets. Everything Faisal must do himself is tracked in `TODO.md` —
+  keep it current.
 
 ## Conventions
+
+- All eight phases are complete; work now ships as **numbered releases**. Commit
+  at the end of a coherent change and work autonomously within one.
 - **Production hardening backlog lives in `docs/PRODUCTION-REVIEW.md`** — a tracked
   checklist (H/M/L findings + emulator-verification list) worked across sessions;
-  update its Status + Changelog as items land.
-- Commit at phase boundaries (see docs/PHASE_STATUS.md); work autonomously within a
-  phase. Before ANY significant install (global/system/major framework), ask first;
+  update its Status and Changelog as items land.
+- Before ANY significant install (global/system/major framework), ask first;
   routine project-local npm deps of the locked stack are fine.
 - All repo artifacts (docs, plans, protocols) live in this repo.
-- User-visible changes ship with their documentation: update `docs/USER-MANUAL.md`
-  (+ regenerate affected `docs/manual/img/` screenshots and the PDF via
-  `docs/render-manual.py`) and PRODUCT_BRIEF/PHASE_STATUS in the same batch as
-  the code — never let the manual lag a release.
-- Live Firestore reads in `app/src` go through `useLiveQuery`/`useLiveDoc`
+- **User-visible changes ship with their documentation in the same batch as the
+  code** — update `docs/USER-MANUAL.md`, regenerate the affected
+  `docs/manual/img/` screenshots and the PDF via `docs/render-manual.py`, and
+  update PRODUCT_BRIEF/PHASE_STATUS. Never let the manual lag a release.
+- **Live Firestore reads in `app/src` go through `useLiveQuery`/`useLiveDoc`**
   (`app/src/liveQuery.ts`) — never hand-roll `onSnapshot` state (lint-enforced;
-  see docs/POSTMORTEM-2026-07-16-stale-week.md). Async UI must be e2e-tested at
-  least once under injected latency, not just localhost speed.
-- **Publishing the APK: Release asset, NEVER committed.** The public download
-  is a GitHub Release asset on the pages repo (faisal-shah.github.io), fixed
-  rolling tag `timetracker-latest` — the URL never changes. Publish with
-  `scripts/publish-apk.sh`, which uploads the asset, bumps only the version
-  label on the page, and asserts the pages repo holds ZERO .apk blobs. Never
-  `git add` a binary to any repo — committing per-release APKs bloated the
-  pages history and had to be rewritten out. `*.apk` is gitignored in the pages
-  repo as the backstop.
+  see `docs/POSTMORTEM-2026-07-16-stale-week.md`). Async UI must be e2e-tested at
+  least once under **injected latency**, not just localhost speed.
+- **Publishing the APK: a Release asset, NEVER committed.** The public download is
+  a GitHub Release asset on the pages repo (`faisal-shah.github.io`), fixed rolling
+  tag `timetracker-latest` — the URL never changes. `scripts/publish-apk.sh`
+  uploads the asset, bumps only the version label on the page, and asserts the
+  pages repo holds ZERO `.apk` blobs. **Never `git add` a binary to any repo** —
+  committing per-release APKs bloated the pages history and had to be rewritten
+  out, twice. `*.apk` is gitignored there as the backstop.
