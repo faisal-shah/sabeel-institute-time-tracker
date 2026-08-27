@@ -35,9 +35,14 @@ config.resolver.disableHierarchicalLookup = true;
  *
  * A repo-local root fixes it for every entry point, including a hand-run
  * `npx expo start` that no wrapper script sets TMPDIR for.
+ *
+ * Set as a FUNCTION, not an array: Metro calls it with the `metro-cache` module
+ * (`metro-config/src/loadConfig.js` `mergeConfigObjects`), so the store is built
+ * without this file importing `metro-cache` directly — which would mean
+ * declaring a dependency whose version is pinned transitively by `@expo/metro`
+ * and would drift from it.
  */
-const { FileStore } = require('metro-cache');
-config.cacheStores = [
+config.cacheStores = ({ FileStore }) => [
   new FileStore({ root: path.resolve(projectRoot, '.metro-cache') }),
 ];
 
