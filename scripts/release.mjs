@@ -175,7 +175,7 @@ function publish(v, built, notesFile) {
  * of it and asserts the pages repo holds zero .apk blobs. (Per-release APK
  * commits once bloated that history and had to be rewritten out — see CLAUDE.md.)
  */
-function publishDownloadPage(v, apkPath) {
+function publishDownloadPage(apkPath) {
   console.log('▸ publishing the public download page (Release asset, not a commit)');
   sh(`bash ${join(root, 'scripts/publish-apk.sh')} ${apkPath}`);
   console.log(
@@ -273,7 +273,7 @@ publish(version, built, notesFile);
 console.log(`\n✔ v${version} released and committed. Now: firebase deploy --only hosting && git push.`);
 // Push the just-built, just-verified arm64 APK to the public download page as a
 // Release asset (never a commit). Same artifact, same run — provenance is tight.
-publishDownloadPage(version, built.arm64);
+publishDownloadPage(built.arm64);
 
 // Release over: stop the Gradle daemon. It sits on ~3.7GB indefinitely, and on
 // this 15GB machine earlyoom then kills the Firestore emulator (Java is a

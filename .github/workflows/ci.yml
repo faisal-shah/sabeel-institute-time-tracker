@@ -44,3 +44,28 @@ jobs:
 
       - name: Emulator integration tests
         run: npm run test:emulator
+
+      # The browser the sweep drives. Playwright's own Chromium, not a system
+      # Chrome — that is what makes this step possible on a bare runner, and
+      # functions/test/unit/ci-coverage.test.ts fails if this line disappears.
+      - name: Install Chromium for the layout sweep
+        run: npx playwright install --with-deps chromium
+
+      # Every screen at five widths straddling the breakpoint, ASSERTED (page
+      # never scrolls sideways, nothing past the right edge, no two same-layer
+      # controls overlap, every screen has a way out, the width produced the
+      # layout it should). It starts its own emulators and serves its own web
+      # export — see scripts/screens-e2e.mjs and docs/DEV-TOOLING.md.
+      - name: Layout sweep (every screen, five widths)
+        run: npm run test:screens
+
+      # A failing sweep is a layout failure, and a layout failure is something
+      # you have to LOOK at. Without the shots, CI reports "the page scrolls
+      # sideways by 40px" and nobody can see what did it.
+      - name: Screens from the sweep
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens-sweep
+          path: e2e-shots/screens/
+          retention-days: 7

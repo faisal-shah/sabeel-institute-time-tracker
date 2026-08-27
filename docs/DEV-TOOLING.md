@@ -18,7 +18,8 @@ Firebase or the emulators belong there; what we built in response belongs here.
 | `npm run typecheck` | tsc across all workspaces |
 | `npm test` | Vitest units (functions + shared) |
 | `npm run test:emulator` | rules/integration suite (frees ports first) |
-| `npm run test:e2e` | full browser e2e against emulators |
+| `npm run test:e2e` | full browser e2e against emulators — the product LIFECYCLE |
+| `npm run test:screens` | every screen at five widths, asserted — the LAYOUT sweep (in CI) |
 | `npm run knip` | dead-code audit |
 | `npm run emulators:free` | kill whatever is squatting on emulator ports |
 | `npm run release -- <version> --notes FILE` | cut an Android release |
@@ -165,6 +166,116 @@ not knip, and CI status wasn't re-checked after those pushes. Guard against the
 whole class: **run `npm run verify` before pushing** (lint + typecheck + knip +
 unit), and don't assume green — check the actual CI run.
 
+## `scripts/lib/e2e-stack.mjs`
+
+Both browser suites need the same bring-up — build the shared lib and functions,
+export the web bundle in emulator mode, free the emulator ports, start
+auth/firestore/functions, wait for a callable to be *registered*, serve
+`dist-web` on an ephemeral port, launch a browser, do the dev sign-in. That was
+`web-e2e.mjs`'s private preamble until `screens-e2e.mjs` needed it too;
+duplicating it would have meant two copies of every guard below, drifting apart.
+
+One deliberate change came with the extraction: **the browser is Playwright's own
+Chromium, not `/usr/bin/google-chrome`.** `playwright` was already a
+devDependency (it drives the e2e — see the knip notes above); pointing at a
+system Chrome was the only thing keeping a browser suite off a CI runner.
+
+## `scripts/screens-e2e.mjs` — the layout sweep
+
+`npm run test:screens`. Every screen, four roles, five viewport widths, looked at
+**and checked**; `SWEEP_WIDTHS=320 npm run test:screens` runs one width for a
+tight loop.
+
+It exists because this repo had no multi-width coverage at all: `web-e2e.mjs`
+proves the flows but looks at one 420x860 viewport, so every layout decision on
+the other side of the 700px breakpoint shipped unphotographed. It found a real
+bug on its first run — at 320px the Add-hours **date field was squashed to
+"08"**, and at 390px and above it was perfect. That is the whole argument for
+straddling the breakpoint rather than picking one width that looks reasonable.
+
+**A tour that cannot fail is a screenshot generator.** So it asserts and exits
+non-zero, and `functions/test/unit/ci-coverage.test.ts` fails if CI ever stops
+running it. What it checks, and the failure each one is for:
+
+| Check | The failure it exists for |
+|---|---|
+| the page never scrolls sideways | the classic responsive failure a top-of-page screenshot never reveals |
+| nothing extends past the right edge | react-native-web's vertical ScrollView sets `overflow-x: hidden`, so an over-wide row is sliced off silently and the page width never moves |
+| no two same-layer controls overlap | crowding that appears at one width and not another |
+| every screen has a way out | a pushed screen with no header Back is a dead end on a phone browser — there is no hardware Back there; the root answers with Sign out |
+| a native field fits its own value | a field squashed by a flex row neither bleeds nor overlaps, so nothing else can see it |
+| the width produced the layout it should | buttons stretch below the breakpoint and hug their label above it; card grids stack below and flow above |
+| targets under 44px | **reported, never failed** — informational |
+
+Design decisions worth not undoing:
+
+- **The breakpoint is read from `app/src/theme/layout.ts`**, never copied — and a
+  regex that stops matching *throws* rather than falling back to a default,
+  because a silent fallback is the same drift wearing a default.
+- **Widths straddle it** (320, 390, 700, 1024, 1440) rather than looking
+  thorough. A bug on one side of a breakpoint is invisible from the other.
+- **Seeding is Admin SDK, provisioning is not.** Data goes in directly —
+  deterministic, seconds not minutes, and rules would refuse most of it from a
+  client. Accounts still sign in through the UI, because `onUserCreate` is the
+  sole provisioner and a hand-written user doc is a shape production never makes.
+- **The seeds are the shapes that BREAK layouts**: the longest realistic activity
+  name, a note longer than its row, a rejection reason of real length, an
+  overlapping pair, a week with nothing in it.
+- **The interesting weeks live in the previous month, always, and are its
+  INTERIOR ones.** The month strip shows one month, so a tour wanting three past
+  weeks in the current one would break on the 1st — a harness that fails on some
+  days of the year for reasons unrelated to layout teaches everyone to ignore it.
+  Interior, because only a month's first and last period are clipped and the last
+  can be a **single day**: a week seeded across it spills its later entries into
+  the next month, out of the timesheet they belong to and — sharing a day now —
+  into accidental overlaps the conflict check would report as real. Reaching them
+  also exercises the month arrows, which nothing else touches.
+- **A picker is its own screen.** It is a modal with a text field over a capped
+  list, and no structural check can see a dialog that is never opened. Clicks
+  inside one are scoped to `role="dialog"`: the field that opened the picker
+  carries the same text as the selected row inside it, and an unscoped click
+  lands on the field, which the backdrop is covering, and hangs.
+- **Four roles, because gated screens have no other coverage.** The admin sees
+  every screen; the member's Home and the non-admin manager's read-only Users are
+  layouts the person who owns the app never renders.
+
+**It is not part of `release.mjs`, deliberately.** That script's AVD step exists
+to check the one thing CI cannot — that the production APK boots and is not an
+emulator-mode bundle. The sweep checks the *web* layout, which CI has already run
+on every push; re-proving it would add ~2.5 minutes to every release for a result
+that is already green. The only commit a release builds that CI has not yet seen
+is the version bump the script makes itself, whose diff is a version string and a
+build-info stamp — nothing that can move a layout.
+
+Two checks in the sibling kanban's version were deliberately **not** ported, and
+both times for the same reason — *a check that fires on correct code is worse
+than no check*:
+
+- **generic "is any text truncated"**: every `numberOfLines` in this app is an
+  intentional clamp (the picker field, an entry note, a rejection reason), so it
+  would fire at every width on correct code. The one place truncation is never
+  intentional — a native `<input>` — gets its own narrow check instead.
+- **"no interactive content nested inside a `<button>`"**: this app sets no
+  `accessibilityRole`, so react-native-web emits `<div tabindex>` and never
+  `<button>`; the one nesting it does have (the picker backdrop wrapping the
+  sheet and its TextInput) is the correct dismiss pattern, not the invalid-HTML
+  bug that check is for.
+
+**Two holes this harness had before anyone watched it fail**, both found by
+deliberately breaking a screen and confirming it went red — do that again after
+changing a check:
+
+1. The right-edge check looped over *controls that still had visible area*
+   (kanban's shape, correct there because its board pager lays whole columns
+   off-screen by design). Here, a control pushed **entirely** past the edge had
+   no visible area left and was skipped — a card widened to 520px at 320px wide
+   was toured, screenshotted, and passed. It now walks every element and reports
+   only the outermost offender.
+2. The squashed-field check compared `scrollWidth` to `clientWidth`. A
+   `type="date"` clips its segments rather than scrolling them, so the obvious
+   test passed on the exact bug it was written for. It now clones the field
+   outside the flex row and measures what it would take naturally.
+
 ## `scripts/web-e2e.mjs`
 
 Beyond the flows themselves, the harness encodes:
@@ -179,6 +290,35 @@ Beyond the flows themselves, the harness encodes:
   replaced hand-writing a one-off repro script to see a server error.
 - **Injects latency** around week switching — the stale-week bug class only
   appears when snapshots lag (see `POSTMORTEM-2026-07-16-stale-week.md`).
+
+Two races in it were fixed on 2026-08-27, both **reproduced on clean `HEAD`** —
+they predate the `e2e-stack` extraction and had been failing this suite roughly
+one run in two. Both are stack behaviour, so the *why* lives in the
+`expo-firebase-stack` skill ("The screen underneath is still in the DOM…" and
+"A fire-and-forget write, then a navigation…"); what this repo did about it:
+
+- **Every positional text locator in the file goes through `firstOnScreen` /
+  `lastOnScreen`**, which filter to `{ visible: true }`. That is a property of
+  the file, not a patch at the two sites that happened to bite — a bare
+  `.first()`/`.last()` anywhere here is the same bug waiting for a different day.
+  `screens-e2e.mjs` needs none of this because it navigates by ROLE, and role
+  selectors skip hidden subtrees the way a screen reader does.
+- **The notification toggle waits for the switch to read OFF before navigating.**
+  The switch is driven by the profile listener, so it flipping is proof the write
+  round-tripped — without that wait the reload read the pref unchanged, which
+  looks exactly like the bug the check exists to catch.
+
+**When this suite fails, check which of the two it is before believing the
+step.** And note the shared-machine hazard: both this repo and the sibling
+`sabeel-recording-app` pin the emulators to 8080/9099/5001 and both call
+`free-emulator-ports.sh` at the start of every run, so a run in one repo
+SIGTERMs the other's Firestore emulator (`exited with code: 143`) — or, worse,
+silently costs it a write. `ps -eo pid,args | grep "[j]ava -jar .*emulator"`
+shows the rules path, which names the repo that owns it. Two agents cannot use
+the box at once today; the fix would be to thread the ports through
+`app/src/firebase.ts` (they are literals there and in `firebase.json`) so each
+suite takes its own block. **Not done** — it is a change to a shipped client
+seam, and it is Faisal's call.
 
 ## `scripts/release.mjs`
 

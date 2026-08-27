@@ -110,8 +110,11 @@ Do not silently change any of these.
   shot. **Run it before pushing.**
 - Unit: `npm test` (Vitest: functions + shared).
 - Rules/integration: `npm run test:emulator` (needs JDK 21).
-- Browser e2e: `npm run test:e2e` — the full flow against the emulators, at a
-  420x860 viewport.
+- Browser e2e: `npm run test:e2e` — the full product LIFECYCLE against the
+  emulators, at a 420x860 viewport.
+- Layout sweep: `npm run test:screens` — every screen, four roles, five widths
+  straddling the breakpoint, **asserted**. In CI. `SWEEP_WIDTHS=320` runs one
+  width for a tight loop. See `docs/DEV-TOOLING.md`.
 - Dead code: `npm run knip` (a **separate** CI step; `npm run lint` does not
   include it). Its false positives in this stack are documented in
   `docs/DEV-TOOLING.md` — check there before deleting anything.
@@ -122,9 +125,10 @@ Do not silently change any of these.
 - Releases: `npm run release -- <X.Y.Z> --notes FILE` — bumps the version, rebuilds
   the manual PDF, builds both APK variants, verifies the production bundle on the
   AVD, publishes. **Never hand-bump versions.**
-- CI (GitHub Actions): lint + typecheck + knip + unit + emulator tests on every
-  push. Keep it green, and **check the actual run** — don't assume. No deploys
-  from CI.
+- CI (GitHub Actions): lint + typecheck + knip + unit + emulator tests + the
+  layout sweep on every push. Keep it green, and **check the actual run** —
+  don't assume. No deploys from CI. `functions/test/unit/ci-coverage.test.ts`
+  fails if a browser suite on disk stops being run by CI.
 - **If a suite fails, first ask whether it fails on stashed changes too.** A
   clean-HEAD repro means the cause is environmental — usually a leftover emulator
   (`npm run emulators:free`) — not your diff.
@@ -146,11 +150,17 @@ narrow browser window is the right place to iterate on mobile layout. Reach for
 it on any change to a shared component, the theme, or a layout — it is faster and
 more repeatable than a human on an emulator.
 
-**The sibling kanban has the better version of this** — `screens-e2e.mjs`, every
-screen at five widths straddling the breakpoint, asserted rather than merely
-screenshotted. This repo has no multi-width sweep yet. Porting it is the single
-highest-value testing improvement available here; until then, resize deliberately
-rather than trusting one viewport.
+**`npm run test:screens` is the multi-width version, and it is the one to reach
+for on any layout change.** Every screen, four roles, five widths straddling the
+700px breakpoint — asserted rather than merely screenshotted, and non-zero on any
+failure. It found a real bug on its first run: at 320px the Add-hours date field
+was squashed to `08`, and at 390px and above it was perfect. **That is why one
+viewport is not enough** — a bug on one side of a breakpoint is invisible from
+the other. The checks, the design decisions and the two holes it had before
+anyone watched it fail are in `docs/DEV-TOOLING.md`.
+
+Both browser suites share their bring-up (`scripts/lib/e2e-stack.mjs`) and both
+run on Playwright's own Chromium, so neither needs a system browser.
 
 ### The Android emulator is reserved for the seams a browser cannot reach
 

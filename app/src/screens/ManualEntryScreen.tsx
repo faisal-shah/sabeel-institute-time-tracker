@@ -101,7 +101,7 @@ export function ManualEntryScreen({
 
       <Text style={styles.label}>Date</Text>
       <View style={styles.dateRow}>
-        <View style={styles.grow}>
+        <View style={styles.dateField}>
           <DateTimeField kind="date" value={dateKey} onChange={setDateKey} />
         </View>
         <Button label="Today" kind="secondary" onPress={() => setDateKey(todayKey)} />
@@ -159,7 +159,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   noteInput: { minHeight: 72, textAlignVertical: 'top' },
-  dateRow: { flexDirection: 'row', gap: spacing(2), alignItems: 'center' },
+  // The date and its two shortcuts share a line while there is room and WRAP
+  // when there is not. `flex: 1` here (as the times row below uses) sets
+  // flexBasis to 0 and lets the field collapse instead — at 320px that left the
+  // date input showing "08". Growing from its natural width, and refusing to
+  // shrink below it, is what makes the row give way at the gap rather than
+  // inside the field.
+  dateRow: { flexDirection: 'row', gap: spacing(2), alignItems: 'center', flexWrap: 'wrap' },
+  dateField: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' },
   timesRow: { flexDirection: 'row', gap: spacing(3) },
   grow: { flex: 1 },
   hint: { fontSize: 12, color: t.text.muted },

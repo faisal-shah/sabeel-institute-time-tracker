@@ -27,9 +27,15 @@ export default tseslint.config(
       },
     },
     rules: {
+      // `args: 'all'` rather than the default `after-used`. The default only
+      // reports a dead parameter if nothing after it is used, so whether the
+      // rule sees one is decided by its POSITION in the signature — the same
+      // dead argument was caught in one harness and invisible in a sibling for
+      // that reason alone. Measured at zero violations once `publishDownloadPage`
+      // lost its unused `v` (2026-08-28).
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        { args: 'all', argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
   },
@@ -66,6 +72,21 @@ export default tseslint.config(
           message: 'Hardcoded color. Use a semantic token from src/theme.',
         },
       ],
+    },
+  },
+  {
+    // The `page.evaluate` callbacks in the browser suites run IN THE BROWSER,
+    // where `document` and `getComputedStyle` exist. eslint parses each file as
+    // one program and cannot tell the two contexts apart, so the browser globals
+    // are declared for the whole file. The alternative — and what these files
+    // carried before the layout sweep arrived with sixteen more measurements —
+    // is a `no-undef` disable comment above every single one.
+    files: ['scripts/*-e2e.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
     },
   },
   {

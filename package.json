@@ -23,6 +23,7 @@
     "knip": "knip",
     "check:text": "node scripts/check-text-sources.mjs",
     "test:e2e": "node scripts/web-e2e.mjs",
+    "test:screens": "node scripts/screens-e2e.mjs",
     "emulators:free": "bash scripts/free-emulator-ports.sh",
     "release": "node scripts/release.mjs",
     "verify": "npm run lint && npm run typecheck && npm run knip && npm test",
