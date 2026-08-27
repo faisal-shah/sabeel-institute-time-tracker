@@ -5,7 +5,7 @@ import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { REGION } from '@sabeel/shared';
 import { firebaseConfig } from './firebase-config';
 import { initAuth } from './authInit';
-import { USE_EMULATORS, EMULATOR_HOST } from './env';
+import { USE_EMULATORS, EMULATOR_HOST, EMULATOR_PORTS } from './env';
 
 // Against the emulators, use the emulator's demo project id (what the emulator
 // suite and tests run as) so the app reads/writes the same namespace. The real
@@ -18,7 +18,9 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app, REGION);
 
 if (USE_EMULATORS) {
-  connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, { disableWarnings: true });
-  connectFirestoreEmulator(db, EMULATOR_HOST, 8080);
-  connectFunctionsEmulator(functions, EMULATOR_HOST, 5001);
+  connectAuthEmulator(auth, `http://${EMULATOR_HOST}:${EMULATOR_PORTS.auth}`, {
+    disableWarnings: true,
+  });
+  connectFirestoreEmulator(db, EMULATOR_HOST, EMULATOR_PORTS.firestore);
+  connectFunctionsEmulator(functions, EMULATOR_HOST, EMULATOR_PORTS.functions);
 }

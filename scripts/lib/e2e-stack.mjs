@@ -14,13 +14,15 @@ import http from 'node:http';
 import { createReadStream, createWriteStream, existsSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { chromium } from 'playwright';
+import { EMULATOR_PORTS } from './ports.mjs';
 
 export const ROOT = new URL('../..', import.meta.url).pathname;
 export const PROJECT = 'demo-sabeel';
+const HOST = '127.0.0.1';
 export const EMULATOR_HOSTS = {
-  auth: '127.0.0.1:9099',
-  firestore: '127.0.0.1:8080',
-  functions: '127.0.0.1:5001',
+  auth: `${HOST}:${EMULATOR_PORTS.auth}`,
+  firestore: `${HOST}:${EMULATOR_PORTS.firestore}`,
+  functions: `${HOST}:${EMULATOR_PORTS.functions}`,
 };
 
 const children = [];
