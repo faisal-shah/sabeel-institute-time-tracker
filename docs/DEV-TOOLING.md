@@ -103,10 +103,17 @@ noise — is the real cause:
 Killed
 ```
 
-That is the **OOM killer**, not a bug in your diff. This machine runs `earlyoom`
-with `--prefer ^(qemu-system-x86|clang\+\+|cc1plus|ld|node|java|gradle)$`, so
-the Firestore emulator (Java) is a preferred victim the moment memory gets
-tight.
+That is the **OOM killer**, not a bug in your diff.
+
+**Correction (verified 2026-08-28).** This file used to say the machine runs
+`earlyoom` with a `--prefer` list that makes the Java Firestore emulator the
+designated victim. **It does not run here at all** — no binary, no unit, no
+process. That mattered because it taught the wrong triage. With no `earlyoom`
+and **no swap**, the kernel picks by RSS, so the first things to die are the
+**AVD (~5 GB)** and a **Gradle daemon (~3.7 GB)**, not the emulator. The
+emulator dying is usually a *consequence* of memory another process took — quite
+possibly a process in a **sibling repo**, since `~/.gradle` and the AVD are
+shared machine-wide.
 
 The usual culprit is a **Gradle daemon left resident by an APK build** — after a
 release it sits on ~3.7 GB indefinitely. Seen 2026-07-26: the emulator suite
@@ -309,16 +316,99 @@ one run in two. Both are stack behaviour, so the *why* lives in the
   looks exactly like the bug the check exists to catch.
 
 **When this suite fails, check which of the two it is before believing the
-step.** And note the shared-machine hazard: both this repo and the sibling
-`sabeel-recording-app` pin the emulators to 8080/9099/5001 and both call
-`free-emulator-ports.sh` at the start of every run, so a run in one repo
-SIGTERMs the other's Firestore emulator (`exited with code: 143`) — or, worse,
-silently costs it a write. `ps -eo pid,args | grep "[j]ava -jar .*emulator"`
-shows the rules path, which names the repo that owns it. Two agents cannot use
-the box at once today; the fix would be to thread the ports through
-`app/src/firebase.ts` (they are literals there and in `firebase.json`) so each
-suite takes its own block. **Not done** — it is a change to a shipped client
-seam, and it is Faisal's call.
+step.**
+
+The shared-machine hazard behind them is **fixed as of 2026-08-28**: this
+checkout owns ports **61000–61006** and `free-emulator-ports.sh` sweeps nothing
+outside that block. Previously this repo and its two siblings all pinned
+8080/9099/5001 and all called that script at the start of every run, so a run in
+one repo SIGTERMed the other's Firestore (`exited with code: 143`) — or, worse,
+silently cost it a write. See **"Emulator ports are this checkout's own"** below.
+
+## Emulator ports are this checkout's own
+
+**This repo owns 61000–61006.** The sibling projects own 61100+ and 61200+.
+
+| port | service |
+|---|---|
+| 61000 | firestore |
+| 61001 | firestore websocket |
+| 61002 | auth |
+| 61003 | functions |
+| 61004 | emulator UI |
+| 61005 | hub |
+| 61006 | logging |
+
+Three repos share this machine and all three used to pin 8080/9099/5001, so
+whichever suite started second killed the other's Firestore. `61003` also reads
+as "this project, functions" at a glance — which is the diagnostic that was
+missing when one session killed another's emulator after misreading a truncated
+`ps` line.
+
+**Why 61000+, and not some other free-looking numbers.** The ephemeral range on
+this box is 32768–60999 (`/proc/sys/net/ipv4/ip_local_port_range`), so anything
+above it is never handed out at random; and Firebase's own defaults top out at
+9499 (`firebase-tools/lib/emulator/constants.js`), so the block cannot collide
+with something the CLI picks for itself.
+
+**Four files state these numbers and they cannot share a representation** —
+`firebase.json` (JSON), `app/src/env.ts` (TS, inlined into the client bundle),
+`scripts/lib/ports.mjs` (ESM) and the `PORTS=(…)` array in
+`free-emulator-ports.sh` (shell). Four copies are unavoidable; four copies
+drifting is not. `functions/test/unit/emulator-ports.test.ts` asserts they agree,
+that every port is inside the block, and that the kill list contains **nothing
+this checkout does not own**. Change one, change all four, and let `npm run
+verify` prove it in seconds rather than discovering it when an emulator answers
+on a port nobody expected.
+
+**Two ports are easy to move wrongly:**
+
+- `firestore.websocketPort` is a **nested** key under `firestore`, defaults to
+  **9150**, and is *not* derived from `firestore.port`. Left unset it silently
+  **increments** on collision instead of erroring
+  (`controller.js` sets `portFixed = !!wsPortConfig`), so moving `firestore.port`
+  alone would leave every checkout still sharing 9150.
+- `ui`, `hub` and `logging` have `FIND_AVAILBLE_PORT_BY_DEFAULT = true` — they
+  drift silently rather than failing. Pinning them turns a collision into a hard
+  error, which is what you want.
+
+**The ports are source literals, never `EXPO_PUBLIC_*`.** On a native debug build
+those come from the environment that started *Metro*, and one Metro serves every
+Sabeel project here — an env-driven port would make the app's backend address a
+property of an unrelated process's environment. An env-with-default is worse
+still: it fails *toward* the collision, since an unset or mistyped var falls back
+to the old shared port and connects to a sibling.
+
+**Metro (8081) is not in the scheme and cannot be.** The AVD reaches the host
+directly at `10.0.2.2:8081`, so `adb reverse` does not redirect it and the port
+cannot move without rebuilding the native app. Concurrent *web* work is fine;
+concurrent *native* work is one session at a time — and on 15 GiB with no swap,
+memory settles that argument before ports do.
+
+### The Metro transform cache is repo-local for the same reason
+
+Ports were not the only thing three checkouts were sharing. Expo's default
+transform cache is `os.tmpdir()/metro-cache` — **one directory for every Expo
+project on the machine** — and Expo overrides `FileStore.clear()` so that a root
+inside `os.tmpdir()` is `renameSync`d away wholesale and deleted in the
+background (`@expo/metro-config/build/file-store.js`). Every e2e entry point here
+passes `--clear`, and each one is documented as load-bearing, because
+`EXPO_PUBLIC_*` is inlined at bundle time and a stale cache serves a bundle built
+under different env.
+
+So `--clear` did not clear *this project's* entries. It deleted all three
+projects' — a full cold transform of an Expo + RN monorepo for whoever ran next,
+and any Metro already running elsewhere kept writing into shard directories that
+no longer existed.
+
+`app/metro.config.js` now points `cacheStores` at `app/.metro-cache`
+(gitignored). It is set as a **function**: Metro calls it with the `metro-cache`
+module (`metro-config/src/loadConfig.js`, `mergeConfigObjects`), so the config
+does not have to `require('metro-cache')` — which would mean declaring a
+dependency whose version is pinned transitively by `@expo/metro`, free to drift
+from it, and flagged by knip. Being repo config rather than a wrapper-script env
+var, it also covers a hand-run `npx expo start`, which no script sets `TMPDIR`
+for.
 
 ## `scripts/release.mjs`
 
