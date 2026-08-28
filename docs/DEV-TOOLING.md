@@ -94,9 +94,10 @@ use `ps | grep [f]…` when you want a truthful count.)
 ## The emulator suite dies with `ECONNREFUSED` and most tests "skipped"
 
 Signature: the run lasts ~6 seconds, a dozen tests fail with
-`connect ECONNREFUSED 127.0.0.1:9099`, and 80+ are skipped. Buried above the
-vitest output — and easy to miss, because the tail of the log is all test
-noise — is the real cause:
+`connect ECONNREFUSED 127.0.0.1:61002` (this checkout's auth port; the
+signature predates the port move and used to read 9099), and 80+ are skipped.
+Buried above the vitest output — and easy to miss, because the tail of the log
+is all test noise — is the real cause:
 
 ```
 ⚠  Firestore Emulator has exited upon receiving signal: SIGKILL
