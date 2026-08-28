@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { enablePush, pushPromptState } from './notify';
 
@@ -38,37 +39,67 @@ async function isDismissed(uid: string): Promise<boolean> {
 export function usePushNudge(uid: string): {
   visible: boolean;
   busy: boolean;
-  enable: () => void;
+  /** Permission was granted but no token came back — say so, do not vanish. */
+  failed: boolean;
+  enable: () => Promise<void>;
   dismiss: () => void;
 } {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      // Only 'default' is worth a nudge: granted needs nothing, and denied
-      // cannot be re-asked from here at all.
-      const [state, dismissed] = await Promise.all([pushPromptState(), isDismissed(uid)]);
-      if (live) setVisible(state === 'default' && !dismissed);
-    })();
-    return () => {
-      live = false;
-    };
-  }, [uid]);
+  // On FOCUS, not on mount. This screen sits under a stack navigator, so it
+  // stays mounted while the notification settings screen is pushed over it —
+  // someone who enables notifications there and comes back would otherwise
+  // return to a nudge still insisting they are not enabled.
+  useFocusEffect(
+    useCallback(() => {
+      let live = true;
+      void (async () => {
+        // Only 'default' is worth a nudge: granted needs nothing, and denied
+        // cannot be re-asked from here at all.
+        const [state, dismissed] = await Promise.all([pushPromptState(), isDismissed(uid)]);
+        if (!live) return;
+        // Cleared on every re-check: a failure is about one attempt, not about
+        // the device forever, and leaving it set would strand the card on an
+        // error with no way to try again.
+        setFailed(false);
+        setVisible(state === 'default' && !dismissed);
+      })();
+      return () => {
+        live = false;
+      };
+    }, [uid]),
+  );
 
   // enablePush must be the FIRST thing this does — a browser only honours a
   // permission request raised directly from a press, and an await before it
   // loses that. setBusy is synchronous, so it does not separate the two.
   const enable = () => {
     setBusy(true);
-    void enablePush(uid).then(() => {
-      setBusy(false);
-      // Hidden whatever the answer: granted needs no nudge, denied cannot be
-      // asked again, and unavailable has nothing behind it. The notifications
-      // screen reports whichever state resulted.
-      setVisible(false);
-    });
+    // RETURNED, not voided: a Button that awaits its handler to drive its own
+    // progress (this app's Button does) gets nothing from a void. Returning
+    // the promise does not await it, so the request above is still raised
+    // synchronously inside the press.
+    //
+    // .catch as well as .then: enablePush is total by construction, but a
+    // rejection slipping through here would leave the button spinning with no
+    // way back, which is worse than any answer it could have given.
+    //
+    // It maps to 'unavailable', NOT to undefined: undefined fell through to the
+    // hide-the-card branch below, so a rejection vanished silently and looked
+    // exactly like success — the very thing the failed state exists to prevent.
+    return enablePush(uid)
+      .catch(() => 'unavailable' as const)
+      .then((result) => {
+        setBusy(false);
+        // Granted needs no further nudge, and a refusal is sticky — both just
+        // go away. But permission granted with NO TOKEN behind it is a silent
+        // failure that looks exactly like success: the card would vanish and
+        // nothing would ever arrive. Say so instead.
+        if (result === 'unavailable') return setFailed(true);
+        setVisible(false);
+      });
   };
 
   const dismiss = () => {
@@ -76,5 +107,5 @@ export function usePushNudge(uid: string): {
     void AsyncStorage.setItem(key(uid), '1').catch(() => undefined);
   };
 
-  return { visible, busy, enable, dismiss };
+  return { visible, busy, failed, enable, dismiss };
 }

@@ -14,12 +14,20 @@ const t = getTheme();
  * the screen's own actions and doubled the height the card steals from them.
  */
 export function PushNudge({ uid }: { uid: string }) {
-  const { visible, busy, enable, dismiss } = usePushNudge(uid);
+  const { visible, busy, failed, enable, dismiss } = usePushNudge(uid);
   if (!visible) return null;
   return (
     <View style={styles.card}>
-      <Text style={styles.text}>Notifications are not enabled on this device.</Text>
-      <Button label="Enable notifications" disabled={busy} onPress={enable} />
+      <Text style={styles.text}>
+        {failed
+          ? 'This device can’t show notifications.'
+          : 'Notifications are not enabled on this device.'}
+      </Text>
+      {/* No Enable button once it has failed — pressing again would do the same
+          nothing. Dismissing is the only useful action left. */}
+      {failed ? null : (
+        <Button label="Enable notifications" disabled={busy} onPress={enable} />
+      )}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Not now"
@@ -42,7 +50,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
   },
   text: { fontSize: 14, color: t.text.primary },
-  /** A real 44pt box, not hitSlop — neighbouring slops overlap. */
-  dismiss: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  dismissText: { fontSize: 14, color: t.text.muted },
+  /**
+   * Left, hugging its text — NOT centred across the card. On a wide screen the
+   * button above sizes to its label and sits left, so a centred dismiss floated
+   * off on its own with nothing to belong to. Still a real 44pt box rather than
+   * hitSlop, because neighbouring slops overlap.
+   */
+  dismiss: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  /**
+   * Accent + underline, the link treatment. Secondary grey read as a caption
+   * sitting under the button rather than as something to tap; muted (2.92:1)
+   * was worse still, being the caption token AND below AA.
+   */
+  dismissText: { fontSize: 14, color: t.text.accent, textDecorationLine: 'underline' },
 });

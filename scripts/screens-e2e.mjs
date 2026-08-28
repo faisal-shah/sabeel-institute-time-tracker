@@ -125,6 +125,36 @@ for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
 }
 
 const results = [];
+/**
+ * The notification settings screen must always say SOMETHING about this device —
+ * exactly one of the four states, never none and never two.
+ *
+ * Deliberately browser-independent: headless Chromium reports permission as
+ * 'denied' and the full browser reports 'default', so asserting a particular
+ * message would only ever hold under one of them. What must hold under both is
+ * that the section exists at all. Without this the sweep merely photographs
+ * whatever renders, and the whole control could vanish with every check green.
+ */
+async function checkDeviceState(page, tag) {
+  const messages = [
+    'Notifications are not enabled on this device.',
+    'Notifications are enabled on this device.',
+    'Notifications are blocked for this app on this device.',
+    'This device can\u2019t show notifications.',
+  ];
+  const shown = [];
+  for (const m of messages) {
+    if (await page.getByText(m, { exact: false }).first().isVisible().catch(() => false)) {
+      shown.push(m);
+    }
+  }
+  check(
+    `${tag} / notification-settings says exactly one thing about this device`,
+    shown.length === 1,
+    `saw ${shown.length}: ${shown.join(' | ') || '(none)'}`,
+  );
+}
+
 function check(name, ok, detail = '') {
   results.push({ name, ok });
   // Detail describes the FAILURE, so it is printed only when there is one —
@@ -980,6 +1010,7 @@ async function tourAdmin(tag, width) {
     await tap(page, 'Notification settings');
     await vis(page.getByText('Weekly submit reminder')).waitFor({ timeout: 20000 });
   });
+  await checkDeviceState(page, tag);
   await goBack(page);
 
   await visit('approvals', async () => {

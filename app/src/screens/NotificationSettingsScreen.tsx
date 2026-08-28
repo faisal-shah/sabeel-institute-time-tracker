@@ -68,15 +68,20 @@ export function NotificationSettingsScreen({
   // before it loses that. Button calls onPress synchronously and awaits the
   // promise it returns, which keeps the chain intact. See notify.web.ts.
   const turnOnPush = () =>
-    enablePush(uid).then(async (result) => {
-      if (result === 'granted') return setPush('granted');
-      if (result === 'unavailable') return setPush('unsupported');
-      // Re-read rather than assuming 'denied': a browser makes a refusal stick,
-      // but a dismissed Android dialog leaves this askable, and the button
-      // should come back rather than send someone to a settings screen that
-      // shows nothing wrong.
-      setPush(await pushPromptState());
-    });
+    // .catch as well: Button resets its own busy state in a finally, but an
+    // unhandled rejection here would still surface as a console error for a
+    // path that is meant to be total.
+    enablePush(uid)
+      .catch(() => 'unavailable' as const)
+      .then(async (result) => {
+        if (result === 'granted') return setPush('granted');
+        if (result === 'unavailable') return setPush('unsupported');
+        // Re-read rather than assuming 'denied': a browser makes a refusal
+        // stick, but a dismissed Android dialog leaves this askable, and the
+        // button should come back rather than send someone to a settings screen
+        // that shows nothing wrong.
+        setPush(await pushPromptState());
+      });
 
   const setPref = (key: PrefKey, on: boolean) =>
     updateDoc(doc(db, COLLECTIONS.users, uid), { notifPrefs: { ...prefs, [key]: on } });
@@ -100,17 +105,22 @@ export function NotificationSettingsScreen({
           <Button label="Enable notifications" onPress={turnOnPush} />
         </View>
       ) : null}
+      {push === 'granted' ? (
+        <Text style={styles.intro}>Notifications are enabled on this device.</Text>
+      ) : null}
       {push === 'denied' ? (
         <View style={styles.device}>
           <Text style={styles.deviceText}>
             Notifications are blocked for this app on this device.
           </Text>
           {/* Native can open its own settings page; a browser cannot, so there
-              it is instructions or nothing. */}
+              it is instructions or nothing. deviceHint rather than the row
+              `hint` style: that one is muted (2.92:1, the caption token) and
+              this is the only route back for someone who has blocked them. */}
           {canOpenPushSettings ? (
             <Button label="Open settings" kind="secondary" onPress={openPushSettings} />
           ) : (
-            <Text style={styles.hint}>
+            <Text style={styles.deviceHint}>
               Allow them in your browser’s site settings, then reopen this screen.
             </Text>
           )}
@@ -148,6 +158,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
   },
   deviceText: { fontSize: 14, color: t.text.primary },
+  deviceHint: { fontSize: 13, color: t.text.secondary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

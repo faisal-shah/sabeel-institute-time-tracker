@@ -98,7 +98,8 @@ export async function pushPromptState(): Promise<
  * browser permission stayed at 'default' and the site appeared in neither the
  * allowed nor the blocked list — the tell-tale symptom of a request nobody saw.
  *
- * Asking now belongs to `enablePush`, on the notification settings screen. A
+ * Asking now belongs to `enablePush`, reached from a press — the nudge on Home,
+ * or the notification settings screen itself. A
  * browser permitted in an earlier visit still registers silently right here, so
  * every already-working device keeps working with no extra press.
  *
@@ -134,14 +135,18 @@ export async function registerPush(uid: string): Promise<boolean> {
 export async function enablePush(uid: string): Promise<PushEnableResult> {
   if (!canRequestPush()) return 'unavailable';
 
-  // NOTHING MAY BE AWAITED ABOVE THIS LINE.
-  const decision =
-    Notification.permission === 'default'
-      ? Notification.requestPermission()
-      : Promise.resolve(Notification.permission);
-
-  // Past the prompt, awaits are free again.
+  // Inside the try, but still the first thing that runs: entering a try block
+  // is synchronous, so this keeps the request inside the press AND catches a
+  // synchronous throw. Outside it, a throw here escaped a function every caller
+  // treats as total, leaving a button stuck in its busy state.
   try {
+    // NOTHING MAY BE AWAITED ABOVE THIS LINE.
+    const decision =
+      Notification.permission === 'default'
+        ? Notification.requestPermission()
+        : Promise.resolve(Notification.permission);
+
+    // Past the prompt, awaits are free again.
     if ((await decision) !== 'granted') return 'denied';
     return (await claimToken(uid)) ? 'granted' : 'unavailable';
   } catch (e) {

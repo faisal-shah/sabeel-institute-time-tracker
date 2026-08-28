@@ -111,6 +111,12 @@ export function HomeScreen({
         </Pressable>
       ) : null}
 
+      {/* Top of the content, below the alert only. Same place in all three apps:
+          first thing after anything that needs acting on today. It is one-time
+          and dismissible, so it earns the position; a rejected timesheet still
+          outranks it. */}
+      <PushNudge uid={uid} />
+
       <Pressable style={styles.periodStrip} onPress={() => nav.navigate('Timesheet')}>
         <Text style={styles.periodLabel}>This week · {periodLabel(currentPeriod)}</Text>
         <Text
@@ -160,11 +166,6 @@ export function HomeScreen({
         </View>
       )}
       <ErrorText error={error} />
-
-      {/* Below the rejected banner and the clock, above the secondary actions.
-          A one-time setup prompt must not outrank an alert that needs acting on
-          today, nor the button someone opened the app to press. */}
-      <PushNudge uid={uid} />
 
       <Button
         label="Add hours manually"

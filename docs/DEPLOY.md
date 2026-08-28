@@ -18,6 +18,12 @@ firebase deploy --only firestore:rules,firestore:indexes,functions,hosting
 ```
 - Hosting serves `app/dist-web` (built by `npm run web:export -w @sabeel/app`, run
   automatically by the hosting predeploy hook in `firebase.json`).
+- **Run `npm run check:web-push` before the hosting deploy.** The VAPID key
+  reaches the bundle from `EXPO_PUBLIC_FCM_VAPID_KEY` in the environment that
+  runs the export. Miss it and nothing fails: the client is inert by design, so
+  the build succeeds, the site deploys, and every device quietly reports that it
+  cannot receive notifications. The check reads the exported bundle and refuses
+  when the key is absent or the wrong shape.
 - Indexes: the composite indexes in `firestore.indexes.json` deploy with the above;
   first queries will error until they finish building (a few minutes).
 

@@ -47,18 +47,24 @@ No secrets to rotate: the two values were `DRIVE_SPREADSHEET_ID` and
 `DRIVE_FOLDER_ID`, which are document identifiers, not credentials. They have
 been removed from `functions/.env` and from the deployed functions' config.
 
-## Web push notifications (one console step)
+## Web push notifications
 
-Android push works out of the box. The **website** needs the Web Push
-certificate generated once:
+Android push works out of the box. The website needed a Web Push certificate,
+and it has one.
 
-- [x] Firebase console → **Project settings** (gear) → **Cloud Messaging** tab →
-  scroll to **Web configuration** → **Web Push certificates** → **Generate key
-  pair**.
-- [x] Copy the key that appears (starts with `B…`, ~90 characters — it's a
-  *public* key, chat is fine) and give it to Claude, who puts it in
-  `app/.env.local` as `EXPO_PUBLIC_FCM_VAPID_KEY` and redeploys the website.
-  Until then, web sign-ins simply skip push registration — nothing breaks.
+- [x] Web Push certificate generated (Firebase console → **Project settings** →
+  **Cloud Messaging** → *Web configuration* → **Web Push certificates**) and
+  living in `app/.env.local` as `EXPO_PUBLIC_FCM_VAPID_KEY`.
+- [ ] **Confirm a web push actually arrives, after the next deploy.** The key
+  reaches the bundle from the environment that runs `expo export`, so run
+  `npm run check:web-push` between the export and the deploy — a keyless build
+  makes every device report that it cannot receive notifications, and nothing
+  else looks wrong.
+
+  On the site: a browser that has never been asked shows **Enable
+  notifications**, on Home and on Notification settings. That is expected, not a
+  fault — the app no longer asks on sign-in, because a browser only honours a
+  permission request raised straight from a press.
 
 ## Fix web sign-in inside in-app/partitioned browsers (missing-initial-state error)
 
