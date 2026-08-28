@@ -24,7 +24,7 @@
  *    It is derived (major*1000000 + minor*1000 + patch), so a version that goes
  *    backwards is caught here rather than by a phone that won't take the update.
  */
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { versionProblems } from './check-version.mjs';
@@ -300,7 +300,13 @@ if (process.env.TT_STOP_GRADLE === '1') {
   }
 } else {
   try {
-    execSync('pgrep -f GradleDaemon', { stdio: 'ignore' });
+    // execFileSync, NOT execSync: `execSync` runs the command through `sh -c`,
+    // and THAT wrapper's own command line contains the string being searched
+    // for — so `pgrep -f` matches it and reports a daemon every single time,
+    // including when none is running. Verified: zero real daemons, pgrep exit 0.
+    // Spawning pgrep directly gives it no shell wrapper to find, and pgrep
+    // already excludes its own pid.
+    execFileSync('pgrep', ['-f', 'GradleDaemon'], { stdio: 'ignore' });
     console.log(
       '▸ A Gradle daemon is still running (~3.7GB). It is shared with the sibling\n' +
         '  checkouts, so this release did not stop it. If memory is tight and nothing\n' +
