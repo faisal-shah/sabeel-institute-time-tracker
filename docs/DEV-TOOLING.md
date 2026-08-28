@@ -109,11 +109,18 @@ That is the **OOM killer**, not a bug in your diff.
 `earlyoom` with a `--prefer` list that makes the Java Firestore emulator the
 designated victim. **It does not run here at all** — no binary, no unit, no
 process. That mattered because it taught the wrong triage. With no `earlyoom`
-and **no swap**, the kernel picks by RSS, so the first things to die are the
+the kernel picks by RSS, so under real pressure the first things to go are the
 **AVD (~5 GB)** and a **Gradle daemon (~3.7 GB)**, not the emulator. The
 emulator dying is usually a *consequence* of memory another process took — quite
 possibly a process in a **sibling repo**, since `~/.gradle` and the AVD are
 shared machine-wide.
+
+The memory picture, checked the same day: **15 GiB of RAM plus a 16 GiB swapfile**
+(`/proc/swaps`, `vm.swappiness=10`). An earlier note here said "no swap", which
+was wrong and pointed at the wrong failure: with swap present, memory pressure
+usually shows up first as **thrashing** — an AVD or emulator that has gone
+treacle-slow — and only later as a kill. Treat a suite that suddenly takes
+minutes per step as a memory symptom, not a flaky test.
 
 The usual culprit is a **Gradle daemon left resident by an APK build** — after a
 release it sits on ~3.7 GB indefinitely. Seen 2026-07-26: the emulator suite
@@ -382,7 +389,7 @@ to the old shared port and connects to a sibling.
 **Metro (8081) is not in the scheme and cannot be.** The AVD reaches the host
 directly at `10.0.2.2:8081`, so `adb reverse` does not redirect it and the port
 cannot move without rebuilding the native app. Concurrent *web* work is fine;
-concurrent *native* work is one session at a time — and on 15 GiB with no swap,
+concurrent *native* work is one session at a time — and on 15 GiB of RAM,
 memory settles that argument before ports do.
 
 ### The Metro transform cache is repo-local for the same reason

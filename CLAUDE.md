@@ -195,8 +195,11 @@ ps -eo pid,args --no-headers | grep "[q]emu-system"   # empty = no AVD running
 Use that, not `adb devices` — `adb devices` *starts* a daemon as a side effect,
 and a live adb server does **not** mean an emulator is running (verified: adb
 listens on 5037 with zero AVDs booted). If one is already running it belongs to
-someone else: ask before killing it or starting a second. Two will not fit in
-15 GiB with no swap, and the resulting OOM will look like a broken diff.
+someone else: ask before killing it or starting a second. The box has 15 GiB of
+RAM and a 16 GiB swapfile, so a second AVD (~5 GB) will not simply be killed —
+it will swap, and an AVD that is swapping is slower than the software renderer
+already is. Either way the symptom looks like a broken diff rather than a
+resource problem.
 
 **Why this is safe, and exactly where it is not.** react-native-web resolves
 flexbox through the browser's engine, so a narrow viewport tests *your layout
