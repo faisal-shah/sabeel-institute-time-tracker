@@ -43,14 +43,19 @@ if [ -d "$PAGES_DIR/.git" ]; then
   grep -q ">${STAMP_HUMAN}</time>" "$PAGE" ||
     { echo "PAGE NOT UPDATED: timestamp did not become ${STAMP_HUMAN}" >&2; exit 1; }
 
-  git -C "$PAGES_DIR" add sabeel-time-tracker/index.html
+  # PATHSPEC on every git call below. The pages repo is SHARED with the kanban
+  # publisher, and an unscoped `git commit` sweeps up whatever that script has
+  # staged — so a concurrent publish commits the other project's page under this
+  # project's message, or worse, ships it half-written.
+  PAGE_REL="sabeel-time-tracker/index.html"
+  git -C "$PAGES_DIR" add -- "$PAGE_REL"
   # `commit && push || echo` reported success when the PUSH failed, which looks
   # identical to "nothing changed" and leaves the team downloading a stale
   # build. Separate the two: no changes is fine, a failed push is not (set -e).
-  if git -C "$PAGES_DIR" diff --cached --quiet; then
+  if git -C "$PAGES_DIR" diff --cached --quiet -- "$PAGE_REL"; then
     echo "(page already current — nothing to commit)"
   else
-    git -C "$PAGES_DIR" commit -q -m "Time tracker page: v${VERSION} (${STAMP_HUMAN})"
+    git -C "$PAGES_DIR" commit -q -m "Time tracker page: v${VERSION} (${STAMP_HUMAN})" -- "$PAGE_REL"
     git -C "$PAGES_DIR" push -q
   fi
   n="$(git -C "$PAGES_DIR" rev-list --all --objects | grep -c '\.apk$' || true)"
