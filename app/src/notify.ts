@@ -3,6 +3,7 @@
 // so Cloud Functions can reach this device. Never throws — notifications are
 // best-effort and must not disturb sign-in.
 import { useEffect } from 'react';
+import { Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { COLLECTIONS, decodeNotifRoute, type PushTokenDoc } from '@sabeel/shared';
@@ -54,6 +55,16 @@ function handleResponse(response: Notifications.NotificationResponse): void {
   if (route) openNotifRoute(route);
 }
 
+/**
+ * Native can deep-link to its own settings page, so a blocked device gets a
+ * button rather than instructions. The web sibling cannot — see there.
+ */
+export const canOpenPushSettings = true;
+
+export function openPushSettings(): void {
+  void Linking.openSettings();
+}
+
 /** Mirrors the web sibling — see notify.web.ts for why this is not a boolean. */
 export type PushEnableResult = 'granted' | 'denied' | 'unavailable';
 
@@ -93,21 +104,23 @@ export async function enablePush(uid: string): Promise<PushEnableResult> {
   return state === 'unsupported' ? 'unavailable' : 'denied';
 }
 
-export async function registerPush(uid: string): Promise<void> {
-  if (USE_EMULATORS) return; // FCM has no emulator; keep dev runs deterministic
+export async function registerPush(uid: string): Promise<boolean> {
+  if (USE_EMULATORS) return false; // FCM has no emulator; keep dev runs deterministic
   try {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Default',
       importance: Notifications.AndroidImportance.DEFAULT,
     });
     const perm = await Notifications.requestPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) return false;
     const { data: token } = await Notifications.getDevicePushTokenAsync();
-    if (typeof token !== 'string' || !token) return;
+    if (typeof token !== 'string' || !token) return false;
     const body: PushTokenDoc = { token, platform: 'android', updatedAt: Date.now() };
     await setDoc(doc(db, COLLECTIONS.users, uid, 'pushTokens', token), body);
+    return true;
   } catch (e) {
     captureError(e, { source: 'registerPush' });
+    return false;
   }
 }
 

@@ -4,7 +4,13 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { COLLECTIONS, type NotifPrefs, type TokenClaims, type UserDoc } from '@sabeel/shared';
 import { db } from '../firebase';
 import { Button, Screen } from '../components/ui';
-import { enablePush, pushPromptState } from '../notify';
+import {
+  canOpenPushSettings,
+  enablePush,
+  openPushSettings,
+  pushPromptState,
+  registerPush,
+} from '../notify';
 import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
@@ -42,13 +48,20 @@ export function NotificationSettingsScreen({
 
   useEffect(() => {
     let live = true;
-    void pushPromptState().then((state) => {
-      if (live) setPush(state);
-    });
+    void (async () => {
+      const state = await pushPromptState();
+      if (!live) return;
+      if (state !== 'granted') return setPush(state);
+      // Permission alone is not enough to promise delivery. Claim the token and
+      // report what actually happened, or the screen says "enabled" over a
+      // device with nothing registered behind it.
+      const ok = await registerPush(uid);
+      if (live) setPush(ok ? 'granted' : 'unsupported');
+    })();
     return () => {
       live = false;
     };
-  }, []);
+  }, [uid]);
 
   // enablePush must be the FIRST thing this handler does — a browser only
   // honours a permission request raised directly from a press, and an await
@@ -83,24 +96,28 @@ export function NotificationSettingsScreen({
       </Text>
       {push === 'default' ? (
         <View style={styles.device}>
-          <Text style={styles.deviceText}>
-            This device isn’t set up to receive notifications yet.
-          </Text>
-          <Button label="Turn on notifications" onPress={turnOnPush} />
+          <Text style={styles.deviceText}>Notifications are not enabled on this device.</Text>
+          <Button label="Enable notifications" onPress={turnOnPush} />
         </View>
       ) : null}
       {push === 'denied' ? (
-        <Text style={styles.intro}>
-          Notifications are turned off for this app. Turn them back on where this device
-          keeps its permissions — your browser’s site settings, or the system settings for
-          the app — then reopen this screen.
-        </Text>
+        <View style={styles.device}>
+          <Text style={styles.deviceText}>
+            Notifications are blocked for this app on this device.
+          </Text>
+          {/* Native can open its own settings page; a browser cannot, so there
+              it is instructions or nothing. */}
+          {canOpenPushSettings ? (
+            <Button label="Open settings" kind="secondary" onPress={openPushSettings} />
+          ) : (
+            <Text style={styles.hint}>
+              Allow them in your browser’s site settings, then reopen this screen.
+            </Text>
+          )}
+        </View>
       ) : null}
       {push === 'unsupported' ? (
-        <Text style={styles.intro}>
-          This device can’t show notifications. Your choices below are saved either way, and
-          apply on any device where you are signed in.
-        </Text>
+        <Text style={styles.intro}>This device can’t show notifications.</Text>
       ) : null}
       {rows.map((r) => (
         <View key={r.key} style={styles.row}>

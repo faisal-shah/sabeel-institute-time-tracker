@@ -220,9 +220,11 @@ decision on your timesheet opens that week; a submission opens that person's
 week ready to review; a new account request opens the user list. This works from
 a closed app too — the app finishes signing you in first, then goes there.
 
-Push notifications need the device's own permission. On a phone the app asks
-when you sign in; a browser will not let it ask on its own, so open Home →
-**Notification settings** and use **Turn on notifications** there. That screen
+Push notifications need the device's own permission. The app offers to set it up
+once, on the Home screen after you sign in — or you can open Home →
+**Notification settings** any time and use **Enable notifications**. If they have
+been blocked, that button becomes **Open settings** on a phone; in a browser,
+allow them from the site settings behind the icon in the address bar. That screen
 also lets you switch each kind off individually; the **weekly reminder has its own switch**, so
 people who don't submit every week can silence the nagging while keeping the
 important notifications on.

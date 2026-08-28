@@ -23,6 +23,7 @@ import { setApprover, useApproverChoices, usePendingCount } from '../users';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { SearchablePicker } from '../components/SearchablePicker';
 import { Button, ErrorText, Screen } from '../components/ui';
+import { PushNudge } from '../components/PushNudge';
 import { getTheme, spacing } from '../theme';
 
 const t = getTheme();
@@ -159,6 +160,11 @@ export function HomeScreen({
         </View>
       )}
       <ErrorText error={error} />
+
+      {/* Below the rejected banner and the clock, above the secondary actions.
+          A one-time setup prompt must not outrank an alert that needs acting on
+          today, nor the button someone opened the app to press. */}
+      <PushNudge uid={uid} />
 
       <Button
         label="Add hours manually"
