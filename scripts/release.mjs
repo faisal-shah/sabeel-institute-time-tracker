@@ -275,15 +275,38 @@ console.log(`\n✔ v${version} released and committed. Now: firebase deploy --on
 // Release asset (never a commit). Same artifact, same run — provenance is tight.
 publishDownloadPage(built.arm64);
 
-// Release over: stop the Gradle daemon. It sits on ~3.7GB indefinitely, and on
-// this 15GB machine earlyoom then kills the Firestore emulator (Java is a
-// preferred victim) partway through the next `npm run test:emulator` — which
-// presents as ECONNREFUSED and 80+ skipped tests, i.e. as a broken diff rather
-// than as memory pressure. Costs one cold Gradle start; saves an hour of
-// debugging the wrong thing. Never fail a completed release over this.
-try {
-  execSync('./gradlew --stop', { cwd: join(root, 'app/android'), stdio: 'ignore' });
-  console.log('▸ Gradle daemon stopped (frees ~3.7GB — see docs/DEV-TOOLING.md)');
-} catch {
-  console.log('  (could not stop the Gradle daemon; run `./gradlew --stop` in app/android)');
+// Release over. The build leaves a Gradle daemon sitting on ~3.7GB, which is
+// worth knowing about — but this no longer STOPS it, for two reasons established
+// on 2026-08-28:
+//
+//   1. `./gradlew --stop` is MACHINE-WIDE. GRADLE_USER_HOME is unset in all
+//      three Sabeel checkouts, so they share one daemon registry and stopping
+//      "the" daemon stops the one a SIBLING session is mid-build on. It surfaces
+//      there as "Gradle build daemon disappeared unexpectedly" in a repo nobody
+//      touched.
+//   2. The reason given here was wrong. It claimed earlyoom would then kill the
+//      Firestore emulator as a preferred victim. earlyoom does not run on this
+//      machine at all, and the box has 15GB of RAM plus a 16GB swapfile — so
+//      contention shows up first as thrashing, not as a kill.
+//
+// Report it and let a human decide; TT_STOP_GRADLE=1 opts back in for when you
+// know nothing else is building.
+if (process.env.TT_STOP_GRADLE === '1') {
+  try {
+    execSync('./gradlew --stop', { cwd: join(root, 'app/android'), stdio: 'ignore' });
+    console.log('▸ Gradle daemons stopped (TT_STOP_GRADLE=1 — machine-wide, all checkouts)');
+  } catch {
+    console.log('  (could not stop the Gradle daemon; run `./gradlew --stop` in app/android)');
+  }
+} else {
+  try {
+    execSync('pgrep -f GradleDaemon', { stdio: 'ignore' });
+    console.log(
+      '▸ A Gradle daemon is still running (~3.7GB). It is shared with the sibling\n' +
+        '  checkouts, so this release did not stop it. If memory is tight and nothing\n' +
+        '  else is building:  TT_STOP_GRADLE=1, or `./gradlew --stop` in app/android.',
+    );
+  } catch {
+    // pgrep exits non-zero when nothing matches — no daemon, nothing to say.
+  }
 }
