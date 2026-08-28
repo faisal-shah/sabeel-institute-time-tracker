@@ -8,7 +8,8 @@
     "android": "node ../scripts/preflight-metro.mjs && expo run:android",
     "web": "expo start --web",
     "web:export": "node ../scripts/check-version.mjs && node ../scripts/gen-build-info.mjs && expo export --platform web --output-dir dist-web --clear",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
   }
 }

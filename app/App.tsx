@@ -45,6 +45,11 @@ export default function App() {
 
   // Once per active sign-in: register this device for push and record the
   // last-seen timezone (the weekly reminder fires at local Tuesday 10:00).
+  //
+  // registerPush never prompts. On the web a permission request is only
+  // honoured straight from a press, and an effect is not one — asking here is
+  // what left web push silently dead on every new browser. The ask lives on the
+  // notification settings screen now; see enablePush in notify.web.ts.
   const activeUid =
     session.phase === 'signedIn' && session.claims.status === 'active'
       ? session.user.uid
