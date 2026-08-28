@@ -4,8 +4,8 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
+    "start": "node ../scripts/preflight-metro.mjs && expo start",
+    "android": "node ../scripts/preflight-metro.mjs && expo run:android",
     "web": "expo start --web",
     "web:export": "node ../scripts/check-version.mjs && node ../scripts/gen-build-info.mjs && expo export --platform web --output-dir dist-web --clear",
     "typecheck": "tsc -p tsconfig.json --noEmit"
