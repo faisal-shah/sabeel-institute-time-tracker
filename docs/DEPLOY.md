@@ -49,8 +49,7 @@ scripts/emulator.sh headless &       # the release VERIFIES on the AVD; it needs
 # 1. cut it — version is X.Y.Z, no suffix, and must increase (see check-version.mjs)
 npm run release -- 0.26.0 --notes notes.md
 
-# 2. push the release commit FIRST, then deploy the web from it
-git push origin main
+# 2. deploy the web from the commit the release just pushed
 firebase deploy --only hosting --project dev
 #    …plus `functions` / `firestore:rules` / `firestore:indexes` if they changed.
 ```
@@ -58,8 +57,8 @@ firebase deploy --only hosting --project dev
 `npm run release` bumps `app/app.json` (the only place the version lives),
 re-renders the manual PDF, builds both APK variants, **installs the universal
 APK on the AVD and refuses to publish unless it is a production bundle** (the
-check that matters is the ABSENCE of the dev sign-in row), creates the GitHub
-release, then calls `scripts/publish-apk.sh`.
+check that matters is the ABSENCE of the dev sign-in row), pushes the branch,
+creates the GitHub release, then calls `scripts/publish-apk.sh`.
 
 `publish-apk.sh` updates the public download page
 (https://faisal-shah.github.io/sabeel-time-tracker/):
@@ -73,9 +72,20 @@ release, then calls `scripts/publish-apk.sh`.
   hand, and if you restructure that page keep the `Current build: <strong>v…`
   and `<time datetime="…">` anchors or the script aborts (by design).
 
-**Order matters in step 2.** Deploying hosting before pushing stamps the web
-build with a commit that is not on `main` yet; the sign-in footer then disagrees
-with the APK. Both surfaces must read `v<version> · <same hash>`.
+**`npm run release` pushes the branch itself**, between the AVD check and the
+GitHub release, and refuses to tag if `origin/main` does not then match the
+release commit. Two reasons it belongs there and not in your hands:
+
+- `gh release create` builds the tag server-side, so it can only point at a
+  commit the remote already has. Left to a later manual push it tagged the
+  commit *before* the release — v0.26.0 and v0.27.0 both shipped that way, and
+  nothing disagreed except `git rev-parse`.
+- Deploying hosting before the push would stamp the web build with a commit that
+  is not on `main`, and the sign-in footer would disagree with the APK. Both
+  surfaces must read `v<version> · <same hash>`.
+
+Everything before the push is local, so a failed build or AVD check still
+recovers with `git reset --hard HEAD~1`.
 
 ### After shipping
 - Download page shows the new version **and a fresh timestamp** (Pages lags ~1 min):

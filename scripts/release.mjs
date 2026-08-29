@@ -156,6 +156,38 @@ function verifyOnAvd(v, apk) {
   console.log(`  ✔ ${v} boots, production bundle confirmed`);
 }
 
+/**
+ * Push the release commit BEFORE creating the GitHub release.
+ *
+ * `gh release create` makes the tag server-side, so it can only point at a
+ * commit the remote already has. Run with the release commit still local and it
+ * silently tags the remote branch head instead — the commit BEFORE the release.
+ * v0.26.0 and v0.27.0 both went out tagging their predecessor, and nothing
+ * anywhere disagreed: the release page, the assets and the download page were
+ * all correct, and only `git rev-parse v0.26.0` knew.
+ *
+ * Placed after verifyOnAvd and not next to the commit, deliberately: everything
+ * that can still fail has failed by now, so `git reset --hard HEAD~1` stays a
+ * valid recovery for every earlier step rather than becoming a force-push.
+ */
+function pushReleaseCommit(v) {
+  const branch = shOut('git rev-parse --abbrev-ref HEAD');
+  console.log(`▸ pushing ${branch} so the tag can point at this commit`);
+  sh(`git push origin ${branch}`);
+  // Prove it landed. A push that resolved to a different sha — a racing commit,
+  // a hook rewriting it — would put the tag back on the wrong code, which is the
+  // exact failure this function exists to end.
+  const local = shOut('git rev-parse HEAD');
+  const remote = shOut(`git ls-remote origin refs/heads/${branch}`).split(/\s+/)[0];
+  if (local !== remote) {
+    console.error(
+      `refusing to tag v${v}: origin/${branch} is ${remote.slice(0, 7)}, ` +
+        `not the release commit ${local.slice(0, 7)}.`,
+    );
+    process.exit(1);
+  }
+}
+
 function publish(v, built, notesFile) {
   const notes = notesFile ? readFileSync(notesFile, 'utf8') : `Release ${v}.`;
   const notesPath = join(OUT_DIR, `notes-${v}.md`);
@@ -260,8 +292,9 @@ if (DRY) {
 // and gradle/Metro bundles it in the APK; the later `firebase deploy --only
 // hosting` regenerates build-info from the SAME commit — so the sign-in footer
 // shows an identical `v<version> · <hash>` on the APK and the web. build-info.ts is
-// gitignored, so it is not part of this commit. (If a later step fails, recover
-// with `git reset --hard HEAD~1`.)
+// gitignored, so it is not part of this commit. (If the build or the AVD check
+// fails, recover with `git reset --hard HEAD~1` — everything up to that point is
+// local. Past pushReleaseCommit it is published, so fix forward instead.)
 sh('git add -A');
 sh(`git commit -m "v${version}"`);
 console.log(`▸ build-info → v${version} @ ${shOut('git rev-parse --short HEAD')}`);
@@ -269,8 +302,9 @@ sh(`node ${join(root, 'scripts/gen-build-info.mjs')}`);
 
 const built = buildApks(version);
 verifyOnAvd(version, built.universal);
+pushReleaseCommit(version);
 publish(version, built, notesFile);
-console.log(`\n✔ v${version} released and committed. Now: firebase deploy --only hosting && git push.`);
+console.log(`\n✔ v${version} released, committed and pushed. Now: firebase deploy --only hosting.`);
 // Push the just-built, just-verified arm64 APK to the public download page as a
 // Release asset (never a commit). Same artifact, same run — provenance is tight.
 publishDownloadPage(built.arm64);
@@ -284,10 +318,13 @@ publishDownloadPage(built.arm64);
 //      "the" daemon stops the one a SIBLING session is mid-build on. It surfaces
 //      there as "Gradle build daemon disappeared unexpectedly" in a repo nobody
 //      touched.
-//   2. The reason given here was wrong. It claimed earlyoom would then kill the
-//      Firestore emulator as a preferred victim. earlyoom does not run on this
-//      machine at all, and the box has 15GB of RAM plus a 16GB swapfile — so
-//      contention shows up first as thrashing, not as a kill.
+//   2. The reason given here was overstated. earlyoom DOES run on this machine
+//      (`-m 5 -s 5`, with qemu-system-x86, node, java and gradle all in
+//      --prefer), so a preferred victim really can be killed — but only at 5%
+//      free, and the box has 15GB of RAM plus a 16GB swapfile. Contention
+//      therefore shows up first as thrashing; a kill is the tail case, not the
+//      expected one. If something vanishes mid-build, check
+//      `dmesg | grep -i earlyoom` before assuming a crash.
 //
 // Report it and let a human decide; TT_STOP_GRADLE=1 opts back in for when you
 // know nothing else is building.
