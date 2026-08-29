@@ -32,6 +32,21 @@
     <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color"/>
     <meta-data android:name="expo.modules.notifications.default_notification_icon" android:resource="@drawable/ic_notification"/>
     <meta-data android:name="expo.modules.notifications.default_notification_color" android:resource="@color/notification_icon_color"/>
+    <!-- Where FCM posts a message that names no channel. Without this it invents
+         `fcm_fallback_notification_channel`, which Android labels
+         "Miscellaneous" — a permanent entry in the app's notification settings
+         that nobody recognises and nothing can remove afterwards.
+
+         The server names the channel on every send, so this should never be
+         consulted; it is here so that a send which ever stops naming it degrades
+         to the right channel instead of resurrecting the wrong one.
+
+         THE ONE PLACE THE CHANNEL ID IS RESTATED. A manifest cannot import a TS
+         constant, so this literal is checked against PUSH_CHANNEL_ID by
+         functions/test/unit/pushChannel.test.ts — and unlike the client/server
+         pair, which both import the constant, that check can catch a genuine
+         disagreement. -->
+    <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="sabeel-alerts"/>
     <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>

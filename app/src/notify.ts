@@ -120,6 +120,34 @@ export async function enablePush(uid: string): Promise<PushEnableResult> {
   return 'denied';
 }
 
+/**
+ * Channels this app used to post to and never will again. Deleted on every
+ * registration, because each one lingers in Android's notification settings as a
+ * switch that does nothing — which is the whole defect PUSH_CHANNEL_ID exists to
+ * end, and leaving these behind reproduces it three times over.
+ *
+ * `default` is ours: the app created it and no send ever named it. The other two
+ * belong to the transports, and Android labels BOTH of them "Miscellaneous" —
+ * which is why a device that ran the old build shows two identical entries by
+ * that name. They were created because a send that names no channel is not
+ * rejected: whichever side displays it invents a home for it.
+ *
+ *   fcm_fallback_notification_channel              firebase-messaging, backgrounded
+ *   expo_notifications_fallback_notification_channel   expo-notifications, foreground
+ *
+ * Deleting them sticks only because nothing can recreate them now. Both sides
+ * read the SAME field: FCM's SDK uses `android.notification.channel_id`, and
+ * expo's FirebaseNotificationTrigger.getNotificationChannel() returns
+ * `remoteMessage.notification?.channelId`. The server sets it on every send and
+ * the manifest names PUSH_CHANNEL_ID as the default, so neither transport has a
+ * reason to fall back. Remove either of those and these come straight back.
+ */
+const RETIRED_CHANNEL_IDS = [
+  'default',
+  'fcm_fallback_notification_channel',
+  'expo_notifications_fallback_notification_channel',
+];
+
 export async function registerPush(uid: string): Promise<boolean> {
   try {
     // BEFORE the token, or the first message can race the channel into
@@ -129,11 +157,10 @@ export async function registerPush(uid: string): Promise<boolean> {
       name: PUSH_CHANNEL_NAME,
       importance: Notifications.AndroidImportance.HIGH,
     });
-    // The channel nothing ever posted to, because no send named a channel at
-    // all. Left alone it lingers in Android's notification settings as a second,
-    // permanently silent "Default" that someone would reasonably try to
-    // configure. Failure is fine: on a fresh install there is nothing to delete.
-    await Notifications.deleteNotificationChannelAsync('default').catch(() => undefined);
+    for (const dead of RETIRED_CHANNEL_IDS) {
+      // Failure is fine: on a fresh install there is nothing to delete.
+      await Notifications.deleteNotificationChannelAsync(dead).catch(() => undefined);
+    }
     const perm = await Notifications.requestPermissionsAsync();
     if (!perm.granted) return false;
     // FCM has no emulator, so a token minted here could never be delivered to

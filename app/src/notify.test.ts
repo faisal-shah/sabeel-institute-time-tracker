@@ -128,10 +128,18 @@ it('is a real id, not an undefined import', () => {
    * system settings as a second, permanently silent entry someone would
    * reasonably try to configure.
    */
-  it('removes the dead one it replaces', async () => {
+  it('removes every channel it has retired, not just its own', async () => {
     device({ granted: true });
     await registerPush('user-1');
-    expect(Notifications.deleteNotificationChannelAsync).toHaveBeenCalledWith('default');
+    const deleted = asMock(Notifications.deleteNotificationChannelAsync).mock.calls.flat();
+    // Ours, which nothing ever posted to.
+    expect(deleted).toContain('default');
+    // And the two the TRANSPORTS invented while no send named a channel. Android
+    // labels both "Miscellaneous", which is why a device that ran the old build
+    // shows two identical entries by that name — the exact "switch that does
+    // nothing" this whole change exists to remove.
+    expect(deleted).toContain('fcm_fallback_notification_channel');
+    expect(deleted).toContain('expo_notifications_fallback_notification_channel');
   });
 });
 

@@ -300,4 +300,10 @@ phase boundary.
   and makes the three read as one family in a phone's settings. Importance HIGH,
   fixed at creation: Android never lets an app raise it afterwards, which is why
   the old `'default'` channel was replaced rather than repaired, and deleted so
-  it stops appearing as a switch that does nothing.
+  it stops appearing as a switch that does nothing. Registration also retires the
+  two channels the TRANSPORTS invented while no send named one —
+  `fcm_fallback_notification_channel` and
+  `expo_notifications_fallback_notification_channel`, both of which Android
+  labels "Miscellaneous", so an upgraded phone showed two identical dead entries
+  by that name. The manifest names PUSH_CHANNEL_ID as FCM's default channel, so
+  nothing can recreate them.

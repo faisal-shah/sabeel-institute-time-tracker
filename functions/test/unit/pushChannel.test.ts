@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { PUSH_CHANNEL_ID } from '@sabeel/shared';
 
 /**
@@ -114,5 +116,53 @@ it('is a real id, not an undefined import', () => {
     expect(msg.tokens).toEqual(['device-token-1']);
     expect(msg.notification?.title).toBeTruthy();
     expect(Object.keys(msg.android ?? {})).toEqual(['notification']);
+  });
+});
+
+/**
+ * The manifest's default channel, which is the ONE place the id is restated.
+ *
+ * A manifest cannot import a TS constant, so `android:value` is a literal. That
+ * makes this the only check in the project that can catch the two halves
+ * genuinely DISAGREEING — the client and server tests both import
+ * PUSH_CHANNEL_ID, so a wrong-but-consistent id sails past them; here a typo in
+ * the XML fails against the real constant.
+ *
+ * What it is for at runtime: FCM posts a message naming no channel to
+ * `fcm_fallback_notification_channel`, which Android labels "Miscellaneous" and
+ * which then sits in the app's settings forever. This makes that degrade to our
+ * channel instead. It also keeps the fallback from being recreated after
+ * registerPush deletes it — see RETIRED_CHANNEL_IDS.
+ */
+describe('the manifest', () => {
+  const MANIFEST = resolve(
+    import.meta.dirname,
+    '../../../app/android/app/src/main/AndroidManifest.xml',
+  );
+  const manifest = () => readFileSync(MANIFEST, 'utf8');
+
+  it('names the shared channel as FCM\'s default', () => {
+    const m = manifest().match(
+      /com\.google\.firebase\.messaging\.default_notification_channel_id"\s+android:value="([^"]+)"/,
+    );
+    expect(m?.[1]).toBe(PUSH_CHANNEL_ID);
+  });
+
+  /**
+   * Both icon pairs, because two different things draw a notification here and
+   * each reads only its own keys: FCM's SDK when a payload arrives backgrounded,
+   * expo-notifications for foreground and local ones. One pair alone leaves half
+   * of them on the launcher icon's silhouette — a featureless ring.
+   */
+  it('points both renderers at the same icon and tint', () => {
+    const keys = [...manifest().matchAll(/android:name="([^"]*default_notification_(?:icon|color))"/g)]
+      .map((m) => m[1])
+      .sort();
+    expect(keys).toEqual([
+      'com.google.firebase.messaging.default_notification_color',
+      'com.google.firebase.messaging.default_notification_icon',
+      'expo.modules.notifications.default_notification_color',
+      'expo.modules.notifications.default_notification_icon',
+    ]);
   });
 });
