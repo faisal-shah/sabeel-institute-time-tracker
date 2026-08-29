@@ -32,3 +32,29 @@ export const SESSION_CAP_HOURS = 12;
 
 /** Longest a single entry may claim, mirrored in firestore.rules. */
 export const MAX_ENTRY_HOURS = 24;
+
+/**
+ * The Android notification channel, named by BOTH sides of the push.
+ *
+ * Android 8+ posts every notification to a channel, and the channel — not the
+ * message — carries the importance, the sound and the per-app switch a person
+ * sees in system settings. A send that names no channel is not rejected: it goes
+ * to whichever fallback the transport owns (`fcm_fallback_notification_channel`
+ * when FCM displays it, expo-notifications' own equivalent when that does), both
+ * of which Android labels **"Miscellaneous"**. That is what was happening here —
+ * the app created a channel called "Default" that nothing ever posted to,
+ * because the server sent no channel id at all. Nothing failed. The
+ * notifications arrived, correctly worded, in a drawer nobody recognised.
+ *
+ * Neither side can check the other at runtime, so the id lives here and both
+ * import it. All three Sabeel apps use the same id deliberately; channel ids are
+ * namespaced per application, so they cannot collide.
+ *
+ * HIGH, and right the FIRST time: Android fixes a channel's importance when it
+ * is created, and an app may lower it afterwards but may never raise it — only
+ * the person can. That is also why this is a NEW id rather than a repair of
+ * `'default'`, which already exists at DEFAULT importance on every device that
+ * has run the app. See `registerPush` for the deletion of the old one.
+ */
+export const PUSH_CHANNEL_ID = 'sabeel-alerts';
+export const PUSH_CHANNEL_NAME = 'Timesheet alerts and reminders';

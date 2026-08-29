@@ -294,3 +294,10 @@ phase boundary.
   with the reminder separately silenceable. Same-day overlapping entries are
   flagged in the UI and block submission (back-to-back is fine) — client-side
   only; approvers see the same highlight.
+- 2026-08-29 — **One notification channel id across all three Sabeel apps**
+  (`sabeel-alerts`), each with its own display name — here "Timesheet alerts and
+  reminders". Ids are namespaced per application, so sharing one costs nothing
+  and makes the three read as one family in a phone's settings. Importance HIGH,
+  fixed at creation: Android never lets an app raise it afterwards, which is why
+  the old `'default'` channel was replaced rather than repaired, and deleted so
+  it stops appearing as a switch that does nothing.

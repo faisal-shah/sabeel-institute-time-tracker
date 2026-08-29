@@ -229,6 +229,10 @@ also lets you switch each kind off individually; the **weekly reminder has its o
 people who don't submit every week can silence the nagging while keeping the
 important notifications on.
 
+On Android these all arrive under one entry in the phone's own notification
+settings — **Timesheet alerts and reminders**. Turning that entry off silences
+every kind at once, whatever the switches inside the app say.
+
 Notifications follow the account signed in on the device: signing out stops
 this phone or browser from receiving that account's notifications.
 

@@ -6,6 +6,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import {
+  PUSH_CHANNEL_ID,
   dayKeyFor,
   encodeNotifRoute,
   notifRouteUrl,
@@ -40,6 +41,11 @@ async function sendToUser(uid: string, notif: Notif): Promise<void> {
     tokens,
     notification: { title: notif.title, body: notif.body },
     data: encodeNotifRoute(notif.route),
+    // Name the channel on EVERY send. Without this FCM posts to its own fallback
+    // channel, which Android labels "Miscellaneous", and the channel the app
+    // created is never addressed by anything — see PUSH_CHANNEL_ID. Nothing
+    // errors either side, so only the payload can hold this honest.
+    android: { notification: { channelId: PUSH_CHANNEL_ID } },
     webpush: { fcmOptions: { link: notifRouteUrl(notif.route) } },
   });
   await Promise.all(

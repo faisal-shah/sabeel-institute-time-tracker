@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The status-bar / shade icon for a notification.
+
+  Android draws a small icon from its ALPHA CHANNEL ONLY: every opaque pixel is
+  painted flat in the tint colour and everything else is dropped. Colour, detail
+  and interior contrast are all discarded. Configure nothing and the default is
+  the launcher icon, which is a full-bleed square — its silhouette is the whole
+  square, so it renders as a featureless white ring and reads as a broken image
+  beside apps showing a real glyph. Nothing in a test suite draws a status bar,
+  so it ships that way.
+
+  So this is a silhouette by construction: transparent ground, one opaque glyph,
+  no background plate. The glyph is the stopwatch from the app icon's badge —
+  the part of the mark that still reads at 24dp. The calligraphic wordmark does
+  not, which is why it is not here.
+
+  Geometry is the badge glyph from the shared generator
+  (sabeel-institute-kanban/scripts/make-app-icons.py, kind="stopwatch") mapped
+  from its -100..100 space onto a 24dp viewport: 2dp strokes, round caps, the
+  crown stem landing inside the dial's stroke band so the two read as one shape.
+  Do not nudge it by eye — re-derive it from the generator.
+
+  A vector rather than five PNG densities: it stays crisp at every size, and it
+  is the only form of this asset that is reviewable in a diff.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+  <!-- The dial. -->
+  <path
+      android:strokeColor="#FFFFFFFF"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M12,4.43 A8.29,8.29 0 1 0 12,21.01 A8.29,8.29 0 1 0 12,4.43 Z" />
+
+  <!-- Crown: the bar across the top, and the stem down into the dial. -->
+  <path
+      android:strokeColor="#FFFFFFFF"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M9.12,2.99 H14.88" />
+  <path
+      android:strokeColor="#FFFFFFFF"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M12,2.99 V4.79" />
+
+  <!-- Hands, stopped at the same angles as the badge. -->
+  <path
+      android:strokeColor="#FFFFFFFF"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M12,12.72 V8.40 M12,12.72 H15.60" />
+</vector>

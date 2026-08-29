@@ -32,6 +32,7 @@ vi.mock('./notifRouting', () => ({ openNotifRoute: vi.fn() }));
 
 import * as Notifications from 'expo-notifications';
 import { setDoc } from 'firebase/firestore';
+import { PUSH_CHANNEL_ID, PUSH_CHANNEL_NAME } from '@sabeel/shared';
 import { enablePush, pushPromptState, registerPush } from './notify';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
@@ -64,6 +65,73 @@ describe('registerPush', () => {
     device({ granted: false });
     await expect(registerPush('user-1')).resolves.toBe(false);
     expect(setDoc).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The CLIENT half of the notification channel contract; the server half is
+ * functions/test/unit/pushChannel.test.ts.
+ *
+ * The app used to create a channel called 'default' at DEFAULT importance that
+ * nothing ever posted to, because no send named a channel at all — so every
+ * notification went to the transport's fallback, which Android labels
+ * "Miscellaneous", and the channel here existed purely as a switch that did
+ * nothing. Neither side can check the other at runtime and nothing errors, so
+ * the two halves are pinned separately, in the code each one lives in.
+ *
+ * Reading PUSH_CHANNEL_ID rather than restating it means this cannot catch a
+ * genuine disagreement between the halves. What it catches is the id being
+ * dropped or a literal creeping back in, which is the failure that happened.
+ */
+describe('the notification channel', () => {
+
+/**
+ * The constant has a VALUE.
+ *
+ * Both workspaces resolve `@sabeel/shared` to its BUILT `lib/`, not to `src/`,
+ * so a run that skips the build sees `undefined` — and every assertion below
+ * then compares undefined to undefined and passes while proving nothing. That
+ * happened on the first run of these tests. `npm test` builds first; a bare
+ * `npx vitest` does not.
+ */
+it('is a real id, not an undefined import', () => {
+  expect(PUSH_CHANNEL_ID).toMatch(/\S/);
+  expect(PUSH_CHANNEL_NAME).toMatch(/\S/);
+});
+  it('is created under the shared id, at the importance the server assumes', async () => {
+    device({ granted: true });
+    await registerPush('user-1');
+    expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(PUSH_CHANNEL_ID, {
+      name: PUSH_CHANNEL_NAME,
+      importance: Notifications.AndroidImportance.HIGH,
+    });
+  });
+
+  /**
+   * BEFORE the token, or the first message can arrive at a channel that does
+   * not exist yet. The ORDER is the assertion — both calls having happened, in
+   * either order, would satisfy a naive check.
+   */
+  it('exists before any token is handed over', async () => {
+    device({ granted: true });
+    await registerPush('user-1');
+    const channelAt = asMock(Notifications.setNotificationChannelAsync).mock
+      .invocationCallOrder[0];
+    const tokenAt = asMock(Notifications.getDevicePushTokenAsync).mock.invocationCallOrder[0];
+    expect(channelAt).toBeLessThan(tokenAt);
+  });
+
+  /**
+   * Android fixes a channel's importance at creation and an app may never raise
+   * it afterwards, so 'default' cannot be repaired in place on any device that
+   * has already run the app — it is replaced. Left behind, it lingers in the
+   * system settings as a second, permanently silent entry someone would
+   * reasonably try to configure.
+   */
+  it('removes the dead one it replaces', async () => {
+    device({ granted: true });
+    await registerPush('user-1');
+    expect(Notifications.deleteNotificationChannelAsync).toHaveBeenCalledWith('default');
   });
 });
 
@@ -119,6 +187,27 @@ describe('against the emulators', () => {
     const { registerPush: reg } = await loadWithEmulators();
     await expect(reg('user-1')).resolves.toBe(false);
     expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The gate sits BELOW the channel setup and the prompt, and this is what says
+   * so. With it on the first line of registerPush — where it was — an
+   * emulator-backed build could never create the channel or raise the system
+   * dialog even once. That is the only build that reaches the AVD outside a
+   * release, so the one native surface a browser cannot reach was unverifiable
+   * from the only place it can be looked at, and PUSH_CHANNEL_ID's importance
+   * with it.
+   */
+  it('still sets the channel up, and asks, before stopping at the token', async () => {
+    device({ granted: true });
+    const { registerPush: reg } = await loadWithEmulators();
+    await reg('user-1');
+    expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+      PUSH_CHANNEL_ID,
+      expect.objectContaining({ importance: Notifications.AndroidImportance.HIGH }),
+    );
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
+    expect(Notifications.getDevicePushTokenAsync).not.toHaveBeenCalled();
   });
 });
 

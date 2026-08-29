@@ -6,7 +6,13 @@ import { useEffect } from 'react';
 import { Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { COLLECTIONS, decodeNotifRoute, type PushTokenDoc } from '@sabeel/shared';
+import {
+  COLLECTIONS,
+  PUSH_CHANNEL_ID,
+  PUSH_CHANNEL_NAME,
+  decodeNotifRoute,
+  type PushTokenDoc,
+} from '@sabeel/shared';
 import { db } from './firebase';
 import { USE_EMULATORS } from './env';
 import { openNotifRoute } from './notifRouting';
@@ -115,14 +121,29 @@ export async function enablePush(uid: string): Promise<PushEnableResult> {
 }
 
 export async function registerPush(uid: string): Promise<boolean> {
-  if (USE_EMULATORS) return false; // FCM has no emulator; keep dev runs deterministic
   try {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
-      importance: Notifications.AndroidImportance.DEFAULT,
+    // BEFORE the token, or the first message can race the channel into
+    // existence. The server addresses this same id — see PUSH_CHANNEL_ID for why
+    // both sides must name it and why the importance has to be right first time.
+    await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
+      name: PUSH_CHANNEL_NAME,
+      importance: Notifications.AndroidImportance.HIGH,
     });
+    // The channel nothing ever posted to, because no send named a channel at
+    // all. Left alone it lingers in Android's notification settings as a second,
+    // permanently silent "Default" that someone would reasonably try to
+    // configure. Failure is fine: on a fresh install there is nothing to delete.
+    await Notifications.deleteNotificationChannelAsync('default').catch(() => undefined);
     const perm = await Notifications.requestPermissionsAsync();
     if (!perm.granted) return false;
+    // FCM has no emulator, so a token minted here could never be delivered to
+    // and would make local runs non-deterministic. BELOW the channel setup and
+    // the prompt, and that placement is the point: with this on the first line
+    // an emulator-backed build — the only kind that reaches the AVD outside a
+    // release — could never create the channel or raise the dialog even once,
+    // which left the one native surface a browser cannot reach unverifiable
+    // from the only place it can be looked at.
+    if (USE_EMULATORS) return false;
     const { data: token } = await Notifications.getDevicePushTokenAsync();
     if (typeof token !== 'string' || !token) return false;
     const body: PushTokenDoc = { token, platform: 'android', updatedAt: Date.now() };
